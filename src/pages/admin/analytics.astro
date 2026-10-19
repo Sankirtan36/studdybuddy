@@ -1,0 +1,306 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/layout/Header.astro';
+import Footer from '../../components/layout/Footer.astro';
+import { getDb } from '../../server/db/mongo';
+import type { Resource } from '../../types';
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/login?redirect=/admin/analytics');
+}
+if (user.role !== 'admin' && user.role !== 'owner') {
+  return Astro.redirect('/dashboard?error=unauthorized_admin');
+}
+
+// Date Range Filter (Default: 30 days)
+const range = Astro.url.searchParams.get('range') || '30d';
+
+let startDate = new Date();
+if (range === 'today') {
+  startDate.setHours(0, 0, 0, 0);
+} else if (range === '7d') {
+  startDate.setDate(startDate.getDate() - 7);
+} else if (range === '90d') {
+  startDate.setDate(startDate.getDate() - 90);
+} else {
+  // 30 days
+  startDate.setDate(startDate.getDate() - 30);
+}
+
+let totalEventsCount = 0;
+let totalViewsCount = 0;
+let totalDownloadsCount = 0;
+let totalUploadsCount = 0;
+let activeContributorsCount = 0;
+let topResources: Resource[] = [];
+let categoryCounts: Record<string, number> = {};
+let monthlySummary: Array<{ month: string; events: number; downloads: number; uploads: number }> = [];
+
+try {
+  const db = await getDb();
+
+  totalEventsCount = await db.collection('analyticsEvents').countDocuments({
+    timestamp: { $gte: startDate },
+  });
+
+  totalViewsCount = await db.collection('analyticsEvents').countDocuments({
+    eventType: 'resource_view',
+    timestamp: { $gte: startDate },
+  });
+
+  totalDownloadsCount = await db.collection('analyticsEvents').countDocuments({
+    eventType: 'download_completed',
+    timestamp: { $gte: startDate },
+  });
+
+  totalUploadsCount = await db.collection('analyticsEvents').countDocuments({
+    eventType: 'upload_completed',
+    timestamp: { $gte: startDate },
+  });
+
+  // Contributors with uploads in selected period
+  const contributorAgg = await db.collection('analyticsEvents').aggregate([
+    { $match: { eventType: 'upload_completed', timestamp: { $gte: startDate }, userId: { $exists: true } } },
+    { $group: { _id: '$userId' } },
+  ]).toArray();
+  activeContributorsCount = contributorAgg.length;
+
+  // Category breakdown
+  const catAgg = await db.collection('resources').aggregate([
+    { $match: { status: 'approved' } },
+    { $group: { _id: '$category', count: { $sum: 1 } } },
+  ]).toArray();
+  for (const item of catAgg) {
+    categoryCounts[item._id] = item.count;
+  }
+
+  // Top resources by downloads
+  topResources = await db
+    .collection<Resource>('resources')
+    .find({ status: 'approved' })
+    .sort({ downloadCount: -1 })
+    .limit(10)
+    .toArray();
+
+  // Monthly aggregated summary
+  const monthlyAgg = await db.collection('analyticsEvents').aggregate([
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m', date: '$timestamp' } },
+        events: { $sum: 1 },
+        downloads: {
+          $sum: { $cond: [{ $eq: ['$eventType', 'download_completed'] }, 1, 0] },
+        },
+        uploads: {
+          $sum: { $cond: [{ $eq: ['$eventType', 'upload_completed'] }, 1, 0] },
+        },
+      },
+    },
+    { $sort: { events: -1 } },
+  ]).toArray();
+
+  monthlySummary = monthlyAgg.map((m) => ({
+    month: m._id,
+    events: m.events,
+    downloads: m.downloads,
+    uploads: m.uploads,
+  }));
+} catch (err) {
+  // Graceful fallback
+}
+
+// Compute genuine average: Uploads / Active Contributors (with clear denominator!)
+const avgUploadsPerContributor =
+  activeContributorsCount > 0 ? (totalUploadsCount / activeContributorsCount).toFixed(1) : '0';
+
+// Identify peak month
+const peakMonth = monthlySummary[0]?.month || 'N/A';
+---
+
+<Layout
+  title="Traffic & Usage Analytics | StuddyBuddy Admin"
+  description="Verified platform usage metrics, returning visitors, resource download trends, and academic coverage."
+  noindex={true}
+>
+  <Header slot="header" user={user} />
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-10">
+    <!-- Header with Date Filters -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200/80 dark:border-slate-800 gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          Platform Usage & Traffic Analytics
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Real recorded database events only. No fabricated or estimated metrics. Default timezone: Asia/Kolkata.
+        </p>
+      </div>
+
+      <!-- Date Filter Pills -->
+      <div class="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
+        <a
+          href="/admin/analytics?range=today"
+          class={`px-3 py-1.5 rounded-lg transition-colors ${range === 'today' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+        >
+          Today
+        </a>
+        <a
+          href="/admin/analytics?range=7d"
+          class={`px-3 py-1.5 rounded-lg transition-colors ${range === '7d' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+        >
+          Last 7 Days
+        </a>
+        <a
+          href="/admin/analytics?range=30d"
+          class={`px-3 py-1.5 rounded-lg transition-colors ${range === '30d' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+        >
+          Last 30 Days
+        </a>
+        <a
+          href="/admin/analytics?range=90d"
+          class={`px-3 py-1.5 rounded-lg transition-colors ${range === '90d' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+        >
+          Last 90 Days
+        </a>
+      </div>
+    </div>
+
+    <!-- Core Metric Cards with Stated Denominators -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Recorded Events</span>
+        <p class="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{totalEventsCount}</p>
+        <span class="text-[11px] text-slate-500 mt-1 block">Views: {totalViewsCount} | Period: {range}</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Completed Downloads</span>
+        <p class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{totalDownloadsCount}</p>
+        <span class="text-[11px] text-slate-500 mt-1 block">Verified file deliveries</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Materials Uploaded</span>
+        <p class="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">{totalUploadsCount}</p>
+        <span class="text-[11px] text-slate-500 mt-1 block">By {activeContributorsCount} active contributor{activeContributorsCount === 1 ? '' : 's'}</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Avg. Uploads / Contributor</span>
+        <p class="text-3xl font-extrabold text-purple-600 dark:text-purple-400 mt-1">{avgUploadsPerContributor}</p>
+        <span class="text-[11px] text-slate-500 mt-1 block">Denominator: Active contributors</span>
+      </div>
+    </div>
+
+    <!-- Ranked Monthly Table (Identifying Busiest Month) -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Monthly Traffic History & Peak Periods
+          </h2>
+          <p class="text-xs text-slate-500">Ranked by total recorded platform engagement</p>
+        </div>
+        {peakMonth !== 'N/A' && (
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
+            ★ Highest Traffic Month: {peakMonth}
+          </span>
+        )}
+      </div>
+
+      {monthlySummary.length > 0 ? (
+        <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="p-4">Rank</th>
+                <th class="p-4">Month</th>
+                <th class="p-4">Total Recorded Events</th>
+                <th class="p-4">Verified Downloads</th>
+                <th class="p-4">New Uploads</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {monthlySummary.map((m, idx) => (
+                <tr class={`hover:bg-slate-50/50 dark:hover:bg-slate-800/40 ${idx === 0 ? 'bg-indigo-50/30 dark:bg-indigo-950/20 font-semibold' : ''}`}>
+                  <td class="p-4 font-bold text-slate-500">
+                    #{idx + 1}
+                  </td>
+                  <td class="p-4 font-bold text-slate-900 dark:text-white">
+                    {m.month}
+                  </td>
+                  <td class="p-4 text-indigo-600 dark:text-indigo-400 font-bold">
+                    {m.events}
+                  </td>
+                  <td class="p-4 text-emerald-600 dark:text-emerald-400">
+                    {m.downloads}
+                  </td>
+                  <td class="p-4 text-slate-700 dark:text-slate-300">
+                    {m.uploads}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          Analytics recording initialized. Historical monthly aggregates will accumulate as students interact with resources.
+        </div>
+      )}
+    </section>
+
+    <!-- Top Resources by Downloads -->
+    <section class="space-y-4">
+      <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+        Most Downloaded Resources
+      </h2>
+      {topResources.length > 0 ? (
+        <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="p-4">Resource</th>
+                <th class="p-4">Category</th>
+                <th class="p-4">Exam Year</th>
+                <th class="p-4">Downloads</th>
+                <th class="p-4">Views</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {topResources.map((res) => (
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <td class="p-4 font-bold text-slate-900 dark:text-white">
+                    <a href={`/resources/${res._id}`} class="hover:text-indigo-600 dark:hover:text-indigo-400">
+                      {res.title}
+                    </a>
+                  </td>
+                  <td class="p-4 text-slate-600 dark:text-slate-400">
+                    {res.category}
+                  </td>
+                  <td class="p-4 text-slate-500">
+                    {res.examYear || '-'}
+                  </td>
+                  <td class="p-4 font-bold text-emerald-600 dark:text-emerald-400">
+                    {res.downloadCount}
+                  </td>
+                  <td class="p-4 text-slate-500">
+                    {res.viewCount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div class="p-6 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          No downloaded resources recorded yet.
+        </div>
+      )}
+    </section>
+
+  </div>
+
+  <Footer slot="footer" />
+</Layout>

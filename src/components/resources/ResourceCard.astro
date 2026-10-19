@@ -1,0 +1,104 @@
+---
+import type { Resource } from '../../types';
+
+interface Props {
+  resource: Resource;
+}
+
+const { resource } = Astro.props;
+
+// Formatting file size
+function formatBytes(bytes: number, decimals = 1) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+// Category badge color mapping
+const categoryColors: Record<string, string> = {
+  'Previous Year Question Paper': 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  'Mid-Semester Paper': 'bg-orange-100 text-orange-800 dark:bg-orange-950/70 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+  'End-Semester Paper': 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+  'Notes': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  'Question Bank': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+  'Assignment': 'bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+  'Assignment Solution': 'bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+  'Solved Paper': 'bg-teal-100 text-teal-800 dark:bg-teal-950/70 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+};
+
+const badgeClass = categoryColors[resource.category] || 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+
+const fileExt = (resource.fileExtension || 'pdf').toUpperCase();
+const id = resource._id?.toString() || '';
+---
+
+<article class="group relative flex flex-col justify-between p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700/60 transition-all duration-200">
+  <div>
+    <!-- Top Bar: Category badge & File Type Pill -->
+    <div class="flex items-center justify-between gap-2 mb-3">
+      <span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeClass}`}>
+        {resource.category}
+      </span>
+      <span class="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-200/50 dark:border-slate-700/50">
+        <svg class="w-3.5 h-3.5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+        </svg>
+        {fileExt} • {formatBytes(resource.fileSizeBytes)}
+      </span>
+    </div>
+
+    <!-- Title -->
+    <h3 class="text-base font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mb-2">
+      <a href={`/resources/${id}`} class="focus:outline-none focus:underline">
+        {resource.title}
+      </a>
+    </h3>
+
+    <!-- Description (if any) -->
+    {resource.description && (
+      <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 leading-relaxed">
+        {resource.description}
+      </p>
+    )}
+
+    <!-- Academic Metadata Pill List -->
+    <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 mb-4">
+      {resource.examYear && (
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-medium">
+          <span>Exam: {resource.examYear} {resource.examSession ? `(${resource.examSession})` : ''}</span>
+        </span>
+      )}
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+        Parul University
+      </span>
+    </div>
+  </div>
+
+  <!-- Footer: Contributor Attribution, Download Count & Actions -->
+  <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+    <div class="flex flex-col">
+      <span class="text-slate-400 dark:text-slate-500 text-[10px]">Contributed by</span>
+      <span class="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]">{resource.contributorName}</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <span class="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400" title={`${resource.downloadCount} downloads`}>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span>{resource.downloadCount}</span>
+      </span>
+
+      <a
+        href={`/api/resources/${id}/download`}
+        download={resource.originalFilename || `${resource.title}.${resource.fileExtension || 'pdf'}`}
+        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-600/20 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        <span>Download</span>
+      </a>
+    </div>
+  </div>
+</article>

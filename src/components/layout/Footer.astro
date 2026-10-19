@@ -1,0 +1,75 @@
+---
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="border-t border-slate-200/80 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm text-slate-600 dark:text-slate-400 text-sm mt-auto">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
+      <!-- Col 1: Brand Info -->
+      <div class="lg:col-span-2 space-y-4">
+        <a href="/" class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <span class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">StuddyBuddy</span>
+        </a>
+        <p class="text-sm leading-relaxed text-slate-500 dark:text-slate-400 max-w-sm">
+          Your Study Buddy, Every Semester. A community-driven academic resource platform for discovering, sharing, and organizing verified study materials, question papers, and notes.
+        </p>
+        <div class="pt-1 flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Initial Target Institution: Parul University, Gujarat</span>
+        </div>
+      </div>
+
+      <!-- Col 2: Academic Catalog -->
+      <div class="space-y-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">Academic Catalog</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/university/parul-university" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Parul University</a></li>
+          <li><a href="/university/parul-university/engineering-technology" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Engineering & Tech</a></li>
+          <li><a href="/university/parul-university/it-computer-science" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">IT & Computer Science</a></li>
+          <li><a href="/university/parul-university/management-studies" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Management Studies</a></li>
+          <li><a href="/suggest-catalog" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">+ Suggest Course/Subject</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 3: Resources & Tools -->
+      <div class="space-y-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">Resources & Tools</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/resources?category=Previous+Year+Question+Paper" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Question Papers</a></li>
+          <li><a href="/resources?category=Notes" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Lecture Notes</a></li>
+          <li><a href="/resources?category=Question+Bank" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Question Banks</a></li>
+          <li><a href="/pdf-tools" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Merge & Split PDFs</a></li>
+          <li><a href="/community" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Student Discussions</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 4: Platform & Legal -->
+      <div class="space-y-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">Legal & Support</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/about" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">About Us</a></li>
+          <li><a href="/privacy" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Privacy Policy</a></li>
+          <li><a href="/terms" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Terms of Use</a></li>
+          <li><a href="/copyright" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Copyright & Takedown</a></li>
+          <li><a href="/contact" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Contact Support</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="pt-8 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      <p>&copy; {currentYear} StuddyBuddy. All rights reserved.</p>
+      <div class="flex items-center gap-6">
+        <a href="/privacy" class="hover:underline">Privacy</a>
+        <a href="/terms" class="hover:underline">Terms</a>
+        <a href="/copyright" class="hover:underline">DMCA</a>
+        <a href="/admin" class="hover:text-slate-800 dark:hover:text-slate-200 font-medium">Admin Portal</a>
+      </div>
+    </div>
+  </div>
+</footer>

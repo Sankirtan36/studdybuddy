@@ -1,0 +1,435 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+import { getFacultiesByUniversity } from '../server/repositories/catalogRepository';
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/login?redirect=/upload');
+}
+
+const faculties = await getFacultiesByUniversity('parul-university');
+
+const quickSubjects = [
+  'AI (Artificial Intelligence)',
+  'Operating Systems',
+  'Data Structures (DSA)',
+  'Computer Networks',
+  'Mathematics',
+  'Database Management (DBMS)',
+  'Software Engineering',
+  'Web Technologies',
+];
+
+const categories = [
+  'Notes',
+  'Previous Year Question Paper',
+  'Mid-Semester Paper',
+  'End-Semester Paper',
+  'Assignment',
+  'Presentation/PPT',
+  'Practical & Lab Material',
+  'Question Bank',
+  'Other',
+];
+---
+
+<Layout
+  title="Fast Upload & Publish Study Material | StuddyBuddy"
+  description="Quickly share notes, past papers, and university study materials. Instant access for all students."
+  noindex={true}
+>
+  <Header slot="header" user={user} />
+
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 py-10 md:py-16">
+    <!-- Breadcrumb -->
+    <nav class="mb-6 flex items-center gap-2 text-xs text-slate-500">
+      <a href="/" class="hover:text-indigo-600">Home</a>
+      <span>/</span>
+      <a href="/dashboard" class="hover:text-indigo-600">Dashboard</a>
+      <span>/</span>
+      <span class="text-slate-900 dark:text-white font-medium">Quick Publish</span>
+    </nav>
+
+    {user.restrictions?.uploadsBlocked ? (
+      <div class="p-8 rounded-3xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-center space-y-4">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold">!</div>
+        <h2 class="text-xl font-bold text-rose-900 dark:text-rose-200">Upload Permissions Restricted</h2>
+        <p class="text-xs text-rose-700 dark:text-rose-300 max-w-md mx-auto leading-relaxed">
+          Your account has been restricted from uploading resources.
+        </p>
+      </div>
+    ) : (
+      <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-6">
+        
+        <!-- Header -->
+        <div class="border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              Instant Publishing
+            </span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Upload Study Document
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Choose your document, enter the subject, and hit publish. Everything is automatically organized into subject folders!
+          </p>
+        </div>
+
+        <!-- Alerts -->
+        <div id="error-alert" class="hidden p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold"></div>
+        <div id="success-alert" class="hidden p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold"></div>
+
+        <!-- Simple 1-Step Form -->
+        <form id="upload-form" class="space-y-5 text-xs">
+          
+          <!-- 1. Drag & Drop File Selector -->
+          <div>
+            <label class="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 text-sm">
+              1. Select Document File <span class="text-rose-500">*</span>
+            </label>
+            <div
+              id="dropzone"
+              class="border-2 border-dashed border-indigo-200 dark:border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-center bg-indigo-50/30 dark:bg-slate-800/40 transition-colors cursor-pointer"
+            >
+              <input
+                id="file-input"
+                type="file"
+                name="file"
+                required
+                accept=".pdf,.ppt,.pptx,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                class="hidden"
+              />
+              <div id="dropzone-content" class="space-y-2 pointer-events-none">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </div>
+                <p class="font-bold text-sm text-slate-700 dark:text-slate-200">
+                  Click to select file or drag & drop here
+                </p>
+                <p class="text-[11px] text-slate-400">
+                  Supports PDF, PPTX, DOCX, Images up to 25 MB
+                </p>
+              </div>
+
+              <!-- File Selected State Preview -->
+              <div id="file-preview" class="hidden flex items-center justify-between p-3 rounded-xl bg-indigo-100/70 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-left">
+                <div class="flex items-center gap-2.5 overflow-hidden">
+                  <span class="text-lg">📄</span>
+                  <div class="truncate">
+                    <p id="preview-filename" class="font-bold text-indigo-900 dark:text-indigo-200 text-xs truncate"></p>
+                    <p id="preview-filesize" class="text-[10px] text-indigo-600 dark:text-indigo-400"></p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  id="change-file-btn"
+                  class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 pointer-events-auto shrink-0"
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Subject Name Input with Instant Chips -->
+          <div>
+            <label class="block font-bold text-slate-800 dark:text-slate-200 mb-1 text-sm">
+              2. Subject Name <span class="text-rose-500">*</span>
+            </label>
+            <p class="text-[11px] text-slate-400 mb-2">
+              All documents for this subject will be automatically placed into the same subject folder.
+            </p>
+            <input
+              type="text"
+              id="subject-input"
+              name="subjectName"
+              required
+              placeholder="e.g. AI, Artificial Intelligence, Operating Systems, Mathematics..."
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            />
+
+            <!-- Quick One-Click Subject Chips -->
+            <div class="mt-2.5 flex flex-wrap gap-1.5 items-center">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Quick Picks:</span>
+              {quickSubjects.map((sub) => (
+                <button
+                  type="button"
+                  class="subject-chip px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700/60 transition-colors"
+                  data-subject={sub}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- 3. Category & Optional Custom Title -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 text-xs">
+                3. Material Type / Category
+              </label>
+              <select
+                name="category"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              >
+                {categories.map((cat) => (
+                  <option value={cat} selected={cat === 'Notes'}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 text-xs">
+                Document Title (Optional)
+              </label>
+              <input
+                type="text"
+                id="title-input"
+                name="title"
+                placeholder="Auto-filled from file name"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <!-- 4. Collapsible Advanced Settings (Optional - Clean defaults) -->
+          <details class="group p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 transition-all">
+            <summary class="cursor-pointer font-bold text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-between select-none">
+              <span>⚙️ Additional University & Term Options (Optional)</span>
+              <span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+
+            <div class="mt-4 pt-4 border-t border-slate-200/60 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block font-semibold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                  University
+                </label>
+                <select
+                  name="universityId"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                >
+                  <option value="parul-university">Parul University (Vadodara)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                  Faculty
+                </label>
+                <select
+                  name="facultyId"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                >
+                  {faculties.map((f) => (
+                    <option value={f.slug}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                  Program / Branch
+                </label>
+                <select
+                  name="programId"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                >
+                  <option value="prog-btech-cse">B.Tech Computer Science & Engineering</option>
+                  <option value="prog-bca">Bachelor of Computer Applications (BCA)</option>
+                  <option value="prog-mca">Master of Computer Applications (MCA)</option>
+                  <option value="prog-general">Other Academic Program</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                  Semester / Term
+                </label>
+                <select
+                  name="academicTermId"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                >
+                  <option value="term-1">Semester 1</option>
+                  <option value="term-2">Semester 2</option>
+                  <option value="term-3">Semester 3</option>
+                  <option value="term-4">Semester 4</option>
+                  <option value="term-5">Semester 5</option>
+                  <option value="term-6">Semester 6</option>
+                  <option value="term-7">Semester 7</option>
+                  <option value="term-8">Semester 8</option>
+                </select>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="block font-semibold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                  Description / Topic Notes
+                </label>
+                <input
+                  type="text"
+                  name="description"
+                  placeholder="e.g. Unit 1 to 3 key handwritten topics, question solutions..."
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                />
+              </div>
+            </div>
+          </details>
+
+          <!-- 5. Big Action Button -->
+          <button
+            id="submit-btn"
+            type="submit"
+            class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2"
+          >
+            <span>🚀 Publish Study Material Now</span>
+          </button>
+        </form>
+      </div>
+    )}
+  </div>
+
+  <Footer slot="footer" />
+</Layout>
+
+<script>
+  const form = document.getElementById('upload-form') as HTMLFormElement;
+  const dropzone = document.getElementById('dropzone') as HTMLDivElement;
+  const fileInput = document.getElementById('file-input') as HTMLInputElement;
+  const dropzoneContent = document.getElementById('dropzone-content') as HTMLDivElement;
+  const filePreview = document.getElementById('file-preview') as HTMLDivElement;
+  const previewFilename = document.getElementById('preview-filename') as HTMLParagraphElement;
+  const previewFilesize = document.getElementById('preview-filesize') as HTMLParagraphElement;
+  const changeFileBtn = document.getElementById('change-file-btn') as HTMLButtonElement;
+  const titleInput = document.getElementById('title-input') as HTMLInputElement;
+  const subjectInput = document.getElementById('subject-input') as HTMLInputElement;
+  const alertErr = document.getElementById('error-alert') as HTMLDivElement;
+  const alertSuccess = document.getElementById('success-alert') as HTMLDivElement;
+  const btn = document.getElementById('submit-btn') as HTMLButtonElement;
+
+  // Click dropzone to open file dialog
+  dropzone?.addEventListener('click', (e) => {
+    if (e.target !== changeFileBtn) {
+      fileInput?.click();
+    }
+  });
+
+  changeFileBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInput?.click();
+  });
+
+  // Drag and drop events
+  ['dragenter', 'dragover'].forEach((eventName) => {
+    dropzone?.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('border-indigo-600', 'bg-indigo-50/50');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach((eventName) => {
+    dropzone?.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-indigo-600', 'bg-indigo-50/50');
+    });
+  });
+
+  dropzone?.addEventListener('drop', (e) => {
+    if (e.dataTransfer?.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      handleFileSelected();
+    }
+  });
+
+  fileInput?.addEventListener('change', handleFileSelected);
+
+  function handleFileSelected() {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+
+    // Show preview
+    dropzoneContent?.classList.add('hidden');
+    filePreview?.classList.remove('hidden');
+    if (previewFilename) previewFilename.innerText = file.name;
+    if (previewFilesize) {
+      const mb = (file.size / (1024 * 1024)).toFixed(2);
+      previewFilesize.innerText = `${mb} MB • ${file.type || 'Document'}`;
+    }
+
+    // Auto-fill title if empty
+    if (titleInput && !titleInput.value) {
+      const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      titleInput.value = cleanName;
+    }
+
+    // Smart detect subject from filename
+    if (subjectInput && !subjectInput.value) {
+      const lower = file.name.toLowerCase();
+      if (lower.includes('ai') || lower.includes('artificial')) {
+        subjectInput.value = 'AI (Artificial Intelligence)';
+      } else if (lower.includes('os') || lower.includes('operating')) {
+        subjectInput.value = 'Operating Systems';
+      } else if (lower.includes('dsa') || lower.includes('data structure')) {
+        subjectInput.value = 'Data Structures (DSA)';
+      } else if (lower.includes('math')) {
+        subjectInput.value = 'Mathematics';
+      }
+    }
+  }
+
+  // Quick subject chips click
+  document.querySelectorAll('.subject-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const sub = chip.getAttribute('data-subject');
+      if (sub && subjectInput) {
+        subjectInput.value = sub;
+        subjectInput.focus();
+      }
+    });
+  });
+
+  // Handle submit
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alertErr.classList.add('hidden');
+    alertSuccess.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerText = 'Publishing Document...';
+
+    const formData = new FormData(form);
+
+    try {
+      const res = await fetch('/api/resources/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alertErr.innerText = data.error || 'Upload failed. Please check file format and size.';
+        alertErr.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = '🚀 Publish Study Material Now';
+      } else {
+        alertSuccess.innerText = data.message || 'Material published successfully and now live on StuddyBuddy!';
+        alertSuccess.classList.remove('hidden');
+        form.reset();
+        btn.innerText = '✓ Published Successfully!';
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1200);
+      }
+    } catch (err: any) {
+      alertErr.innerText = 'Network error during upload. Please retry.';
+      alertErr.classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerText = '🚀 Publish Study Material Now';
+    }
+  });
+</script>

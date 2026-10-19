@@ -1,0 +1,488 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+import { getDb } from '../server/db/mongo';
+import { searchResources, readLocalResources } from '../server/repositories/resourceRepository';
+import type { Resource, CatalogSuggestion, SavedResource } from '../types';
+import { ObjectId } from 'mongodb';
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/login?redirect=/dashboard');
+}
+
+// 1. Fetch user's contributed resources
+let myContributions: Resource[] = [];
+let mySavedResources: Resource[] = [];
+let mySuggestions: CatalogSuggestion[] = [];
+
+try {
+  const db = await getDb();
+  
+  // Contributions uploaded by this specific user
+  myContributions = await db
+    .collection<Resource>('resources')
+    .find({ contributorId: user.id })
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  // Saved resources bookmarked by this user
+  const savedEntries = await db
+    .collection<SavedResource>('savedResources')
+    .find({ userId: user.id })
+    .toArray();
+
+  if (savedEntries.length > 0) {
+    const resourceIds = savedEntries.map((s) => s.resourceId);
+    mySavedResources = await db
+      .collection<Resource>('resources')
+      .find({
+        $or: [
+          { _id: { $in: resourceIds } },
+          { _id: { $in: resourceIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id)) } },
+        ],
+      })
+      .toArray();
+  }
+
+  // User's catalog suggestions
+  mySuggestions = await db
+    .collection<CatalogSuggestion>('catalogSuggestions')
+    .find({ submitterEmail: user.email })
+    .sort({ createdAt: -1 })
+    .toArray();
+} catch (err) {
+  // Graceful fallback without dummy injection
+}
+
+// Always ensure user's locally stored contributions are merged
+try {
+  const localContr = readLocalResources().filter((r) => r.contributorId === user.id);
+  const existingIds = new Set(myContributions.map((r) => r._id?.toString()));
+  for (const item of localContr) {
+    if (!existingIds.has(item._id?.toString())) {
+      myContributions.push(item);
+    }
+  }
+} catch {}
+
+const totalApproved = myContributions.filter((r) => r.status === 'approved').length;
+const totalPending = myContributions.filter((r) => r.status === 'pending').length;
+const totalDownloads = myContributions.reduce((acc, r) => acc + (r.downloadCount || 0), 0);
+const displayLibrary = mySavedResources.length > 0 ? mySavedResources : myContributions;
+---
+
+<Layout
+  title="My Dashboard & Library | StuddyBuddy"
+  description="Manage your academic contributions, track moderation status, and review saved study materials."
+  noindex={true}
+>
+  <Header slot="header" user={user} />
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-12">
+    
+    <!-- User Profile Hero Card -->
+    <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div class="flex items-center gap-4">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-400 text-white font-extrabold text-2xl flex items-center justify-center shadow-md shadow-indigo-600/30">
+          {user.displayName.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{user.displayName}</h1>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
+              {user.role}
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{user.email}</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        {(user.role === 'admin' || user.role === 'owner') && (
+          <a
+            href="/admin"
+            class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-transform hover:scale-105"
+          >
+            ★ Admin Control Panel →
+          </a>
+        )}
+        <a
+          href="/upload"
+          class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-transform hover:scale-105 flex items-center gap-1.5"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Upload Material</span>
+        </a>
+        <a
+          href="/api/auth/logout"
+          class="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold transition-colors"
+        >
+          Sign Out
+        </a>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Approved</span>
+        <p class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{totalApproved}</p>
+        <span class="text-xs text-slate-500 mt-1 block">Live on public search</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">In Review Queue</span>
+        <p class="text-3xl font-extrabold text-amber-500 mt-1">{totalPending}</p>
+        <span class="text-xs text-slate-500 mt-1 block">Awaiting moderation</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Downloads Generated</span>
+        <p class="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">{totalDownloads}</p>
+        <span class="text-xs text-slate-500 mt-1 block">Across your materials</span>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- SECTION 1: MY RESOURCES (Study Materials & Saved Papers) -->
+    <!-- ======================================================== -->
+    <section class="space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              1. My Resources (Study Materials Library)
+            </h2>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Access, study, preview, and download your saved study materials, notes, and question papers.
+          </p>
+        </div>
+
+        <a
+          href="/resources"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shrink-0"
+        >
+          <span>Explore All Materials →</span>
+        </a>
+      </div>
+
+      <!-- Materials Grid -->
+      {displayLibrary.length > 0 ? (
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {displayLibrary.map((item) => (
+            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between space-y-3 group">
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                  <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    {item.category}
+                  </span>
+                  <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                    {(item.fileExtension || 'PDF').toUpperCase()}
+                  </span>
+                </div>
+
+                <a href={`/resources/${item._id}`} class="block font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+                  {item.title}
+                </a>
+
+                {item.description && (
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+
+              <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-slate-400 text-[11px]">
+                  {item.downloadCount || 0} downloads
+                </span>
+
+                <div class="flex items-center gap-1.5">
+                  <a
+                    href={`/resources/${item._id}`}
+                    class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
+                  >
+                    View
+                  </a>
+                  <a
+                    href={`/api/resources/${item._id}/download`}
+                    download={item.originalFilename || `${item.title}.${item.fileExtension || 'pdf'}`}
+                    class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center gap-1"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Download</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+          <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">You haven't saved any resources yet.</p>
+          <a href="/resources" class="inline-block px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold">
+            Browse & Bookmark Materials
+          </a>
+        </div>
+      )}
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- SECTION 2: MY CONTRIBUTIONS (Upload & Delete User's Own) -->
+    <!-- ========================================================== -->
+    <section class="space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              2. My Contributions ({myContributions.length})
+            </h2>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Materials you have uploaded. You have full ownership: only you can delete your uploaded contributions.
+          </p>
+        </div>
+
+        <a
+          href="/upload"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-transform hover:scale-105 shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>+ Upload New Material</span>
+        </a>
+      </div>
+
+      <!-- Delete feedback toast -->
+      <div id="delete-toast" class="hidden p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-bold"></div>
+
+      {myContributions.length > 0 ? (
+        <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th class="p-4">Title & Details</th>
+                  <th class="p-4">Subject Folder</th>
+                  <th class="p-4">Category</th>
+                  <th class="p-4">Status</th>
+                  <th class="p-4">Downloads</th>
+                  <th class="p-4">Uploaded</th>
+                  <th class="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                {myContributions.map((item) => (
+                  <tr id={`row-${item._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td class="p-4">
+                      <span class="font-bold text-slate-900 dark:text-white block text-sm">
+                        {item.title}
+                      </span>
+                      <span class="text-[11px] text-slate-400">
+                        {item.originalFilename} • {(item.fileExtension || 'PDF').toUpperCase()}
+                      </span>
+                    </td>
+                    <td class="p-4">
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800">
+                        📁 {item.subjectId ? item.subjectId.toUpperCase() : 'GENERAL'}
+                      </span>
+                    </td>
+                    <td class="p-4">
+                      <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {item.category}
+                      </span>
+                    </td>
+                    <td class="p-4">
+                      {item.status === 'approved' && (
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                          ✓ Published
+                        </span>
+                      )}
+                      {item.status === 'pending' && (
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          ⏳ Under Review
+                        </span>
+                      )}
+                      {item.status === 'rejected' && (
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300" title={item.moderationReason}>
+                          ✕ Rejected
+                        </span>
+                      )}
+                    </td>
+                    <td class="p-4 font-semibold text-slate-700 dark:text-slate-300">
+                      {item.downloadCount || 0}
+                    </td>
+                    <td class="p-4 text-slate-400">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </td>
+                    <td class="p-4 text-right">
+                      <div class="flex items-center justify-end gap-2">
+                        <a
+                          href={`/resources/${item._id}`}
+                          class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
+                        >
+                          View
+                        </a>
+
+                        <!-- Delete Button: Only contributor can delete -->
+                        <button
+                          type="button"
+                          data-resource-id={item._id}
+                          data-resource-title={item.title}
+                          class="delete-res-btn px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-semibold flex items-center gap-1 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+          <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          </div>
+          <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">You haven't contributed any materials yet.</p>
+          <p class="text-xs text-slate-400">Share previous year question papers or lecture notes with fellow students.</p>
+          <a href="/upload" class="mt-2 inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-transform hover:scale-105">
+            + Upload Your First Material
+          </a>
+        </div>
+      )}
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- SECTION 3: MY CATALOG SUGGESTIONS & ACADEMIC REQUESTS       -->
+    <!-- ========================================================== -->
+    <section class="space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              3. My Catalog Suggestions & Requests ({mySuggestions.length})
+            </h2>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Subjects, faculties, or programs you proposed to add to the university catalog.
+          </p>
+        </div>
+
+        <a
+          href="/suggest-catalog"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors shrink-0"
+        >
+          <span>+ Suggest Missing Subject</span>
+        </a>
+      </div>
+
+      {mySuggestions.length > 0 ? (
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {mySuggestions.map((sug) => (
+            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs space-y-2 shadow-sm">
+              <span class="text-[10px] uppercase font-bold text-slate-400">{sug.entityType}</span>
+              <h3 class="font-bold text-slate-900 dark:text-white text-sm">{sug.proposedName}</h3>
+              <p class="text-slate-500">{sug.parentEntityName || 'Parul University'}</p>
+              <div class="pt-2">
+                <span class={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                  sug.status === 'approved' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 
+                  sug.status === 'rejected' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' : 
+                  'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                }`}>
+                  Status: {sug.status.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="p-6 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          No catalog suggestions submitted yet. If you cannot find a subject or course, you can suggest it.
+        </div>
+      )}
+    </section>
+
+  </div>
+
+  <Footer slot="footer" />
+</Layout>
+
+<script is:inline>
+  // Handle resource deletion
+  document.querySelectorAll('.delete-res-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const resId = button.getAttribute('data-resource-id');
+      const resTitle = button.getAttribute('data-resource-title') || 'this material';
+
+      if (!confirm(`Are you sure you want to delete "${resTitle}"? This action cannot be undone.`)) {
+        return;
+      }
+
+      button.disabled = true;
+      button.innerText = 'Deleting...';
+
+      try {
+        const res = await fetch(`/api/resources/${resId}`, {
+          method: 'DELETE',
+        });
+
+        const data = await res.json();
+        const toast = document.getElementById('delete-toast');
+
+        if (!res.ok) {
+          alert(data.error || 'Failed to delete resource.');
+          button.disabled = false;
+          button.innerText = 'Delete';
+        } else {
+          // Remove row from table
+          const row = document.getElementById(`row-${resId}`);
+          if (row) {
+            row.style.transition = 'all 0.3s ease';
+            row.style.opacity = '0';
+            setTimeout(() => row.remove(), 300);
+          }
+          if (toast) {
+            toast.innerText = '✓ Resource deleted successfully.';
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 4000);
+          }
+        }
+      } catch (err) {
+        alert('Network error trying to delete resource.');
+        button.disabled = false;
+        button.innerText = 'Delete';
+      }
+    });
+  });
+</script>

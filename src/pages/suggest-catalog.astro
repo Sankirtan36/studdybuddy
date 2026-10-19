@@ -1,0 +1,192 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+import { getDb } from '../server/db/mongo';
+
+let successMessage = '';
+let errorMessage = '';
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const entityType = formData.get('entityType')?.toString().trim();
+    const proposedName = formData.get('proposedName')?.toString().trim();
+    const parentEntityName = formData.get('parentEntityName')?.toString().trim() || '';
+    const officialCode = formData.get('officialCode')?.toString().trim() || '';
+    const referenceUrl = formData.get('referenceUrl')?.toString().trim() || '';
+    const explanation = formData.get('explanation')?.toString().trim() || '';
+    const submitterEmail = formData.get('submitterEmail')?.toString().trim() || '';
+
+    if (!entityType || !proposedName) {
+      errorMessage = 'Please provide both the entity type and the proposed name.';
+    } else {
+      const db = await getDb();
+      await db.collection('catalogSuggestions').insertOne({
+        entityType,
+        proposedName,
+        parentEntityName,
+        officialCode,
+        referenceUrl,
+        explanation,
+        submitterEmail,
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      successMessage = `Thank you! Your suggestion for "${proposedName}" has been submitted for administrative review.`;
+    }
+  } catch (err: any) {
+    // If DB is offline in local dev, provide informative response
+    errorMessage = err?.message || 'Failed to submit suggestion. Please try again.';
+  }
+}
+---
+
+<Layout
+  title="Suggest Missing Subject or Course | StuddyBuddy"
+  description="Can't find your university, course, or subject? Submit an academic catalog suggestion to have it verified and added to StuddyBuddy."
+>
+  <Header slot="header" />
+
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Breadcrumb -->
+    <nav class="mb-6 flex items-center gap-2 text-xs text-slate-500">
+      <a href="/" class="hover:text-indigo-600">Home</a>
+      <span>/</span>
+      <span class="text-slate-900 dark:text-white font-medium">Suggest Catalog Entry</span>
+    </nav>
+
+    <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+      <div class="border-b border-slate-100 dark:border-slate-800 pb-4">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 mb-2">
+          Academic Catalog Contribution
+        </span>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
+          Suggest Missing Subject or Course
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+          Can't find your subject or semester? Help us expand the academic directory. All suggestions are checked by moderators before becoming public.
+        </p>
+      </div>
+
+      <!-- Feedback Alerts -->
+      {successMessage && (
+        <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          {successMessage}
+        </div>
+      )}
+
+      {errorMessage && (
+        <div class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-semibold">
+          {errorMessage}
+        </div>
+      )}
+
+      <!-- Submission Form -->
+      <form method="POST" class="space-y-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Entity Type <span class="text-rose-500">*</span>
+          </label>
+          <select
+            name="entityType"
+            required
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="subject">Subject / Paper</option>
+            <option value="program">Program / Course (e.g. B.Tech, BCA, MCA)</option>
+            <option value="faculty">Faculty / Department</option>
+            <option value="academicTerm">Academic Term / Semester</option>
+            <option value="university">University / College</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Proposed Name <span class="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="proposedName"
+            required
+            placeholder="e.g. Distributed Operating Systems, Cloud Computing Lab"
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Parent Institution or Program
+          </label>
+          <input
+            type="text"
+            name="parentEntityName"
+            placeholder="e.g. Parul University — B.Tech CSE Semester 5"
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Official Course Code (if known)
+            </label>
+            <input
+              type="text"
+              name="officialCode"
+              placeholder="e.g. CS502, BCA301"
+              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Your Email (for status updates)
+            </label>
+            <input
+              type="email"
+              name="submitterEmail"
+              placeholder="student@paruluniversity.ac.in"
+              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Official Reference / Syllabus URL
+          </label>
+          <input
+            type="url"
+            name="referenceUrl"
+            placeholder="https://paruluniversity.ac.in/syllabus/..."
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Additional Details / Explanation
+          </label>
+          <textarea
+            name="explanation"
+            rows="3"
+            placeholder="Mention which semester, branch, or revised syllabus year this belongs to..."
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          ></textarea>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-transform hover:scale-[1.01]"
+        >
+          Submit Suggestion for Moderation
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <Footer slot="footer" />
+</Layout>

@@ -1,0 +1,56 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+---
+
+<Layout
+  title="Privacy Policy | StuddyBuddy"
+  description="StuddyBuddy Privacy Policy. Learn what account information is collected, our retention policies, and first-party analytics safeguards."
+>
+  <Header slot="header" />
+
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+    <div class="border-b border-slate-200 dark:border-slate-800 pb-6">
+      <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white">Privacy Policy</h1>
+      <p class="text-xs text-slate-400 mt-1">Last Updated: October 2026</p>
+    </div>
+
+    <div class="space-y-6 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+      <section class="space-y-2">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">1. Information We Collect</h2>
+        <p>
+          Visitors may browse and download public resources anonymously without creating an account. For registered contributors, we collect:
+        </p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Account credentials (email address, public display name, encrypted password hashes using Argon2id/scrypt).</li>
+          <li>Academic affiliation (optional selected university and program).</li>
+          <li>Contributed resources, metadata, and attribution preferences.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">2. First-Party Analytics & Retention</h2>
+        <p>
+          We use privacy-conscious first-party analytics to track resource view counts, download counts, and university coverage. We do not use invasive third-party cross-device fingerprinting or ad networks. Raw event logs are periodically aggregated into daily statistics and detailed logs are retained according to our platform retention schedule.
+        </p>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">3. Temporary Guest Chat</h2>
+        <p>
+          If you participate in public community guest discussions without logging in, guest messages are configured with an automatic <strong>8-hour expiration</strong> period enforced on the server.
+        </p>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">4. Account Deletion & Data Rights</h2>
+        <p>
+          Users may request account deletion or data export by contacting support. In accordance with platform policy, legitimate academic contributions may remain published under anonymized attribution to prevent disruption to students relying on study materials.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <Footer slot="footer" />
+</Layout>

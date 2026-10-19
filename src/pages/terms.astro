@@ -1,0 +1,50 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+---
+
+<Layout
+  title="Terms of Use | StuddyBuddy"
+  description="Terms of Use governing access, contribution of academic materials, and conduct on StuddyBuddy."
+>
+  <Header slot="header" />
+
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+    <div class="border-b border-slate-200 dark:border-slate-800 pb-6">
+      <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white">Terms of Use</h1>
+      <p class="text-xs text-slate-400 mt-1">Last Updated: October 2026</p>
+    </div>
+
+    <div class="space-y-6 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+      <section class="space-y-2">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">1. Acceptance of Terms</h2>
+        <p>
+          By accessing StuddyBuddy, downloading materials, or contributing educational content, you agree to comply with these Terms of Use and all applicable regional laws.
+        </p>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">2. Permitted Contributor Content</h2>
+        <p>
+          Contributors must only share materials they have the legal right or permission to distribute, including student-created notes, study summaries, and publicly accessible question paper archives. Contributors agree not to upload:
+        </p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Confidential, leaked, or live ongoing examination papers.</li>
+          <li>Copyrighted commercial textbooks, paid publisher test banks, or proprietary courseware without authorization.</li>
+          <li>Personal identifying information (PII) of professors or fellow students.</li>
+          <li>Malicious software, viruses, or corrupted binaries.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">3. Content Moderation & Account Suspension</h2>
+        <p>
+          StuddyBuddy administrators reserve the right to review, reject, quarantine, or remove any material that violates platform standards, and to suspend or restrict accounts engaging in spam or abuse.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <Footer slot="footer" />
+</Layout>

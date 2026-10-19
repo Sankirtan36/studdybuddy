@@ -1,0 +1,241 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+import ResourceCard from '../components/resources/ResourceCard.astro';
+import { getUniversities, getFacultiesByUniversity } from '../server/repositories/catalogRepository';
+import { searchResources } from '../server/repositories/resourceRepository';
+
+const universities = await getUniversities();
+const parulFaculties = await getFacultiesByUniversity('parul-university');
+
+// Fetch recent approved resources
+const recentRes = await searchResources({
+  status: 'approved',
+  sortBy: 'newest',
+  limit: 6,
+});
+
+// Fetch popular question papers
+const pyqRes = await searchResources({
+  status: 'approved',
+  category: 'Previous Year Question Paper',
+  sortBy: 'downloads',
+  limit: 3,
+});
+---
+
+<Layout
+  title="StuddyBuddy — Your Study Buddy, Every Semester | Academic Resource Platform"
+  description="Multi-university academic resource platform. Discover previous year question papers, lecture notes, syllabus, and study materials for Parul University and more."
+>
+  <Header slot="header" />
+
+  <!-- Hero Section with Academic Search -->
+  <section class="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-28 bg-gradient-to-b from-indigo-50/70 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-950 border-b border-slate-200/60 dark:border-slate-800/60">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+      
+      <!-- Institution Badge -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-100/80 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 mb-6 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Initial Institution Focus: Parul University, Vadodara</span>
+      </div>
+
+      <!-- Main Headline -->
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-tight md:leading-none">
+        Find <span class="bg-gradient-to-r from-indigo-600 to-sky-600 dark:from-indigo-400 dark:to-sky-400 bg-clip-text text-transparent">Previous Year Papers</span>, Notes & Exam Materials
+      </h1>
+      
+      <p class="mt-4 text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+        Your Study Buddy, Every Semester. Navigate your university, program, semester, and subject to access verified study resources.
+      </p>
+
+      <!-- Search Box Island Form -->
+      <form action="/resources" method="GET" class="mt-8 max-w-2xl mx-auto flex flex-col sm:flex-row items-stretch gap-2.5 p-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-indigo-500/5 border border-slate-200/90 dark:border-slate-800">
+        <div class="relative flex-1 flex items-center pl-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            name="search"
+            placeholder="Search by subject, code, topic (e.g. DSA, Maths 1, BCA101)..."
+            class="w-full pl-3 pr-4 py-2.5 text-sm bg-transparent border-0 focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+          />
+        </div>
+
+        <select
+          name="universityId"
+          class="px-3 py-2.5 text-xs font-medium rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+        >
+          {universities.map((u) => (
+            <option value={u.slug}>{u.name}</option>
+          ))}
+        </select>
+
+        <button
+          type="submit"
+          class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-600/25 transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          Search Resources
+        </button>
+      </form>
+
+      <!-- Quick Academic Path Navigator -->
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <span class="font-medium text-slate-700 dark:text-slate-300">Popular Courses:</span>
+        <a href="/resources?programId=prog-btech-cse" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">B.Tech CSE</a>
+        <a href="/resources?programId=prog-bca" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">BCA</a>
+        <a href="/resources?programId=prog-bba" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">BBA</a>
+        <a href="/resources?programId=prog-bpharm" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">B.Pharm</a>
+        <a href="/resources?programId=prog-mbbs" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">MBBS</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Academic Hierarchy Explorer: Parul University Faculties -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Explore by Faculty / Department
+        </h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Parul University academic groups supporting undergraduate and postgraduate programs.
+        </p>
+      </div>
+
+      <a
+        href="/university/parul-university"
+        class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+      >
+        <span>View all 20 faculties</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
+    </div>
+
+    <!-- Faculties Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {parulFaculties.slice(0, 8).map((faculty) => (
+        <a
+          href={`/university/parul-university/${faculty.slug}`}
+          class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-sm hover:shadow-md transition-all duration-200 group flex flex-col justify-between"
+        >
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm mb-3 group-hover:scale-105 transition-transform">
+              {faculty.name.charAt(0)}
+            </div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+              {faculty.name}
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Parul University</p>
+          </div>
+          <span class="mt-4 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+            Browse Programs →
+          </span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <!-- Recently Added Resources -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 border-t border-slate-200/60 dark:border-slate-800/60">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Recently Approved Materials
+        </h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Latest study notes, question papers, and lab manuals contributed by students.
+        </p>
+      </div>
+
+      <a
+        href="/resources"
+        class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+      >
+        View all resources →
+      </a>
+    </div>
+
+    {recentRes.resources.length > 0 ? (
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {recentRes.resources.map((resource) => (
+          <ResourceCard resource={resource} />
+        ))}
+      </div>
+    ) : (
+      <div class="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-8">
+        <p class="text-sm text-slate-500 dark:text-slate-400">No resources found matching the criteria.</p>
+        <a href="/upload" class="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold">
+          Be the first to contribute!
+        </a>
+      </div>
+    )}
+  </section>
+
+  <!-- Popular Previous Year Papers Section -->
+  {pyqRes.resources.length > 0 && (
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 border-t border-slate-200/60 dark:border-slate-800/60">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Previous Year Question Papers (PYQs)
+          </h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Official mid-sem and end-sem exam question papers with verified exam years.
+          </p>
+        </div>
+
+        <a
+          href="/resources?category=Previous+Year+Question+Paper"
+          class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+        >
+          View all PYQs →
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {pyqRes.resources.map((resource) => (
+          <ResourceCard resource={resource} />
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- Contributor Call to Action -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="rounded-3xl p-8 sm:p-12 bg-gradient-to-tr from-indigo-900 via-indigo-800 to-indigo-950 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
+      <div class="space-y-4 max-w-xl">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-700/60 text-indigo-200 border border-indigo-500/30">
+          Peer-to-Peer Academic Sharing
+        </span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">
+          Help Your Fellow Students Excel in Exams
+        </h2>
+        <p class="text-indigo-200 text-sm sm:text-base leading-relaxed">
+          Have clean lecture notes, solved assignments, or mid-sem question papers? Upload your materials to help junior and peer batches ace their university examinations.
+        </p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <a
+          href="/upload"
+          class="px-6 py-3.5 rounded-xl bg-white text-indigo-900 font-bold text-center text-sm shadow-lg hover:bg-indigo-50 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white"
+        >
+          Share Your Notes & Papers
+        </a>
+        <a
+          href="/suggest-catalog"
+          class="px-6 py-3.5 rounded-xl bg-indigo-700/60 hover:bg-indigo-700 text-white font-semibold text-center text-sm border border-indigo-400/30 transition-colors"
+        >
+          Suggest Missing Subject
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <Footer slot="footer" />
+</Layout>

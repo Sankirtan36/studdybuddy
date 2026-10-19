@@ -1,0 +1,513 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/layout/Header.astro';
+import Footer from '../../components/layout/Footer.astro';
+import { getDb } from '../../server/db/mongo';
+import type { Resource, User, CatalogSuggestion, ContentReport, AuditLog } from '../../types';
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/login?redirect=/admin');
+}
+if (user.role !== 'admin' && user.role !== 'owner') {
+  return Astro.redirect('/dashboard?error=unauthorized_admin');
+}
+
+let pendingResources: Resource[] = [];
+let approvedCount = 0;
+let pendingCount = 0;
+let rejectedCount = 0;
+let totalUsersCount = 0;
+let usersList: User[] = [];
+let pendingSuggestions: CatalogSuggestion[] = [];
+let openReports: ContentReport[] = [];
+let auditLogs: AuditLog[] = [];
+let totalStoredBytes = 0;
+
+try {
+  const db = await getDb();
+
+  // Metrics
+  totalUsersCount = await db.collection('users').countDocuments({});
+  approvedCount = await db.collection('resources').countDocuments({ status: 'approved' });
+  pendingCount = await db.collection('resources').countDocuments({ status: 'pending' });
+  rejectedCount = await db.collection('resources').countDocuments({ status: 'rejected' });
+
+  // Storage
+  const storageAgg = await db.collection('resources').aggregate([
+    { $match: { status: { $ne: 'removed' } } },
+    { $group: { _id: null, totalBytes: { $sum: '$fileSizeBytes' } } },
+  ]).toArray();
+  totalStoredBytes = storageAgg[0]?.totalBytes || 0;
+
+  // Pending Moderation Queue
+  pendingResources = await db
+    .collection<Resource>('resources')
+    .find({ status: 'pending' })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .toArray();
+
+  // User list
+  usersList = await db
+    .collection<User>('users')
+    .find({})
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .toArray();
+
+  // Pending Catalog Suggestions
+  pendingSuggestions = await db
+    .collection<CatalogSuggestion>('catalogSuggestions')
+    .find({ status: 'pending' })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .toArray();
+
+  // Open Reports
+  openReports = await db
+    .collection<ContentReport>('reports')
+    .find({ status: 'open' })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .toArray();
+
+  // Audit Logs
+  auditLogs = await db
+    .collection<AuditLog>('auditLogs')
+    .find({})
+    .sort({ createdAt: -1 })
+    .limit(25)
+    .toArray();
+} catch (err) {
+  // Graceful fallback if DB offline
+}
+
+const STORAGE_BUDGET_BYTES = 20 * 1024 * 1024 * 1024; // 20 GB
+const storageUsedMB = (totalStoredBytes / (1024 * 1024)).toFixed(2);
+const storagePercent = ((totalStoredBytes / STORAGE_BUDGET_BYTES) * 100).toFixed(2);
+const isStorageWarning = parseFloat(storagePercent) >= 80;
+
+function formatBytes(bytes: number) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+---
+
+<Layout
+  title="Owner & Administrative Panel | StuddyBuddy"
+  description="Secure administrative management for StuddyBuddy. Resource moderation, user management, storage monitoring, and audit trails."
+  noindex={true}
+>
+  <Header slot="header" user={user} />
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-10">
+    
+    <!-- Top Bar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200/80 dark:border-slate-800 gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            {user.role.toUpperCase()} PORTAL
+          </span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          StuddyBuddy Administration & Control
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Logged in as: <strong class="text-slate-800 dark:text-slate-200">{user.displayName}</strong> ({user.email})
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a
+          href="/database"
+          class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+          </svg>
+          <span>Cloud Database</span>
+        </a>
+        <a
+          href="/dashboard"
+          class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold"
+        >
+          ← My Dashboard
+        </a>
+      </div>
+    </div>
+
+    <!-- Overview Stats Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Registered Users</span>
+        <p class="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{totalUsersCount}</p>
+        <span class="text-[11px] text-slate-500 mt-1 block">Active Student Accounts</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Review</span>
+        <p class="text-3xl font-extrabold text-amber-500 mt-1">{pendingCount}</p>
+        <span class="text-[11px] text-slate-500 mt-1 block">Awaiting Moderation</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Live Resources</span>
+        <p class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{approvedCount}</p>
+        <span class="text-[11px] text-slate-500 mt-1 block">{rejectedCount} rejected</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Open Reports</span>
+        <p class="text-3xl font-extrabold text-rose-500 mt-1">{openReports.length}</p>
+        <span class="text-[11px] text-slate-500 mt-1 block">Content / Takedown Inquiries</span>
+      </div>
+    </div>
+
+    <!-- Storage Quota Status Bar (20 GB Target) -->
+    <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900 dark:text-white">Object Storage Capacity & Budget</h2>
+          <p class="text-xs text-slate-500">20 GB Configurable Target Budget (Cloudflare R2 / S3)</p>
+        </div>
+        <span class={`text-xs font-bold px-3 py-1 rounded-full ${
+          isStorageWarning ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+        }`}>
+          {storageUsedMB} MB / 20,480 MB ({storagePercent}%)
+        </span>
+      </div>
+
+      <!-- Progress Track -->
+      <div class="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+        <div
+          class={`h-full rounded-full transition-all duration-500 ${isStorageWarning ? 'bg-rose-500' : 'bg-indigo-600'}`}
+          style={`width: ${Math.min(100, Math.max(1, parseFloat(storagePercent)))}%`}
+        ></div>
+      </div>
+    </div>
+
+    <!-- TAB 1: Pending Resource Moderation Queue -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Pending Resource Moderation Queue ({pendingResources.length})
+        </h2>
+        <span class="text-xs text-slate-500">Review documents for clarity, authenticity, and metadata</span>
+      </div>
+
+      {pendingResources.length > 0 ? (
+        <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th class="p-4">Submission</th>
+                  <th class="p-4">Category</th>
+                  <th class="p-4">Exam Info</th>
+                  <th class="p-4">Contributor</th>
+                  <th class="p-4">File Size</th>
+                  <th class="p-4 text-right">Moderator Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                {pendingResources.map((res) => (
+                  <tr id={`res-row-${res._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td class="p-4">
+                      <span class="font-bold text-slate-900 dark:text-white block text-sm">{res.title}</span>
+                      <span class="text-[11px] text-slate-400">{res.originalFilename} • {(res.fileExtension || 'PDF').toUpperCase()}</span>
+                    </td>
+                    <td class="p-4 font-medium text-slate-700 dark:text-slate-300">
+                      {res.category}
+                    </td>
+                    <td class="p-4 text-slate-500">
+                      {res.examYear ? `${res.examYear} ${res.examSession || ''}` : 'N/A'}
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-400">
+                      {res.contributorName}
+                    </td>
+                    <td class="p-4 text-slate-500">
+                      {formatBytes(res.fileSizeBytes)}
+                    </td>
+                    <td class="p-4 text-right space-x-2">
+                      <button
+                        onclick={`moderateResource('${res._id}', 'approve')`}
+                        class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105"
+                      >
+                        ✓ Approve
+                      </button>
+                      <button
+                        onclick={`moderateResource('${res._id}', 'reject')`}
+                        class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105"
+                      >
+                        ✕ Reject
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          ✓ Moderation queue is clear! No pending submissions.
+        </div>
+      )}
+    </section>
+
+    <!-- TAB 2: User Management -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          User Management ({usersList.length})
+        </h2>
+        <span class="text-xs text-slate-500">Suspend, restore, or restrict upload permissions</span>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="p-4">User</th>
+                <th class="p-4">Role</th>
+                <th class="p-4">Status</th>
+                <th class="p-4">Registered</th>
+                <th class="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {usersList.map((u) => (
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <td class="p-4">
+                    <span class="font-bold text-slate-900 dark:text-white block">{u.displayName}</span>
+                    <span class="text-slate-400">{u.email}</span>
+                  </td>
+                  <td class="p-4 font-semibold uppercase text-[10px]">
+                    <span class={`px-2 py-0.5 rounded ${u.role === 'owner' ? 'bg-purple-100 text-purple-800' : u.role === 'admin' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700'}`}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td class="p-4">
+                    <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${u.status === 'suspended' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {u.status?.toUpperCase() || 'ACTIVE'}
+                    </span>
+                  </td>
+                  <td class="p-4 text-slate-400">
+                    {new Date(u.createdAt).toLocaleDateString()}
+                  </td>
+                  <td class="p-4 text-right space-x-1.5">
+                    {u.role !== 'owner' && (
+                      <>
+                        {u.status === 'suspended' ? (
+                          <button
+                            onclick={`manageUser('${u._id}', 'restore')`}
+                            class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-semibold text-[11px]"
+                          >
+                            Restore Account
+                          </button>
+                        ) : (
+                          <button
+                            onclick={`manageUser('${u._id}', 'suspend')`}
+                            class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 font-semibold text-[11px]"
+                          >
+                            Suspend
+                          </button>
+                        )}
+                        {u.restrictions?.uploadsBlocked ? (
+                          <button
+                            onclick={`manageUser('${u._id}', 'unrestrict_uploads')`}
+                            class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-[11px]"
+                          >
+                            Unrestrict Uploads
+                          </button>
+                        ) : (
+                          <button
+                            onclick={`manageUser('${u._id}', 'restrict_uploads')`}
+                            class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 font-semibold text-[11px]"
+                          >
+                            Block Uploads
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Catalog Suggestions Queue -->
+    <section class="space-y-4">
+      <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+        Pending Catalog Suggestions ({pendingSuggestions.length})
+      </h2>
+      {pendingSuggestions.length > 0 ? (
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {pendingSuggestions.map((sug) => (
+            <div id={`sug-${sug._id}`} class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 text-xs">
+              <span class="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400">{sug.entityType}</span>
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white">{sug.proposedName}</h3>
+              <p class="text-slate-500">Parent: {sug.parentEntityName || 'Parul University'}</p>
+              {sug.officialCode && <p class="text-slate-400">Code: {sug.officialCode}</p>}
+              {sug.explanation && <p class="text-slate-500 italic">"{sug.explanation}"</p>}
+              <div class="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+                <span class="text-[10px] text-slate-400">{sug.submitterEmail || 'Student'}</span>
+                <div class="space-x-1.5">
+                  <button
+                    onclick={`moderateSuggestion('${sug._id}', 'approve')`}
+                    class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[11px]"
+                  >
+                    ✓ Add
+                  </button>
+                  <button
+                    onclick={`moderateSuggestion('${sug._id}', 'reject')`}
+                    class="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold text-[11px]"
+                  >
+                    ✕ Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="p-6 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          No pending catalog suggestions.
+        </div>
+      )}
+    </section>
+
+    <!-- TAB 4: Append-Only Audit Trail -->
+    <section class="space-y-4">
+      <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+        System Audit Trail ({auditLogs.length})
+      </h2>
+      <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="p-3.5">Timestamp</th>
+                <th class="p-3.5">Actor</th>
+                <th class="p-3.5">Action</th>
+                <th class="p-3.5">Target</th>
+                <th class="p-3.5">Reason / Details</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {auditLogs.map((log) => (
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <td class="p-3.5 text-slate-400">
+                    {new Date(log.createdAt).toLocaleString()}
+                  </td>
+                  <td class="p-3.5 font-semibold text-slate-800 dark:text-slate-200">
+                    {log.actorEmail}
+                  </td>
+                  <td class="p-3.5">
+                    <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      {log.action}
+                    </span>
+                  </td>
+                  <td class="p-3.5 text-slate-500">
+                    {log.targetType}:{log.targetId}
+                  </td>
+                  <td class="p-3.5 text-slate-600 dark:text-slate-400">
+                    {log.reason || '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <Footer slot="footer" />
+</Layout>
+
+<script is:inline>
+  async function moderateResource(resourceId, action) {
+    let reason = '';
+    if (action === 'reject') {
+      reason = prompt('Enter rejection reason for contributor (e.g. illegible pages, wrong subject code):');
+      if (reason === null) return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/moderation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId, action, reason }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Moderation action failed.');
+      } else {
+        const row = document.getElementById(`res-row-${resourceId}`);
+        if (row) row.remove();
+        alert(`Resource successfully ${action}ed!`);
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function manageUser(userId, action) {
+    let reason = '';
+    if (action === 'suspend' || action === 'restrict_uploads') {
+      reason = prompt(`Enter reason for ${action}:`);
+      if (reason === null) return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action, reason }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'User management action failed.');
+      } else {
+        alert(`User updated successfully!`);
+        location.reload();
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function moderateSuggestion(suggestionId, action) {
+    try {
+      const res = await fetch('/api/admin/catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ suggestionId, action }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Action failed.');
+      } else {
+        const card = document.getElementById(`sug-${suggestionId}`);
+        if (card) card.remove();
+        alert(`Suggestion ${action}ed!`);
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+</script>

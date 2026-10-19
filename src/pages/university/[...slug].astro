@@ -1,0 +1,260 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/layout/Header.astro';
+import Footer from '../../components/layout/Footer.astro';
+import ResourceCard from '../../components/resources/ResourceCard.astro';
+import {
+  getUniversityBySlug,
+  getFacultiesByUniversity,
+  getFacultyBySlug,
+  getProgramsByFaculty,
+  getProgramBySlug,
+  getSubjectsByProgram,
+} from '../../server/repositories/catalogRepository';
+import { searchResources } from '../../server/repositories/resourceRepository';
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/university/parul-university');
+}
+
+const parts = slug.split('/').filter(Boolean);
+const uniSlug = parts[0] || 'parul-university';
+const facultySlug = parts[1];
+const programSlug = parts[2];
+
+const university = await getUniversityBySlug(uniSlug);
+
+if (!university) {
+  return new Response('University Not Found', { status: 404 });
+}
+
+let faculty = null;
+let program = null;
+let faculties: any[] = [];
+let programs: any[] = [];
+let subjects: any[] = [];
+let resources: any[] = [];
+
+if (programSlug) {
+  program = await getProgramBySlug(programSlug);
+  if (program) {
+    subjects = await getSubjectsByProgram(programSlug);
+    const resResult = await searchResources({
+      status: 'approved',
+      programId: program._id?.toString() || `prog-${program.slug}`,
+      limit: 12,
+    });
+    resources = resResult.resources;
+  }
+} else if (facultySlug) {
+  faculty = await getFacultyBySlug(uniSlug, facultySlug);
+  if (faculty) {
+    programs = await getProgramsByFaculty(faculty._id?.toString() || facultySlug);
+  }
+} else {
+  faculties = await getFacultiesByUniversity(uniSlug);
+}
+
+// Compute dynamic title & description based on hierarchy depth
+let pageTitle = `${university.name} Academic Materials & Question Papers`;
+let pageDescription = `Browse academic materials, question papers, and syllabus for ${university.name}.`;
+
+if (program) {
+  pageTitle = `${program.name} Study Materials & Question Papers | ${university.name}`;
+  pageDescription = `Download previous year question papers, notes, and syllabus for ${program.name} at ${university.name}.`;
+} else if (faculty) {
+  pageTitle = `${faculty.name} Programs & Notes | ${university.name}`;
+  pageDescription = `Explore courses, programs, and study resources under ${faculty.name} at ${university.name}.`;
+}
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <Header slot="header" />
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    <!-- Breadcrumbs -->
+    <nav aria-label="Breadcrumb" class="mb-6 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 overflow-x-auto whitespace-nowrap">
+      <a href="/" class="hover:text-indigo-600 dark:hover:text-indigo-400">Home</a>
+      <span>/</span>
+      <a href="/university/parul-university" class="hover:text-indigo-600 dark:hover:text-indigo-400">{university.name}</a>
+      {faculty && (
+        <>
+          <span>/</span>
+          <a href={`/university/${uniSlug}/${faculty.slug}`} class="hover:text-indigo-600 dark:hover:text-indigo-400">{faculty.name}</a>
+        </>
+      )}
+      {program && (
+        <>
+          <span>/</span>
+          <span class="text-slate-900 dark:text-white font-medium">{program.name}</span>
+        </>
+      )}
+    </nav>
+
+    <!-- Page Header Banner -->
+    <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm mb-10">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 mb-3">
+            {program ? 'Academic Program' : faculty ? 'Academic Faculty / Group' : 'Institution Overview'}
+          </span>
+          <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            {program ? program.name : faculty ? faculty.name : university.name}
+          </h1>
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+            {program?.description || faculty?.description || university.description}
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <a
+            href="/upload"
+            class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105"
+          >
+            + Upload Material
+          </a>
+          <a
+            href="/suggest-catalog"
+            class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+          >
+            Suggest Missing Entry
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEVEL 1: University View -> List Faculties -->
+    {!faculty && !program && (
+      <div class="space-y-6">
+        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Academic Faculties & Departments ({faculties.length})
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {faculties.map((fac) => (
+            <a
+              href={`/university/${uniSlug}/${fac.slug}`}
+              class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-sm hover:shadow-md transition-all group"
+            >
+              <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm mb-3">
+                {fac.name.charAt(0)}
+              </div>
+              <h3 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                {fac.name}
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Parul University</p>
+              <span class="mt-4 inline-block text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                Explore Programs →
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- LEVEL 2: Faculty View -> List Programs -->
+    {faculty && !program && (
+      <div class="space-y-6">
+        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Programs & Courses Under {faculty.name}
+        </h2>
+        {programs.length > 0 ? (
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {programs.map((p) => (
+              <a
+                href={`/university/${uniSlug}/${faculty.slug}/${p.slug}`}
+                class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      {p.code || p.structureType.toUpperCase()}
+                    </span>
+                    <span class="text-xs text-slate-400">
+                      {p.totalTerms} {p.structureType}s
+                    </span>
+                  </div>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {p.name}
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                    Duration: {p.durationYears || 4} Years
+                  </p>
+                </div>
+                <div class="mt-6 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                  <span>View Semesters & Subjects</span>
+                  <span>→</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+            <p class="text-sm text-slate-500">No programs listed under this faculty yet.</p>
+            <a href="/suggest-catalog" class="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:underline">
+              + Suggest a program for {faculty.name}
+            </a>
+          </div>
+        )}
+      </div>
+    )}
+
+    <!-- LEVEL 3: Program View -> Subjects List & Approved Resources Grid -->
+    {program && (
+      <div class="space-y-12">
+        <!-- Subjects List -->
+        <div class="space-y-4">
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Curriculum Subjects ({subjects.length})
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {subjects.map((subj) => (
+              <a
+                href={`/resources?subjectId=subj-${subj.slug}`}
+                class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 transition-all flex items-center justify-between group"
+              >
+                <div>
+                  <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                    {subj.name}
+                  </h3>
+                  <span class="text-[11px] text-slate-400">{subj.code || 'Code N/A'}</span>
+                </div>
+                <span class="text-xs text-indigo-600 font-semibold group-hover:translate-x-1 transition-transform">→</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <!-- Resources in Program -->
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Approved Study Materials for {program.name}
+            </h2>
+            <a href={`/resources?programId=prog-${program.slug}`} class="text-xs font-semibold text-indigo-600 hover:underline">
+              View all in catalog →
+            </a>
+          </div>
+
+          {resources.length > 0 ? (
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {resources.map((res) => (
+                <ResourceCard resource={res} />
+              ))}
+            </div>
+          ) : (
+            <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+              <p class="text-sm text-slate-500">No resources have been uploaded for {program.name} yet.</p>
+              <a href="/upload" class="mt-3 inline-block px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold">
+                Upload First Material
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+
+  <Footer slot="footer" />
+</Layout>

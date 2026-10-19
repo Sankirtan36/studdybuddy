@@ -22,3 +22,16 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Local user data and uploaded files
+.data/
+
+# Generated Vercel build output
+.vercel/
+
+
