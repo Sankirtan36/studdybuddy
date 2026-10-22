@@ -5,7 +5,6 @@ import Footer from '../../components/layout/Footer.astro';
 import ResourceCard from '../../components/resources/ResourceCard.astro';
 import SemesterCard from '../../components/academic/SemesterCard.astro';
 import SubjectCard from '../../components/academic/SubjectCard.astro';
-import SubjectHubCategory from '../../components/academic/SubjectHubCategory.astro';
 import AcademicBreadcrumb from '../../components/academic/AcademicBreadcrumb.astro';
 import {
   getUniversityBySlug,
@@ -53,6 +52,14 @@ let terms: any[] = [];
 let subjects: any[] = [];
 let resources: Resource[] = [];
 let categoryCounts: Record<string, number> = {};
+
+let activeCategoryMeta = {
+  title: 'All Study Materials',
+  shortTitle: 'Document',
+  icon: '📁',
+  description: 'All academic materials, question papers, and notes for this subject.',
+  uploadCategory: 'Notes',
+};
 
 // Filter category from query params on subject hub
 const selectedCategory = Astro.url.searchParams.get('category') || 'all';
@@ -145,20 +152,75 @@ if (subject) {
   if (selectedCategory === 'all') {
     resources = subjectItems;
   } else if (selectedCategory === 'pyq') {
-    resources = subjectItems.filter((r) => r.category.toLowerCase().includes('question') || r.category.toLowerCase().includes('paper'));
+    resources = subjectItems.filter((r) => r.category.toLowerCase().includes('question') || r.category.toLowerCase().includes('paper') || r.category.toLowerCase().includes('pyq'));
   } else if (selectedCategory === 'notes') {
-    resources = subjectItems.filter((r) => r.category.toLowerCase().includes('note') || r.category.toLowerCase().includes('assignment'));
+    resources = subjectItems.filter((r) => r.category.toLowerCase().includes('note') || r.category.toLowerCase().includes('assignment') || r.category.toLowerCase().includes('ppt') || r.category.toLowerCase().includes('presentation'));
   } else if (selectedCategory === 'syllabus') {
     resources = subjectItems.filter((r) => r.category.toLowerCase().includes('syllabus'));
   } else if (selectedCategory === 'lab') {
-    resources = subjectItems.filter((r) => r.category.toLowerCase().includes('lab') || r.category.toLowerCase().includes('practical'));
+    resources = subjectItems.filter((r) => r.category.toLowerCase().includes('lab') || r.category.toLowerCase().includes('practical') || r.category.toLowerCase().includes('viva'));
   } else if (selectedCategory === 'formula') {
     resources = subjectItems.filter((r) => r.category.toLowerCase().includes('formula'));
   } else if (selectedCategory === 'bank') {
-    resources = subjectItems.filter((r) => r.category.toLowerCase().includes('bank'));
+    resources = subjectItems.filter((r) => r.category.toLowerCase().includes('bank') || r.category.toLowerCase().includes('unit'));
   } else {
     resources = subjectItems;
   }
+
+  // Active Category Metadata Definition
+  const CATEGORY_META: Record<string, { title: string; shortTitle: string; icon: string; description: string; uploadCategory: string }> = {
+    pyq: {
+      title: 'Previous Year Papers (PYQs)',
+      shortTitle: 'PYQ Question Paper',
+      icon: '📝',
+      description: `Past mid-semester, end-semester, and remedial question papers for ${subject.name}.`,
+      uploadCategory: 'Previous Year Question Paper',
+    },
+    notes: {
+      title: 'Notes & Assignments',
+      shortTitle: 'Lecture Notes',
+      icon: '📚',
+      description: `Handwritten lecture notes, slides, and assignment questions for ${subject.name}.`,
+      uploadCategory: 'Notes',
+    },
+    syllabus: {
+      title: 'Syllabus & Units',
+      shortTitle: 'Syllabus',
+      icon: '📋',
+      description: `Official curriculum syllabus, unit breakdown, and textbook references for ${subject.name}.`,
+      uploadCategory: 'Syllabus & Units',
+    },
+    lab: {
+      title: 'Lab Manual & VIVA',
+      shortTitle: 'Lab Manual',
+      icon: '🔬',
+      description: `Practical lab manuals, experiment guides, and viva voce questions for ${subject.name}.`,
+      uploadCategory: 'Practical & Lab Material',
+    },
+    bank: {
+      title: 'Question Bank & All Units',
+      shortTitle: 'Question Bank',
+      icon: '📑',
+      description: `Important 2-mark and 7-mark question banks with unit-wise solutions for ${subject.name}.`,
+      uploadCategory: 'Question Bank',
+    },
+    formula: {
+      title: 'Formula Sheets',
+      shortTitle: 'Formula Sheet',
+      icon: '📐',
+      description: `Quick reference formula sheets and revision summaries for ${subject.name}.`,
+      uploadCategory: 'Formula Sheet',
+    },
+    all: {
+      title: 'All Study Materials',
+      shortTitle: 'Document',
+      icon: '📁',
+      description: `All lecture notes, past exam papers, lab files, and question banks for ${subject.name}.`,
+      uploadCategory: 'Notes',
+    },
+  };
+
+  activeCategoryMeta = CATEGORY_META[selectedCategory] || CATEGORY_META.all;
 
 } else if (term) {
   // LEVEL 4: Semester Page -> List Curriculum Subjects
@@ -209,16 +271,19 @@ if (subject) {
     <!-- LEVEL 5: SUBJECT RESOURCE HUB                            -->
     <!-- ======================================================== -->
     {subject && (
-      <div class="space-y-10">
-        <!-- Subject Hero Card -->
+      <div class="space-y-8">
+        <!-- Direct Category Focused Hero Banner -->
         <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div class="space-y-2">
             <div class="flex flex-wrap items-center gap-2">
-              <span class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
-                {term?.name || 'Semester Subject'}
-              </span>
+              <a
+                href={backHref}
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 hover:bg-indigo-50 dark:bg-slate-800 dark:hover:bg-indigo-950/70 text-slate-700 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 transition-colors"
+              >
+                <span>← Back to {term?.name || 'Semester'} Subjects</span>
+              </a>
               {subject.code && (
-                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
                   {subject.code}
                 </span>
               )}
@@ -227,90 +292,73 @@ if (subject) {
               </span>
             </div>
 
-            <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              {subject.name}
-            </h1>
-            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
-              Academic resource hub with community-uploaded previous question papers, lecture notes, syllabus units, and lab manuals.
+            <div class="flex items-center gap-3 pt-1">
+              <span class="text-3xl sm:text-4xl">{activeCategoryMeta.icon}</span>
+              <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  {activeCategoryMeta.title}
+                </h1>
+                <p class="text-xs sm:text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                  {subject.name}
+                </p>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+              {activeCategoryMeta.description}
             </p>
           </div>
 
-          <div class="flex flex-wrap items-center gap-3 shrink-0">
+          <!-- Direct Upload CTA for THIS exact category -->
+          <div class="shrink-0">
             <a
-              href={`/upload?university=${encodeURIComponent(university.slug)}&faculty=${encodeURIComponent(faculty?.slug || '')}&program=${encodeURIComponent(program?.slug || '')}&term=${encodeURIComponent(term?.slug || '')}&subject=${encodeURIComponent(subject.slug)}`}
+              href={`/upload?university=${encodeURIComponent(university.slug)}&faculty=${encodeURIComponent(faculty?.slug || '')}&program=${encodeURIComponent(program?.slug || '')}&term=${encodeURIComponent(term?.slug || '')}&subject=${encodeURIComponent(subject.slug)}&category=${encodeURIComponent(activeCategoryMeta.uploadCategory)}`}
               class="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all hover:scale-105 flex items-center gap-2"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Upload for this Subject</span>
+              <span>+ Upload {activeCategoryMeta.shortTitle}</span>
             </a>
           </div>
         </div>
 
-        <!-- Category Filter Tiles Grid -->
-        <div class="space-y-4">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Filter by Resource Category
-          </h2>
+        <!-- Sleek Horizontal Category Switcher Bar (Tabs) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+            <span>Category Filter:</span>
+            <span class="text-[11px] font-semibold text-slate-500">{resources.length} {resources.length === 1 ? 'document' : 'documents'} available</span>
+          </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            <SubjectHubCategory
-              category="All Materials"
-              count={categoryCounts.all || 0}
-              isSelected={selectedCategory === 'all'}
-              href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=all`}
-            />
-            <SubjectHubCategory
-              category="Previous Year Papers (PYQs)"
-              count={categoryCounts.pyq || 0}
-              isSelected={selectedCategory === 'pyq'}
-              href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=pyq`}
-            />
-            <SubjectHubCategory
-              category="Notes & Assignments"
-              count={categoryCounts.notes || 0}
-              isSelected={selectedCategory === 'notes'}
-              href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=notes`}
-            />
-            <SubjectHubCategory
-              category="Syllabus & Units"
-              count={categoryCounts.syllabus || 0}
-              isSelected={selectedCategory === 'syllabus'}
-              href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=syllabus`}
-            />
-            <SubjectHubCategory
-              category="Lab Manuals & Viva"
-              count={categoryCounts.lab || 0}
-              isSelected={selectedCategory === 'lab'}
-              href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=lab`}
-            />
-            <SubjectHubCategory
-              category="Formula Sheets"
-              count={categoryCounts.formula || 0}
-              isSelected={selectedCategory === 'formula'}
-              href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=formula`}
-            />
-            <SubjectHubCategory
-              category="Question Bank"
-              count={categoryCounts.bank || 0}
-              isSelected={selectedCategory === 'bank'}
-              href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=bank`}
-            />
+          <div class="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+            {[
+              { id: 'all', label: 'All Materials', count: categoryCounts.all || 0 },
+              { id: 'pyq', label: 'PYQs', count: categoryCounts.pyq || 0 },
+              { id: 'notes', label: 'Notes & Assignment', count: categoryCounts.notes || 0 },
+              { id: 'syllabus', label: 'Syllabus', count: categoryCounts.syllabus || 0 },
+              { id: 'lab', label: 'Lab Manual & Viva', count: categoryCounts.lab || 0 },
+              { id: 'bank', label: 'Question Bank', count: categoryCounts.bank || 0 },
+              { id: 'formula', label: 'Formula Sheets', count: categoryCounts.formula || 0 },
+            ].map((tab) => {
+              const isActive = selectedCategory === tab.id;
+              return (
+                <a
+                  href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=${tab.id}`}
+                  class={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700/80'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span class={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-200/80 dark:bg-slate-700 text-slate-500 dark:text-slate-300'}`}>
+                    {tab.count}
+                  </span>
+                </a>
+              );
+            })}
           </div>
         </div>
 
-        <!-- Resources List -->
-        <div class="space-y-6 pt-4">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800">
-            <h3 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {selectedCategory === 'all' ? 'All Uploaded Materials' : `Filtered Materials (${selectedCategory.toUpperCase()})`}
-            </h3>
-            <span class="text-xs text-slate-500">
-              Showing {resources.length} {resources.length === 1 ? 'document' : 'documents'}
-            </span>
-          </div>
-
+        <!-- Resources Content for THIS Specific Category -->
+        <div class="space-y-6 pt-2">
           {resources.length > 0 ? (
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {resources.map((res) => (
@@ -318,22 +366,35 @@ if (subject) {
               ))}
             </div>
           ) : (
-            <div class="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 space-y-4">
-              <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl font-bold">
-                📂
+            <div class="p-12 sm:p-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 space-y-4 shadow-sm">
+              <div class="w-16 h-16 mx-auto rounded-3xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-3xl font-bold shadow-inner">
+                {activeCategoryMeta.icon}
               </div>
-              <h4 class="text-lg font-bold text-slate-900 dark:text-white">
-                No materials uploaded in this category yet
-              </h4>
-              <p class="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                Be the first classmate to contribute lecture notes, syllabus guides, or question papers for {subject.name}!
-              </p>
-              <a
-                href={`/upload?university=${encodeURIComponent(university.slug)}&faculty=${encodeURIComponent(faculty?.slug || '')}&program=${encodeURIComponent(program?.slug || '')}&term=${encodeURIComponent(term?.slug || '')}&subject=${encodeURIComponent(subject.slug)}`}
-                class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md"
-              >
-                + Upload First Document
-              </a>
+              <div class="space-y-1">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white">
+                  No {activeCategoryMeta.title} Uploaded Yet
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Be the first student to upload {activeCategoryMeta.shortTitle.toLowerCase()} for <span class="font-semibold text-slate-700 dark:text-slate-200">{subject.name}</span>! It will be instantly available to all classmates.
+                </p>
+              </div>
+
+              <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+                <a
+                  href={`/upload?university=${encodeURIComponent(university.slug)}&faculty=${encodeURIComponent(faculty?.slug || '')}&program=${encodeURIComponent(program?.slug || '')}&term=${encodeURIComponent(term?.slug || '')}&subject=${encodeURIComponent(subject.slug)}&category=${encodeURIComponent(activeCategoryMeta.uploadCategory)}`}
+                  class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-transform hover:scale-105"
+                >
+                  <span>🚀 Upload {activeCategoryMeta.shortTitle} Now</span>
+                </a>
+                {selectedCategory !== 'all' && (
+                  <a
+                    href={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subjectSlug}?category=all`}
+                    class="inline-flex items-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl transition-colors"
+                  >
+                    <span>View All Materials ({categoryCounts.all || 0})</span>
+                  </a>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -364,7 +425,6 @@ if (subject) {
             <SubjectCard
               subject={subj}
               baseHref={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subj.slug}`}
-              termName={term.name}
             />
           ))}
         </div>

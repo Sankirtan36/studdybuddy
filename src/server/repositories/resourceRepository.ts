@@ -75,7 +75,16 @@ export async function searchResources(options: ResourceFilterOptions = {}): Prom
     if (options.facultyId) query.facultyId = options.facultyId;
     if (options.programId) query.programId = options.programId;
     if (options.academicTermId) query.academicTermId = options.academicTermId;
-    if (options.subjectId) query.subjectId = options.subjectId;
+    if (options.subjectId) {
+      const sId = options.subjectId.trim();
+      const rawId = sId.replace(/^subj-/, '');
+      query.$or = [
+        { subjectId: sId },
+        { subjectId: rawId },
+        { subjectId: `subj-${rawId}` },
+        { subjectId: { $regex: new RegExp(`^${rawId}$`, 'i') } },
+      ];
+    }
     if (options.category) query.category = options.category;
     if (options.examYear) query.examYear = options.examYear;
     if (options.fileExtension) query.fileExtension = options.fileExtension;
@@ -116,7 +125,11 @@ export async function searchResources(options: ResourceFilterOptions = {}): Prom
       if (options.status && r.status !== options.status) return false;
       if (options.category && r.category !== options.category) return false;
       if (options.programId && r.programId !== options.programId) return false;
-      if (options.subjectId && r.subjectId !== options.subjectId) return false;
+      if (options.subjectId) {
+        const sId = options.subjectId.trim().toLowerCase().replace(/^subj-/, '');
+        const rSubj = (r.subjectId || '').trim().toLowerCase().replace(/^subj-/, '');
+        if (rSubj !== sId && !r.title.toLowerCase().includes(sId)) return false;
+      }
       if (options.contributorId && r.contributorId !== options.contributorId) return false;
       if (options.search) {
         const q = options.search.toLowerCase();
