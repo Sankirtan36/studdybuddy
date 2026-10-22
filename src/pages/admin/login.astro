@@ -1,0 +1,169 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/layout/Header.astro';
+import Footer from '../../components/layout/Footer.astro';
+
+// If already logged in as admin/owner, redirect straight to /admin
+const user = Astro.locals.user;
+if (user && (user.role === 'admin' || user.role === 'owner')) {
+  return Astro.redirect('/admin');
+}
+---
+
+<Layout
+  title="Staff & Administrative Sign In | StuddyBuddy"
+  description="Restricted portal for StuddyBuddy platform administrators and owners. Unauthorized access is prohibited."
+  noindex={true}
+>
+  <Header slot="header" user={user} />
+
+  <div class="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8 p-8 sm:p-10 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xl relative overflow-hidden">
+      
+      <!-- Security Watermark Ribbon -->
+      <div class="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600"></div>
+
+      <!-- Header Icon & Notice -->
+      <div class="text-center space-y-2">
+        <div class="inline-flex p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[11px] font-bold tracking-wide uppercase">
+          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          Restricted Admin Access
+        </div>
+        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          Admin Control Portal
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          Administrative & platform owner sign-in only. Public student accounts cannot log in through this portal.
+        </p>
+      </div>
+
+      <!-- Feedback Alerts -->
+      <div id="error-alert" class="hidden p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-rose-500 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <span id="error-text" class="flex-1 font-medium">An error occurred during authentication.</span>
+      </div>
+
+      <div id="success-alert" class="hidden p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        <span id="success-text" class="font-medium">Admin credentials verified. Opening Admin Panel...</span>
+      </div>
+
+      <!-- Form -->
+      <form id="admin-login-form" class="mt-6 space-y-4">
+        <div>
+          <label for="admin-email" class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Admin Email Address
+          </label>
+          <div class="relative">
+            <input
+              id="admin-email"
+              name="email"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="admin2820@gmail.com"
+              class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 text-sm transition-all"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label for="admin-password" class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Admin Password
+          </label>
+          <div class="relative">
+            <input
+              id="admin-password"
+              name="password"
+              type="password"
+              required
+              autocomplete="current-password"
+              placeholder="••••••••••••"
+              class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 text-sm transition-all"
+            />
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button
+            id="admin-submit-btn"
+            type="submit"
+            class="w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-700 hover:to-indigo-700 shadow-md shadow-amber-600/20 transition-all hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            Authenticate & Access Panel →
+          </button>
+        </div>
+      </form>
+
+      <!-- Back Link for students -->
+      <div class="pt-4 border-t border-slate-100 dark:border-slate-800/80 text-center">
+        <p class="text-xs text-slate-500">
+          Not an administrator?{' '}
+          <a href="/login" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+            Go to Student Sign In →
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <Footer slot="footer" />
+</Layout>
+
+<script>
+  const form = document.getElementById('admin-login-form') as HTMLFormElement;
+  const alertEl = document.getElementById('error-alert') as HTMLDivElement;
+  const errorText = document.getElementById('error-text') as HTMLSpanElement;
+  const successEl = document.getElementById('success-alert') as HTMLDivElement;
+  const successText = document.getElementById('success-text') as HTMLSpanElement;
+  const btn = document.getElementById('admin-submit-btn') as HTMLButtonElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (alertEl) alertEl.classList.add('hidden');
+    if (successEl) successEl.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerText = 'Verifying Administrative Credentials...';
+
+    const formData = new FormData(form);
+    const email = formData.get('email');
+    const password = formData.get('password');
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (errorText) errorText.innerText = data.error || 'Authentication rejected.';
+        if (alertEl) alertEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = 'Authenticate & Access Panel →';
+      } else {
+        if (successText) successText.innerText = `✓ Verified! Welcome, Administrator ${data.user.displayName}! Opening Admin Control Panel...`;
+        if (successEl) successEl.classList.remove('hidden');
+        btn.innerText = '✓ Access Granted! Redirecting...';
+        setTimeout(() => {
+          window.location.href = '/admin';
+        }, 800);
+      }
+    } catch (err: any) {
+      if (errorText) errorText.innerText = 'Network error during administrative authentication.';
+      if (alertEl) alertEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerText = 'Authenticate & Access Panel →';
+    }
+  });
+</script>

@@ -1,29 +1,85 @@
 import { getDb } from '../db/mongo';
 import { INITIAL_ACADEMIC_GROUPS } from '../db/seed';
-import type { University, Faculty, Program, Subject } from '../../types';
+import type { University, Faculty, Program, AcademicTerm, Subject } from '../../types';
 
-// Fallback static in-memory data for Parul University
-const FALLBACK_UNIVERSITY: University = {
-  _id: 'parul-university',
-  name: 'Parul University',
-  slug: 'parul-university',
-  location: 'Vadodara, Gujarat, India',
-  description: 'A leading multi-disciplinary university in Gujarat offering undergraduate, postgraduate and doctoral programs.',
-  websiteUrl: 'https://paruluniversity.ac.in',
-  isActive: true,
-  createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-01'),
-};
+// Fallback static in-memory universities data
+const FALLBACK_UNIVERSITIES: University[] = [
+  {
+    _id: 'parul-university',
+    name: 'Parul University',
+    slug: 'parul-university',
+    location: 'Vadodara, Gujarat, India',
+    description: 'A leading multi-disciplinary university in Gujarat offering undergraduate, postgraduate and doctoral programs.',
+    websiteUrl: 'https://paruluniversity.ac.in',
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    _id: 'gtu',
+    name: 'Gujarat Technological University (GTU)',
+    slug: 'gtu',
+    location: 'Ahmedabad, Gujarat, India',
+    description: 'Premier state engineering and technology university affiliated with top polytechnics and engineering institutes across Gujarat.',
+    websiteUrl: 'https://gtu.ac.in',
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    _id: 'msu-baroda',
+    name: 'Maharaja Sayajirao University of Baroda (MSU)',
+    slug: 'msu-baroda',
+    location: 'Vadodara, Gujarat, India',
+    description: 'One of premier multidisciplinary universities in Western India known for engineering, commerce, and applied sciences.',
+    websiteUrl: 'https://msubaroda.ac.in',
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    _id: 'dtu',
+    name: 'Delhi Technological University (DTU)',
+    slug: 'dtu',
+    location: 'New Delhi, India',
+    description: 'Renowned public technical university in Delhi pioneering research, technology, and applied computer science education.',
+    websiteUrl: 'https://dtu.ac.in',
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    _id: 'mumbai-university',
+    name: 'University of Mumbai',
+    slug: 'mumbai-university',
+    location: 'Mumbai, Maharashtra, India',
+    description: 'One of the oldest and largest collegiate universities in India offering diverse engineering, arts, and science curricula.',
+    websiteUrl: 'https://mu.ac.in',
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+];
 
 export async function getUniversities(): Promise<University[]> {
   try {
     const db = await getDb();
     const items = await db.collection<University>('universities').find({ isActive: true }).toArray();
-    if (items.length > 0) return items;
+    if (items.length > 0) {
+      // Merge with fallback to ensure rich catalog discovery
+      const existingSlugs = new Set(items.map((u) => u.slug));
+      const merged: University[] = [...items];
+      for (const fb of FALLBACK_UNIVERSITIES) {
+        if (!existingSlugs.has(fb.slug)) {
+          merged.push(fb);
+        }
+      }
+      return merged;
+    }
   } catch (err) {
     // Graceful fallback to static seed data
   }
-  return [FALLBACK_UNIVERSITY];
+  return FALLBACK_UNIVERSITIES;
 }
 
 export async function getUniversityBySlug(slug: string): Promise<University | null> {
@@ -34,8 +90,7 @@ export async function getUniversityBySlug(slug: string): Promise<University | nu
   } catch (err) {
     // fallback
   }
-  if (slug === 'parul-university') return FALLBACK_UNIVERSITY;
-  return null;
+  return FALLBACK_UNIVERSITIES.find((u) => u.slug === slug) || null;
 }
 
 export async function getFacultiesByUniversity(universityIdOrSlug: string): Promise<Faculty[]> {
@@ -198,3 +253,76 @@ export async function getSubjectBySlug(subjectSlug: string): Promise<Subject | n
   }
   return null;
 }
+
+/**
+ * Get all academic terms/semesters for a program dynamically based on program.totalTerms
+ */
+export async function getAcademicTermsByProgram(programSlug: string): Promise<AcademicTerm[]> {
+  const prog = await getProgramBySlug(programSlug);
+  if (!prog) return [];
+
+  try {
+    const db = await getDb();
+    if (prog._id) {
+      const dbTerms = await db
+        .collection<AcademicTerm>('academicTerms')
+        .find({ programId: prog._id.toString(), isActive: true })
+        .sort({ orderIndex: 1 })
+        .toArray();
+      if (dbTerms.length > 0) return dbTerms;
+    }
+  } catch (err) {}
+
+  // Generate terms according to structureType and totalTerms
+  const terms: AcademicTerm[] = [];
+  const total = prog.totalTerms || 8;
+  const label = prog.structureType === 'year' ? 'Year' : prog.structureType === 'trimester' ? 'Trimester' : 'Semester';
+
+  for (let i = 1; i <= total; i++) {
+    terms.push({
+      _id: `term-${prog.slug}-${i}`,
+      programId: prog._id?.toString() || `prog-${prog.slug}`,
+      name: `${label} ${i}`,
+      slug: `semester-${i}`,
+      orderIndex: i,
+      isActive: true,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    });
+  }
+  return terms;
+}
+
+export async function getAcademicTermBySlug(programSlug: string, termSlug: string): Promise<AcademicTerm | null> {
+  const terms = await getAcademicTermsByProgram(programSlug);
+  const match = terms.find((t) => t.slug === termSlug || `semester-${t.orderIndex}` === termSlug || t.orderIndex.toString() === termSlug);
+  return match || null;
+}
+
+/**
+ * Get subjects filtered by academic term/semester
+ */
+export async function getSubjectsByProgramAndTerm(
+  programSlug: string,
+  termSlugOrIndex: string | number
+): Promise<Subject[]> {
+  const allSubjects = await getSubjectsByProgram(programSlug);
+  const termSlug = termSlugOrIndex.toString().toLowerCase();
+
+  let orderIndex = 1;
+  const parsedInt = parseInt(termSlug.replace(/\D/g, ''), 10);
+  if (!isNaN(parsedInt)) {
+    orderIndex = parsedInt;
+  }
+
+  // Check matching subjects
+  const filtered = allSubjects.filter(
+    (s) =>
+      s.academicTermId === `term-${orderIndex}` ||
+      s.academicTermId === `term-${programSlug}-${orderIndex}` ||
+      s.academicTermId === orderIndex.toString()
+  );
+
+  return filtered.length > 0 ? filtered : allSubjects;
+}
+

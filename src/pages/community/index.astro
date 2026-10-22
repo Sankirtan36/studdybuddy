@@ -3,34 +3,50 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/layout/Header.astro';
 import Footer from '../../components/layout/Footer.astro';
 import { getDb } from '../../server/db/mongo';
+import { getUniversities } from '../../server/repositories/catalogRepository';
 import type { CommunityThread } from '../../types';
 
 const user = Astro.locals.user;
 const now = new Date();
+const universities = await getUniversities();
+
+// Determine active university filter: query param > user's university > 'all'
+const activeUniSlug = Astro.url.searchParams.get('university') || (user?.universityId || 'all');
+const activeUniversity = universities.find((u) => u.slug === activeUniSlug);
 
 let threads: CommunityThread[] = [];
 
 try {
   const db = await getDb();
-  // Server-side enforcement of 8-hour guest expiry:
-  // Never return threads that have an expiresAt in the past!
+  // Server-side enforcement of 8-hour guest expiry and university isolation:
+  const query: any = {
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+  };
+
+  if (activeUniSlug !== 'all') {
+    query.$and = [
+      { $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }] },
+      { $or: [{ universityId: activeUniSlug }, { universityId: null }, { universityId: { $exists: false } }] },
+    ];
+    delete query.$or;
+  }
+
   threads = await db
     .collection<CommunityThread>('communityThreads')
-    .find({
-      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-    })
+    .find(query)
     .sort({ createdAt: -1 })
-    .limit(30)
+    .limit(40)
     .toArray();
 } catch (err) {
-  // Local fallback demo discussion
-  threads = [
+  // Local fallback demo discussion partitioned by university
+  const fallbackAll: CommunityThread[] = [
     {
       _id: 'sample-thread-1',
       title: 'Parul University B.Tech CSE Semester 1 Maths 1 Syllabus & Important Units',
       content: 'Which units in Engineering Mathematics 1 carry the highest weightage in the mid-sem exams? Looking for tips on Matrices vs Differential Calculus.',
       authorName: 'Aarav Patel',
       isGuest: false,
+      universityId: 'parul-university',
       replyCount: 4,
       createdAt: new Date(Date.now() - 3 * 3600 * 1000),
       updatedAt: new Date(Date.now() - 3 * 3600 * 1000),
@@ -41,30 +57,53 @@ try {
       content: 'Can someone share the typical viva questions asked during the practical lab exam for Singly and Doubly Linked Lists?',
       authorName: 'Guest Student',
       isGuest: true,
+      universityId: 'parul-university',
       expiresAt: new Date(Date.now() + 5 * 3600 * 1000), // 5 hours remaining
       replyCount: 2,
       createdAt: new Date(Date.now() - 3600 * 1000),
       updatedAt: new Date(Date.now() - 3600 * 1000),
     },
+    {
+      _id: 'sample-thread-3',
+      title: 'GTU Degree Engineering Winter Exam Timetable & PYQ Repository',
+      content: 'Has anyone collated the last 5 years GTU question papers for Design Engineering and Database Management? Sharing syllabus breakdown.',
+      authorName: 'Dev Sharma',
+      isGuest: false,
+      universityId: 'gtu',
+      replyCount: 7,
+      createdAt: new Date(Date.now() - 5 * 3600 * 1000),
+      updatedAt: new Date(Date.now() - 5 * 3600 * 1000),
+    },
   ];
+
+  threads = activeUniSlug === 'all' 
+    ? fallbackAll 
+    : fallbackAll.filter((t) => t.universityId === activeUniSlug || !t.universityId);
 }
 ---
 
 <Layout
-  title="Student Academic Community & Guest Chat | StuddyBuddy"
+  title={`Student Community & Campus Hub | StuddyBuddy`}
   description="Connect with fellow university students. Discuss past papers, exam strategies, and syllabus topics with verified student accounts or 8-hour temporary guest chat."
 >
   <Header slot="header" user={user} />
 
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-10">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-8">
     <!-- Header -->
     <div class="border-b border-slate-200/80 dark:border-slate-800 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
       <div>
-        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 mb-2">
-          Academic Discourse & Help
-        </span>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
+            Academic Discourse & Forum
+          </span>
+          {activeUniversity && (
+            <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
+              📍 {activeUniversity.name}
+            </span>
+          )}
+        </div>
         <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Student Community
+          Campus Student Community
         </h1>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
           Ask questions about exam papers, syllabus units, and campus academic events.
@@ -77,22 +116,59 @@ try {
       </div>
     </div>
 
+    <!-- Campus Filter Bar -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+        <span>Filter by Campus Community:</span>
+        <span class="text-[11px]">{threads.length} topics displayed</span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a
+          href="/community"
+          class={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+            activeUniSlug === 'all'
+              ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
+          }`}
+        >
+          🌐 All Universities
+        </a>
+        {universities.map((uni) => (
+          <a
+            href={`/community?university=${uni.slug}`}
+            class={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+              activeUniSlug === uni.slug
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
+            }`}
+          >
+            🏛️ {uni.name.split(' (')[0]}
+          </a>
+        ))}
+      </div>
+    </div>
+
     <!-- Create Discussion Box -->
     <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
-      <h2 class="text-base font-bold text-slate-900 dark:text-white">
-        Start an Academic Discussion
-      </h2>
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">
+          Start an Academic Discussion
+        </h2>
+        <span class="text-[11px] text-slate-400">
+          Target: {activeUniversity ? activeUniversity.name : 'Open Campus Forum'}
+        </span>
+      </div>
 
       <div id="thread-error" class="hidden p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-semibold"></div>
 
-      <form id="thread-form" class="space-y-3 text-xs">
+      <form id="thread-form" class="space-y-3.5 text-xs">
         <div>
           <input
             id="thread-title"
             type="text"
             required
-            placeholder="Topic title (e.g. Tips for MCA Semester 1 DBMS mid-sem)..."
-            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Topic title (e.g. Tips for Semester 1 DSA mid-sem exam)..."
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
           />
         </div>
 
@@ -106,80 +182,119 @@ try {
           ></textarea>
         </div>
 
-        {!user && (
-          <div class="flex items-center gap-2">
-            <input
-              id="guest-name"
-              type="text"
-              placeholder="Guest Handle (optional, e.g. FirstYearCSE)"
-              class="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
-            />
-            <span class="text-[11px] text-slate-400">Posting as Guest (8h lifetime)</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+              Post to Campus:
+            </label>
+            <select
+              id="university-select"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium"
+            >
+              {universities.map((u) => (
+                <option value={u.slug} selected={activeUniSlug === u.slug || (activeUniSlug === 'all' && u.slug === 'parul-university')}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+
+          {!user && (
+            <div>
+              <label class="block font-semibold text-slate-600 dark:text-slate-400 mb-1 text-[11px]">
+                Guest Identity (8h lifetime):
+              </label>
+              <input
+                id="guest-name"
+                type="text"
+                placeholder="Guest Handle (e.g. FirstYearStudent)"
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+              />
+            </div>
+          )}
+        </div>
 
         <button
           type="submit"
           id="post-btn"
           class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-sm transition-transform hover:scale-105"
         >
-          {user ? 'Post Discussion' : 'Post as Guest (8h Expiry)'}
+          {user ? 'Publish Discussion' : 'Post as Guest (8h Expiry)'}
         </button>
       </form>
     </div>
 
     <!-- Discussions Feed -->
     <div class="space-y-4">
-      <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-        Recent Discussions ({threads.length})
-      </h2>
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Active Discussions ({threads.length})
+        </h2>
+      </div>
 
-      {threads.map((thread) => {
-        let remainingHours = null;
-        if (thread.expiresAt) {
-          const diffMs = new Date(thread.expiresAt).getTime() - Date.now();
-          remainingHours = Math.max(0, Math.round(diffMs / (1000 * 60 * 60)));
-        }
+      {threads.length === 0 ? (
+        <div class="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+          <div class="text-3xl">💬</div>
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">No discussions posted yet</h3>
+          <p class="text-xs text-slate-400 max-w-sm mx-auto">
+            Be the first student to start an exam discussion or share study tips for this campus!
+          </p>
+        </div>
+      ) : (
+        threads.map((thread) => {
+          let remainingHours = null;
+          if (thread.expiresAt) {
+            const diffMs = new Date(thread.expiresAt).getTime() - Date.now();
+            remainingHours = Math.max(0, Math.round(diffMs / (1000 * 60 * 60)));
+          }
 
-        return (
-          <article class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-xs text-slate-800 dark:text-slate-200">
-                  {thread.authorName}
+          const threadUni = universities.find((u) => u.slug === thread.universityId);
+
+          return (
+            <article class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-xs text-slate-800 dark:text-slate-200">
+                    {thread.authorName}
+                  </span>
+                  {thread.isGuest ? (
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
+                      Guest • {remainingHours !== null ? `${remainingHours}h remaining` : '8h expiry'}
+                    </span>
+                  ) : (
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300">
+                      Verified Student
+                    </span>
+                  )}
+                  {threadUni && (
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      🏛️ {threadUni.name.split(' (')[0]}
+                    </span>
+                  )}
+                </div>
+                <span class="text-[11px] text-slate-400">
+                  {new Date(thread.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
-                {thread.isGuest ? (
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
-                    Guest • {remainingHours !== null ? `${remainingHours}h remaining` : '8h expiry'}
-                  </span>
-                ) : (
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300">
-                    Verified Student
-                  </span>
-                )}
               </div>
-              <span class="text-[11px] text-slate-400">
-                {new Date(thread.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
 
-            <h3 class="text-base font-bold text-slate-900 dark:text-white">
-              {thread.title}
-            </h3>
+              <h3 class="text-base font-bold text-slate-900 dark:text-white">
+                {thread.title}
+              </h3>
 
-            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
-              {thread.content}
-            </p>
+              <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
+                {thread.content}
+              </p>
 
-            <div class="pt-2 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 dark:border-slate-800/80">
-              <span class="font-medium text-indigo-600 dark:text-indigo-400">
-                Parul University Discussion
-              </span>
-              <span>{thread.replyCount} replies</span>
-            </div>
-          </article>
-        );
-      })}
+              <div class="pt-2 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 dark:border-slate-800/80">
+                <span class="font-medium text-indigo-600 dark:text-indigo-400">
+                  {threadUni ? `${threadUni.name} Discussion` : 'Campus Discourse'}
+                </span>
+                <span>{thread.replyCount || 0} replies</span>
+              </div>
+            </article>
+          );
+        })
+      )}
     </div>
   </div>
 
@@ -191,6 +306,7 @@ try {
   const titleEl = document.getElementById('thread-title') as HTMLInputElement;
   const contentEl = document.getElementById('thread-content') as HTMLTextAreaElement;
   const guestNameEl = document.getElementById('guest-name') as HTMLInputElement | null;
+  const universitySelect = document.getElementById('university-select') as HTMLSelectElement | null;
   const btn = document.getElementById('post-btn') as HTMLButtonElement;
   const errEl = document.getElementById('thread-error') as HTMLDivElement;
 
@@ -207,6 +323,7 @@ try {
           title: titleEl.value,
           content: contentEl.value,
           authorName: guestNameEl?.value || undefined,
+          universityId: universitySelect?.value || undefined,
         }),
       });
 

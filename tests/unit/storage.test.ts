@@ -2,22 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { validateUploadFile, generateStorageKey } from '../../src/server/storage/storage';
 
 describe('Storage & File Upload Validation', () => {
-  it('accepts valid PDF, PPTX, DOCX, and JPG files within 25MB limit', () => {
-    const validPdf = validateUploadFile('paper.pdf', 'application/pdf', 5 * 1024 * 1024);
+  it('accepts valid PDF, PPTX, DOCX, and JPG files within 3MB limit', () => {
+    const validPdf = validateUploadFile('paper.pdf', 'application/pdf', 1.5 * 1024 * 1024);
     expect(validPdf.valid).toBe(true);
     expect(validPdf.extension).toBe('pdf');
 
-    const validPptx = validateUploadFile('lecture.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 12 * 1024 * 1024);
+    const validPptx = validateUploadFile('lecture.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 2 * 1024 * 1024);
     expect(validPptx.valid).toBe(true);
     expect(validPptx.extension).toBe('pptx');
 
-    const validJpg = validateUploadFile('notes.jpg', 'image/jpeg', 2 * 1024 * 1024);
+    const validJpg = validateUploadFile('notes.jpg', 'image/jpeg', 2.5 * 1024 * 1024);
     expect(validJpg.valid).toBe(true);
     expect(validJpg.extension).toBe('jpg');
   });
 
-  it('rejects oversized files exceeding 25 MB limit', () => {
-    const oversized = validateUploadFile('huge-book.pdf', 'application/pdf', 30 * 1024 * 1024);
+  it('rejects oversized files exceeding 3 MB limit', () => {
+    const oversized = validateUploadFile('huge-book.pdf', 'application/pdf', 4 * 1024 * 1024);
     expect(oversized.valid).toBe(false);
     expect(oversized.error).toContain('maximum allowed size');
   });

@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/layout/Header.astro';
 import Footer from '../components/layout/Footer.astro';
 import ResourceCard from '../components/resources/ResourceCard.astro';
+import UniversityCard from '../components/academic/UniversityCard.astro';
 import { getUniversities, getFacultiesByUniversity } from '../server/repositories/catalogRepository';
 import { searchResources } from '../server/repositories/resourceRepository';
 
@@ -26,70 +27,120 @@ const pyqRes = await searchResources({
 ---
 
 <Layout
-  title="StuddyBuddy — Your Study Buddy, Every Semester | Academic Resource Platform"
-  description="Multi-university academic resource platform. Discover previous year question papers, lecture notes, syllabus, and study materials for Parul University and more."
+  title="StuddyBuddy — Your Campus, Your Resources | Student Resource Network"
+  description="Discover, share, and download previous year question papers, lecture notes, syllabus guides, and practical lab files across verified universities and semesters."
 >
   <Header slot="header" />
 
-  <!-- Hero Section with Academic Search -->
-  <section class="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-28 bg-gradient-to-b from-indigo-50/70 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-950 border-b border-slate-200/60 dark:border-slate-800/60">
+  <!-- Hero Section: Student-First Campus Hub -->
+  <section class="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24 bg-gradient-to-b from-indigo-50/70 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-950 border-b border-slate-200/60 dark:border-slate-800/60">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
       
-      <!-- Institution Badge -->
+      <!-- Student Network Badge -->
       <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-100/80 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 mb-6 shadow-sm">
         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span>Initial Institution Focus: Parul University, Vadodara</span>
+        <span>Community-Driven Student Learning Network</span>
       </div>
 
-      <!-- Main Headline -->
-      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-tight md:leading-none">
-        Find <span class="bg-gradient-to-r from-indigo-600 to-sky-600 dark:from-indigo-400 dark:to-sky-400 bg-clip-text text-transparent">Previous Year Papers</span>, Notes & Exam Materials
+      <!-- Main Welcoming Headline -->
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-tight">
+        Your Campus, <span class="bg-gradient-to-r from-indigo-600 to-sky-600 dark:from-indigo-400 dark:to-sky-400 bg-clip-text text-transparent">Your Resources.</span>
       </h1>
       
       <p class="mt-4 text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-        Your Study Buddy, Every Semester. Navigate your university, program, semester, and subject to access verified study resources.
+        Select your university to access syllabus, previous year exam papers, lecture notes, formula sheets, and collaborate with verified classmates.
       </p>
 
-      <!-- Search Box Island Form -->
-      <form action="/resources" method="GET" class="mt-8 max-w-2xl mx-auto flex flex-col sm:flex-row items-stretch gap-2.5 p-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-indigo-500/5 border border-slate-200/90 dark:border-slate-800">
-        <div class="relative flex-1 flex items-center pl-3">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            name="search"
-            placeholder="Search by subject, code, topic (e.g. DSA, Maths 1, BCA101)..."
-            class="w-full pl-3 pr-4 py-2.5 text-sm bg-transparent border-0 focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
-          />
+      <!-- Prominent University Search Bar with Google-Style Dropdown Menu -->
+      <div class="mt-8 max-w-2xl mx-auto relative z-30" id="search-wrapper">
+        <div class="p-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-indigo-500/10 border border-slate-200/90 dark:border-slate-800 flex items-center gap-3 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+          <div class="relative flex-1 flex items-center pl-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              id="uni-search-input"
+              type="text"
+              autocomplete="off"
+              placeholder="Search your university or college (e.g. Parul, GTU, MSU, Delhi, Mumbai)..."
+              class="w-full pl-3 pr-8 py-2.5 text-sm bg-transparent border-0 focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none font-medium"
+            />
+            <button
+              type="button"
+              id="clear-search-btn"
+              class="hidden absolute right-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-full text-xs font-bold transition-colors"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          </div>
+          <span class="hidden sm:inline-block text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0">
+            {universities.length} Institutions
+          </span>
         </div>
 
-        <select
-          name="universityId"
-          class="px-3 py-2.5 text-xs font-medium rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-        >
-          {universities.map((u) => (
-            <option value={u.slug}>{u.name}</option>
-          ))}
-        </select>
-
-        <button
-          type="submit"
-          class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-600/25 transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          Search Resources
-        </button>
-      </form>
-
-      <!-- Quick Academic Path Navigator -->
-      <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <span class="font-medium text-slate-700 dark:text-slate-300">Popular Courses:</span>
-        <a href="/resources?programId=prog-btech-cse" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">B.Tech CSE</a>
-        <a href="/resources?programId=prog-bca" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">BCA</a>
-        <a href="/resources?programId=prog-bba" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">BBA</a>
-        <a href="/resources?programId=prog-bpharm" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">B.Pharm</a>
-        <a href="/resources?programId=prog-mbbs" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">MBBS</a>
+        <!-- Google-Style Autocomplete Floating Menu -->
+        <div
+          id="uni-search-dropdown"
+          class="hidden absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/80 max-h-96 overflow-y-auto text-left z-50 transition-all"
+        ></div>
       </div>
+
+      <!-- Universities Catalog Payload for Instant Google-like Search -->
+      <script id="universities-data" type="application/json" set:html={JSON.stringify(universities.map((u) => ({ slug: u.slug, name: u.name, location: u.location || '' })))} />
+
+      <!-- Recently Visited Universities Bar -->
+      <div id="recent-unis-bar" class="hidden mt-5 flex-wrap items-center justify-center gap-2 text-xs">
+        <span class="text-slate-400 font-medium">Recently Visited:</span>
+        <div id="recent-unis-list" class="flex flex-wrap items-center gap-1.5"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 1: University Selection Cards Grid -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+      <div>
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            Step 1 of 5
+          </span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          Select Your University
+        </h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Pick your university campus to enter its academic departments, courses, and resource library.
+        </p>
+      </div>
+
+      <a href="/suggest-catalog" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0">
+        + Can't find your university? Suggest it →
+      </a>
+    </div>
+
+    <!-- University Cards Grid -->
+    <div id="unis-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {universities.map((uni) => (
+        <div class="uni-card-wrapper" data-uni-name={uni.name.toLowerCase()} data-uni-location={(uni.location || '').toLowerCase()}>
+          <UniversityCard university={uni} />
+        </div>
+      ))}
+    </div>
+
+    <!-- No Match Empty State -->
+    <div id="no-uni-match" class="hidden p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+      <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl font-bold">
+        🔍
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 dark:text-white">No university found matching your search</h3>
+      <p class="text-xs text-slate-500 max-w-md mx-auto">
+        Check your spelling or request to add your university to the StuddyBuddy network.
+      </p>
+      <a href="/suggest-catalog" class="inline-block mt-2 px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow-md">
+        Suggest Missing University
+      </a>
     </div>
   </section>
 
@@ -239,3 +290,323 @@ const pyqRes = await searchResources({
 
   <Footer slot="footer" />
 </Layout>
+
+<script>
+  interface UniversityItem {
+    slug: string;
+    name: string;
+    location: string;
+  }
+
+  // 1. Google-Style University Search with Instant Dropdown Menu
+  const searchInput = document.getElementById('uni-search-input') as HTMLInputElement;
+  const searchWrapper = document.getElementById('search-wrapper') as HTMLDivElement;
+  const dropdown = document.getElementById('uni-search-dropdown') as HTMLDivElement;
+  const clearBtn = document.getElementById('clear-search-btn') as HTMLButtonElement;
+  const cards = document.querySelectorAll('.uni-card-wrapper') as NodeListOf<HTMLElement>;
+  const noMatch = document.getElementById('no-uni-match');
+
+  let allUniversities: UniversityItem[] = [];
+  try {
+    const dataEl = document.getElementById('universities-data');
+    if (dataEl?.textContent) {
+      allUniversities = JSON.parse(dataEl.textContent);
+    }
+  } catch (err) {
+    allUniversities = [];
+  }
+
+  let selectedIndex = -1;
+  let currentMatches: UniversityItem[] = [];
+
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function highlightMatch(text: string, query: string): string {
+    if (!query) return escapeHtml(text);
+    const escapedText = escapeHtml(text);
+    const escapedQuery = escapeHtml(query);
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+    return escapedText.replace(regex, '<span class="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 rounded px-0.5 font-black">$1</span>');
+  }
+
+  function renderDropdown(matches: UniversityItem[], query: string) {
+    currentMatches = matches;
+    selectedIndex = -1;
+
+    if (!query) {
+      dropdown.classList.add('hidden');
+      dropdown.innerHTML = '';
+      return;
+    }
+
+    if (matches.length === 0) {
+      dropdown.innerHTML = `
+        <div class="p-6 text-center space-y-2">
+          <p class="text-xs font-bold text-slate-800 dark:text-slate-200">
+            No university found matching "${escapeHtml(query)}"
+          </p>
+          <p class="text-[11px] text-slate-400">
+            Can't find your campus? You can request to add it in seconds.
+          </p>
+          <a
+            href="/suggest-catalog"
+            class="inline-flex items-center gap-1.5 mt-2 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-transform hover:scale-105"
+          >
+            <span>+ Suggest Missing Campus</span>
+          </a>
+        </div>
+      `;
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    const itemsHtml = matches
+      .map((uni, idx) => {
+        const initials = uni.slug
+          .split('-')
+          .slice(0, 2)
+          .map((w) => w[0]?.toUpperCase())
+          .join('');
+
+        return `
+          <a
+            href="/university/${uni.slug}"
+            data-index="${idx}"
+            class="uni-dropdown-item flex items-center justify-between px-4 py-3 hover:bg-indigo-50/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer group"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-black text-xs flex items-center justify-center shrink-0 border border-indigo-100/60 dark:border-indigo-900/60 group-hover:scale-105 transition-transform">
+                ${initials || 'UN'}
+              </div>
+              <div class="min-w-0 text-left">
+                <div class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                  ${highlightMatch(uni.name, query)}
+                </div>
+                <div class="text-[11px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                  <span>📍 ${escapeHtml(uni.location || 'India')}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 pl-3">
+              <span class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                Enter Campus
+              </span>
+              <span class="text-xs text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all">
+                →
+              </span>
+            </div>
+          </a>
+        `;
+      })
+      .join('');
+
+    const footerHtml = `
+      <div class="px-4 py-2 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+        <span>Use <kbd class="px-1 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 text-[10px]">↑</kbd> <kbd class="px-1 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 text-[10px]">↓</kbd> to navigate, <kbd class="px-1 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 text-[10px]">↵ Enter</kbd> to select</span>
+        <a href="/suggest-catalog" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">+ Request College</a>
+      </div>
+    `;
+
+    dropdown.innerHTML = itemsHtml + footerHtml;
+    dropdown.classList.remove('hidden');
+
+    // Attach click listeners to suggestions for history tracking
+    dropdown.querySelectorAll('.uni-dropdown-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        const idx = Number(item.getAttribute('data-index'));
+        const u = currentMatches[idx];
+        if (u) {
+          addRecentUniversity(u.slug, u.name);
+        }
+      });
+    });
+  }
+
+  function updateActiveSuggestion() {
+    const items = dropdown.querySelectorAll('.uni-dropdown-item');
+    items.forEach((item, idx) => {
+      if (idx === selectedIndex) {
+        item.classList.add('bg-indigo-50', 'dark:bg-slate-800', 'ring-1', 'ring-indigo-500/30');
+        (item as HTMLElement).scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('bg-indigo-50', 'dark:bg-slate-800', 'ring-1', 'ring-indigo-500/30');
+      }
+    });
+  }
+
+  function handleSearchInput() {
+    const q = searchInput.value.toLowerCase().trim();
+
+    // Toggle clear button
+    if (q) {
+      clearBtn.classList.remove('hidden');
+    } else {
+      clearBtn.classList.add('hidden');
+    }
+
+    // Filter matches for Google-style menu
+    const matches = q
+      ? allUniversities.filter(
+          (u) =>
+            u.name.toLowerCase().includes(q) ||
+            u.location.toLowerCase().includes(q) ||
+            u.slug.toLowerCase().includes(q)
+        )
+      : [];
+
+    renderDropdown(matches, q);
+
+    // Also filter cards below
+    let visibleCount = 0;
+    cards.forEach((card) => {
+      const name = card.dataset.uniName || '';
+      const location = card.dataset.uniLocation || '';
+      const match = !q || name.includes(q) || location.includes(q);
+
+      if (match) {
+        card.classList.remove('hidden');
+        visibleCount++;
+      } else {
+        card.classList.add('hidden');
+      }
+    });
+
+    if (noMatch) {
+      if (visibleCount === 0) {
+        noMatch.classList.remove('hidden');
+      } else {
+        noMatch.classList.add('hidden');
+      }
+    }
+  }
+
+  searchInput?.addEventListener('input', handleSearchInput);
+
+  searchInput?.addEventListener('focus', () => {
+    if (searchInput.value.trim().length > 0) {
+      handleSearchInput();
+    }
+  });
+
+  searchInput?.addEventListener('keydown', (e) => {
+    if (dropdown.classList.contains('hidden') || currentMatches.length === 0) {
+      if (e.key === 'Enter' && currentMatches.length === 1) {
+        window.location.href = `/university/${currentMatches[0].slug}`;
+      }
+      return;
+    }
+
+    const maxIdx = currentMatches.length - 1;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIndex = selectedIndex < maxIdx ? selectedIndex + 1 : 0;
+      updateActiveSuggestion();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : maxIdx;
+      updateActiveSuggestion();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && currentMatches[selectedIndex]) {
+        const u = currentMatches[selectedIndex];
+        addRecentUniversity(u.slug, u.name);
+        window.location.href = `/university/${u.slug}`;
+      } else if (currentMatches.length > 0) {
+        const u = currentMatches[0];
+        addRecentUniversity(u.slug, u.name);
+        window.location.href = `/university/${u.slug}`;
+      }
+    } else if (e.key === 'Escape') {
+      dropdown.classList.add('hidden');
+    }
+  });
+
+  // Clear button click
+  clearBtn?.addEventListener('click', () => {
+    searchInput.value = '';
+    clearBtn.classList.add('hidden');
+    dropdown.classList.add('hidden');
+    cards.forEach((c) => c.classList.remove('hidden'));
+    if (noMatch) noMatch.classList.add('hidden');
+    searchInput.focus();
+  });
+
+  // Close dropdown on click outside
+  document.addEventListener('click', (e) => {
+    if (searchWrapper && !searchWrapper.contains(e.target as Node)) {
+      dropdown.classList.add('hidden');
+    }
+  });
+
+  // 2. Track & Display Recently Visited Universities
+  const RECENT_KEY = 'studdybuddy_recent_universities';
+
+  function getRecentUniversities(): Array<{ slug: string; name: string }> {
+    try {
+      const raw = localStorage.getItem(RECENT_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function addRecentUniversity(slug: string, name: string) {
+    try {
+      let list = getRecentUniversities().filter((u) => u.slug !== slug);
+      list.unshift({ slug, name });
+      list = list.slice(0, 4); // Keep top 4
+      localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+      renderRecentUniversities();
+    } catch {}
+  }
+
+  function renderRecentUniversities() {
+    const bar = document.getElementById('recent-unis-bar');
+    const container = document.getElementById('recent-unis-list');
+    if (!bar || !container) return;
+
+    const list = getRecentUniversities();
+    if (list.length === 0) {
+      bar.classList.add('hidden');
+      bar.classList.remove('flex');
+      return;
+    }
+
+    container.innerHTML = '';
+    list.forEach((u) => {
+      const a = document.createElement('a');
+      a.href = `/university/${u.slug}`;
+      a.className =
+        'px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 text-[11px] font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors flex items-center gap-1';
+      a.innerHTML = `<span>🏛️</span><span>${u.name.split(' (')[0]}</span>`;
+      container.appendChild(a);
+    });
+
+    bar.classList.remove('hidden');
+    bar.classList.add('flex');
+  }
+
+  // Record click on university cards
+  document.querySelectorAll('.uni-card-wrapper a').forEach((link) => {
+    link.addEventListener('click', () => {
+      const href = link.getAttribute('href') || '';
+      const slug = href.replace('/university/', '').split('/')[0];
+      const h3 = link.querySelector('h3');
+      const name = h3?.innerText || slug;
+      if (slug && name) {
+        addRecentUniversity(slug, name);
+      }
+    });
+  });
+
+  // Initial render
+  renderRecentUniversities();
+</script>

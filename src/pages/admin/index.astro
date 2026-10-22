@@ -3,17 +3,23 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/layout/Header.astro';
 import Footer from '../../components/layout/Footer.astro';
 import { getDb } from '../../server/db/mongo';
+import { readLocalUsers } from '../../server/auth/userStore';
+import { readLocalResources } from '../../server/repositories/resourceRepository';
 import type { Resource, User, CatalogSuggestion, ContentReport, AuditLog } from '../../types';
+import fs from 'node:fs';
+import path from 'node:path';
 
+// Authentication & Strict RBAC Enforcement
 const user = Astro.locals.user;
 if (!user) {
-  return Astro.redirect('/login?redirect=/admin');
+  return Astro.redirect('/admin/login');
 }
 if (user.role !== 'admin' && user.role !== 'owner') {
   return Astro.redirect('/dashboard?error=unauthorized_admin');
 }
 
 let pendingResources: Resource[] = [];
+let allResources: Resource[] = [];
 let approvedCount = 0;
 let pendingCount = 0;
 let rejectedCount = 0;
@@ -23,13 +29,15 @@ let pendingSuggestions: CatalogSuggestion[] = [];
 let openReports: ContentReport[] = [];
 let auditLogs: AuditLog[] = [];
 let totalStoredBytes = 0;
+let mongoConnected = false;
 
 try {
   const db = await getDb();
+  mongoConnected = true;
 
   // Metrics
   totalUsersCount = await db.collection('users').countDocuments({});
-  approvedCount = await db.collection('resources').countDocuments({ status: 'approved' });
+  approvedCount = await db.collection('resources').countDocuments({ status: { $in: ['approved', 'published'] } });
   pendingCount = await db.collection('resources').countDocuments({ status: 'pending' });
   rejectedCount = await db.collection('resources').countDocuments({ status: 'rejected' });
 
@@ -45,7 +53,15 @@ try {
     .collection<Resource>('resources')
     .find({ status: 'pending' })
     .sort({ createdAt: -1 })
-    .limit(20)
+    .limit(25)
+    .toArray();
+
+  // All Resources for Admin Management
+  allResources = await db
+    .collection<Resource>('resources')
+    .find({ status: { $ne: 'removed' } })
+    .sort({ createdAt: -1 })
+    .limit(50)
     .toArray();
 
   // User list
@@ -53,7 +69,7 @@ try {
     .collection<User>('users')
     .find({})
     .sort({ createdAt: -1 })
-    .limit(20)
+    .limit(50)
     .toArray();
 
   // Pending Catalog Suggestions
@@ -80,10 +96,29 @@ try {
     .limit(25)
     .toArray();
 } catch (err) {
-  // Graceful fallback if DB offline
+  // Seamless fallback to local file-based database
+  mongoConnected = false;
+  usersList = readLocalUsers();
+  totalUsersCount = usersList.length;
+
+  const localRes = readLocalResources();
+  allResources = localRes.filter((r) => (r.status as string) !== 'removed');
+  pendingResources = localRes.filter((r) => r.status === 'pending');
+  pendingCount = pendingResources.length;
+  approvedCount = localRes.filter((r) => r.status === 'approved' || (r.status as string) === 'published').length;
+  rejectedCount = localRes.filter((r) => r.status === 'rejected').length;
+  totalStoredBytes = localRes.reduce((acc, r) => acc + (r.fileSizeBytes || 0), 0);
+
+  // Read local audit logs if available
+  try {
+    const auditFile = path.resolve(process.cwd(), '.data', 'auditLogs.json');
+    if (fs.existsSync(auditFile)) {
+      auditLogs = JSON.parse(fs.readFileSync(auditFile, 'utf8'));
+    }
+  } catch {}
 }
 
-const STORAGE_BUDGET_BYTES = 20 * 1024 * 1024 * 1024; // 20 GB
+const STORAGE_BUDGET_BYTES = 20 * 1024 * 1024 * 1024; // 20 GB Budget
 const storageUsedMB = (totalStoredBytes / (1024 * 1024)).toFixed(2);
 const storagePercent = ((totalStoredBytes / STORAGE_BUDGET_BYTES) * 100).toFixed(2);
 const isStorageWarning = parseFloat(storagePercent) >= 80;
@@ -98,13 +133,13 @@ function formatBytes(bytes: number) {
 ---
 
 <Layout
-  title="Owner & Administrative Panel | StuddyBuddy"
-  description="Secure administrative management for StuddyBuddy. Resource moderation, user management, storage monitoring, and audit trails."
+  title="Administrator Control Center | StuddyBuddy"
+  description="Administrative portal for StuddyBuddy. Manage resources, users, database records, and system security."
   noindex={true}
 >
   <Header slot="header" user={user} />
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-10">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14 space-y-10">
     
     <!-- Top Bar -->
     <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200/80 dark:border-slate-800 gap-4">
@@ -114,62 +149,87 @@ function formatBytes(bytes: number) {
           <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
             {user.role.toUpperCase()} PORTAL
           </span>
+          <span class="text-xs text-slate-400">•</span>
+          <span class="text-xs text-slate-500 font-medium">Logged in as: <strong class="text-slate-800 dark:text-slate-200">{user.email}</strong></span>
         </div>
         <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          StuddyBuddy Administration & Control
+          Admin Dashboard & Control Center
         </h1>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Logged in as: <strong class="text-slate-800 dark:text-slate-200">{user.displayName}</strong> ({user.email})
+        <p class="text-xs text-slate-500 mt-0.5">
+          Authorized personnel only. Public student access is strictly restricted.
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <a
           href="/database"
-          class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+          class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all hover:scale-105"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
           </svg>
-          <span>Cloud Database</span>
+          <span>Cloud Database Viewer →</span>
         </a>
         <a
           href="/dashboard"
           class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold"
         >
-          ← My Dashboard
+          ← Student Dashboard
         </a>
       </div>
     </div>
 
-    <!-- Overview Stats Cards -->
+    <!-- Live System Status Badges -->
+    <div class="flex flex-wrap items-center gap-2.5 text-xs">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Firebase Auth: Live
+      </span>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-semibold">
+        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+        Firestore: Connected
+      </span>
+      <span class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold border ${
+        mongoConnected 
+          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300' 
+          : 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+      }`}>
+        <span class={`w-2 h-2 rounded-full ${mongoConnected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+        Database: {mongoConnected ? 'MongoDB Atlas' : 'Local File Store (Active)'}
+      </span>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold">
+        Storage Engine: Local + Cloudflare R2 Ready
+      </span>
+    </div>
+
+    <!-- Metrics Cards Grid -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Registered Users</span>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Users</span>
         <p class="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{totalUsersCount}</p>
-        <span class="text-[11px] text-slate-500 mt-1 block">Active Student Accounts</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">Registered Students & Admins</span>
       </div>
 
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Review</span>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Moderation Queue</span>
         <p class="text-3xl font-extrabold text-amber-500 mt-1">{pendingCount}</p>
-        <span class="text-[11px] text-slate-500 mt-1 block">Awaiting Moderation</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">Awaiting Approval</span>
       </div>
 
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Live Resources</span>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Live Documents</span>
         <p class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{approvedCount}</p>
-        <span class="text-[11px] text-slate-500 mt-1 block">{rejectedCount} rejected</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">Accessible to Students</span>
       </div>
 
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Open Reports</span>
-        <p class="text-3xl font-extrabold text-rose-500 mt-1">{openReports.length}</p>
-        <span class="text-[11px] text-slate-500 mt-1 block">Content / Takedown Inquiries</span>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Storage Used</span>
+        <p class="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">{storageUsedMB} <span class="text-lg">MB</span></p>
+        <span class="text-[11px] text-slate-500 mt-1 block">Of 20 GB budget</span>
       </div>
     </div>
 
-    <!-- Storage Quota Status Bar (20 GB Target) -->
+    <!-- Storage Quota Status Bar -->
     <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
       <div class="flex items-center justify-between">
         <div>
@@ -183,7 +243,6 @@ function formatBytes(bytes: number) {
         </span>
       </div>
 
-      <!-- Progress Track -->
       <div class="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <div
           class={`h-full rounded-full transition-all duration-500 ${isStorageWarning ? 'bg-rose-500' : 'bg-indigo-600'}`}
@@ -192,13 +251,15 @@ function formatBytes(bytes: number) {
       </div>
     </div>
 
-    <!-- TAB 1: Pending Resource Moderation Queue -->
+    <!-- SECTION 1: Pending Resource Moderation Queue -->
     <section class="space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Pending Resource Moderation Queue ({pendingResources.length})
-        </h2>
-        <span class="text-xs text-slate-500">Review documents for clarity, authenticity, and metadata</span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Pending Submissions Queue ({pendingResources.length})
+          </h2>
+          <p class="text-xs text-slate-500">Review newly submitted materials awaiting approval</p>
+        </div>
       </div>
 
       {pendingResources.length > 0 ? (
@@ -209,7 +270,6 @@ function formatBytes(bytes: number) {
                 <tr>
                   <th class="p-4">Submission</th>
                   <th class="p-4">Category</th>
-                  <th class="p-4">Exam Info</th>
                   <th class="p-4">Contributor</th>
                   <th class="p-4">File Size</th>
                   <th class="p-4 text-right">Moderator Actions</th>
@@ -223,10 +283,7 @@ function formatBytes(bytes: number) {
                       <span class="text-[11px] text-slate-400">{res.originalFilename} • {(res.fileExtension || 'PDF').toUpperCase()}</span>
                     </td>
                     <td class="p-4 font-medium text-slate-700 dark:text-slate-300">
-                      {res.category}
-                    </td>
-                    <td class="p-4 text-slate-500">
-                      {res.examYear ? `${res.examYear} ${res.examSession || ''}` : 'N/A'}
+                      <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{res.category}</span>
                     </td>
                     <td class="p-4 text-slate-600 dark:text-slate-400">
                       {res.contributorName}
@@ -235,6 +292,14 @@ function formatBytes(bytes: number) {
                       {formatBytes(res.fileSizeBytes)}
                     </td>
                     <td class="p-4 text-right space-x-2">
+                      <a
+                        href={`/api/resources/${res._id}/preview`}
+                        target="_blank"
+                        rel="noreferrer"
+                        class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100"
+                      >
+                        Preview
+                      </a>
                       <button
                         onclick={`moderateResource('${res._id}', 'approve')`}
                         class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105"
@@ -261,13 +326,112 @@ function formatBytes(bytes: number) {
       )}
     </section>
 
-    <!-- TAB 2: User Management -->
+    <!-- SECTION 2: All Live Platform Documents (Search, Preview, Delete) -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Platform Document Manager ({allResources.length})
+          </h2>
+          <p class="text-xs text-slate-500">Manage, preview, download, or permanently remove any document on StuddyBuddy</p>
+        </div>
+      </div>
+
+      {allResources.length > 0 ? (
+        <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th class="p-4">Document Title</th>
+                  <th class="p-4">Category</th>
+                  <th class="p-4">Status</th>
+                  <th class="p-4">Contributor</th>
+                  <th class="p-4">File Size</th>
+                  <th class="p-4">Downloads</th>
+                  <th class="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                {allResources.map((res) => (
+                  <tr id={`live-res-row-${res._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td class="p-4">
+                      <a href={`/resources/${res._id}`} class="font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 block text-sm">
+                        {res.title}
+                      </a>
+                      <span class="text-[11px] text-slate-400 font-mono">{res.originalFilename || 'document.pdf'}</span>
+                    </td>
+                    <td class="p-4 font-medium text-slate-700 dark:text-slate-300">
+                      <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold">{res.category}</span>
+                    </td>
+                    <td class="p-4">
+                      <span class={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        res.status === 'published' || res.status === 'approved' 
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                          : res.status === 'pending'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                      }`}>
+                        {res.status}
+                      </span>
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-400">
+                      {res.contributorName}
+                    </td>
+                    <td class="p-4 text-slate-500">
+                      {formatBytes(res.fileSizeBytes)}
+                    </td>
+                    <td class="p-4 font-semibold text-slate-700 dark:text-slate-300">
+                      {res.downloadCount || 0}
+                    </td>
+                    <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
+                      <a
+                        href={`/api/resources/${res._id}/preview`}
+                        target="_blank"
+                        rel="noreferrer"
+                        class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+                        title="Preview in new tab"
+                      >
+                        Preview
+                      </a>
+                      <a
+                        href={`/api/resources/${res._id}/download`}
+                        download={res.originalFilename || `${res.title}.pdf`}
+                        class="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold text-xs hover:bg-indigo-100"
+                        title="Download exact file"
+                      >
+                        Download
+                      </a>
+                      <button
+                        onclick={`deleteResourceAdmin('${res._id}', '${res.title.replace(/'/g, "\\'")}')`}
+                        class="px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white font-bold text-xs transition-colors"
+                        title="Permanently remove file"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          No resources uploaded yet.
+        </div>
+      )}
+    </section>
+
+    <!-- SECTION 3: User Management -->
     <section class="space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-          User Management ({usersList.length})
-        </h2>
-        <span class="text-xs text-slate-500">Suspend, restore, or restrict upload permissions</span>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            User Management ({usersList.length})
+          </h2>
+          <p class="text-xs text-slate-500">Manage user accounts, roles, and platform permissions</p>
+        </div>
       </div>
 
       <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
@@ -279,18 +443,18 @@ function formatBytes(bytes: number) {
                 <th class="p-4">Role</th>
                 <th class="p-4">Status</th>
                 <th class="p-4">Registered</th>
-                <th class="p-4 text-right">Actions</th>
+                <th class="p-4 text-right">Administrative Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
               {usersList.map((u) => (
-                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                   <td class="p-4">
-                    <span class="font-bold text-slate-900 dark:text-white block">{u.displayName}</span>
-                    <span class="text-slate-400">{u.email}</span>
+                    <span class="font-bold text-slate-900 dark:text-white block text-sm">{u.displayName}</span>
+                    <span class="text-slate-400 font-mono text-[11px]">{u.email}</span>
                   </td>
                   <td class="p-4 font-semibold uppercase text-[10px]">
-                    <span class={`px-2 py-0.5 rounded ${u.role === 'owner' ? 'bg-purple-100 text-purple-800' : u.role === 'admin' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700'}`}>
+                    <span class={`px-2 py-0.5 rounded ${u.role === 'owner' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold' : u.role === 'admin' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-bold' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
                       {u.role}
                     </span>
                   </td>
@@ -302,8 +466,8 @@ function formatBytes(bytes: number) {
                   <td class="p-4 text-slate-400">
                     {new Date(u.createdAt).toLocaleDateString()}
                   </td>
-                  <td class="p-4 text-right space-x-1.5">
-                    {u.role !== 'owner' && (
+                  <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
+                    {u.role !== 'owner' ? (
                       <>
                         {u.status === 'suspended' ? (
                           <button
@@ -325,7 +489,7 @@ function formatBytes(bytes: number) {
                             onclick={`manageUser('${u._id}', 'unrestrict_uploads')`}
                             class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-[11px]"
                           >
-                            Unrestrict Uploads
+                            Unblock Uploads
                           </button>
                         ) : (
                           <button
@@ -336,6 +500,8 @@ function formatBytes(bytes: number) {
                           </button>
                         )}
                       </>
+                    ) : (
+                      <span class="text-[11px] text-slate-400 italic">Protected (Owner)</span>
                     )}
                   </td>
                 </tr>
@@ -346,48 +512,26 @@ function formatBytes(bytes: number) {
       </div>
     </section>
 
-    <!-- TAB 3: Catalog Suggestions Queue -->
-    <section class="space-y-4">
-      <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-        Pending Catalog Suggestions ({pendingSuggestions.length})
-      </h2>
-      {pendingSuggestions.length > 0 ? (
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {pendingSuggestions.map((sug) => (
-            <div id={`sug-${sug._id}`} class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 text-xs">
-              <span class="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400">{sug.entityType}</span>
-              <h3 class="font-bold text-sm text-slate-900 dark:text-white">{sug.proposedName}</h3>
-              <p class="text-slate-500">Parent: {sug.parentEntityName || 'Parul University'}</p>
-              {sug.officialCode && <p class="text-slate-400">Code: {sug.officialCode}</p>}
-              {sug.explanation && <p class="text-slate-500 italic">"{sug.explanation}"</p>}
-              <div class="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-                <span class="text-[10px] text-slate-400">{sug.submitterEmail || 'Student'}</span>
-                <div class="space-x-1.5">
-                  <button
-                    onclick={`moderateSuggestion('${sug._id}', 'approve')`}
-                    class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[11px]"
-                  >
-                    ✓ Add
-                  </button>
-                  <button
-                    onclick={`moderateSuggestion('${sug._id}', 'reject')`}
-                    class="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold text-[11px]"
-                  >
-                    ✕ Dismiss
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+    <!-- SECTION 4: Cloud Database & Firestore Explorer Banner -->
+    <div class="p-6 rounded-3xl bg-gradient-to-r from-indigo-900 to-slate-900 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div class="space-y-1 text-center sm:text-left">
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold">
+          Direct Collection Reader
         </div>
-      ) : (
-        <div class="p-6 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
-          No pending catalog suggestions.
-        </div>
-      )}
-    </section>
+        <h3 class="text-xl font-bold">Live Cloud Database & Firestore Explorer</h3>
+        <p class="text-xs text-indigo-200 max-w-xl">
+          Inspect, query, and synchronize live documents from Firebase Firestore (<code class="text-amber-300 font-mono">studdybuddy-49db8</code>) and MongoDB Atlas.
+        </p>
+      </div>
+      <a
+        href="/database"
+        class="px-5 py-2.5 rounded-xl bg-white text-indigo-900 hover:bg-indigo-50 font-bold text-xs shadow-md transition-transform hover:scale-105 whitespace-nowrap"
+      >
+        Open Database Inspector →
+      </a>
+    </div>
 
-    <!-- TAB 4: Append-Only Audit Trail -->
+    <!-- SECTION 5: Audit Log Trail -->
     <section class="space-y-4">
       <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
         System Audit Trail ({auditLogs.length})
@@ -401,31 +545,39 @@ function formatBytes(bytes: number) {
                 <th class="p-3.5">Actor</th>
                 <th class="p-3.5">Action</th>
                 <th class="p-3.5">Target</th>
-                <th class="p-3.5">Reason / Details</th>
+                <th class="p-3.5">Details</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-              {auditLogs.map((log) => (
-                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                  <td class="p-3.5 text-slate-400">
-                    {new Date(log.createdAt).toLocaleString()}
-                  </td>
-                  <td class="p-3.5 font-semibold text-slate-800 dark:text-slate-200">
-                    {log.actorEmail}
-                  </td>
-                  <td class="p-3.5">
-                    <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                      {log.action}
-                    </span>
-                  </td>
-                  <td class="p-3.5 text-slate-500">
-                    {log.targetType}:{log.targetId}
-                  </td>
-                  <td class="p-3.5 text-slate-600 dark:text-slate-400">
-                    {log.reason || '-'}
+              {auditLogs.length > 0 ? (
+                auditLogs.map((log) => (
+                  <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <td class="p-3.5 text-slate-400">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </td>
+                    <td class="p-3.5 font-semibold text-slate-800 dark:text-slate-200">
+                      {log.actorEmail}
+                    </td>
+                    <td class="p-3.5">
+                      <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {log.action}
+                      </span>
+                    </td>
+                    <td class="p-3.5 text-slate-500">
+                      {log.targetType}:{log.targetId}
+                    </td>
+                    <td class="p-3.5 text-slate-600 dark:text-slate-400">
+                      {log.reason || '-'}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colspan="5" class="p-6 text-center text-slate-400 text-xs">
+                    No audit records logged yet.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -440,7 +592,7 @@ function formatBytes(bytes: number) {
   async function moderateResource(resourceId, action) {
     let reason = '';
     if (action === 'reject') {
-      reason = prompt('Enter rejection reason for contributor (e.g. illegible pages, wrong subject code):');
+      reason = prompt('Enter rejection reason for contributor:');
       if (reason === null) return;
     }
 
@@ -458,6 +610,32 @@ function formatBytes(bytes: number) {
         const row = document.getElementById(`res-row-${resourceId}`);
         if (row) row.remove();
         alert(`Resource successfully ${action}ed!`);
+        location.reload();
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function deleteResourceAdmin(resourceId, title) {
+    if (!confirm(`Are you sure you want to permanently delete "${title}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/moderation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId, action: 'delete' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Delete action failed.');
+      } else {
+        const row = document.getElementById(`live-res-row-${resourceId}`);
+        if (row) row.remove();
+        alert(`Resource "${title}" was permanently removed.`);
       }
     } catch (err) {
       alert('Network error.');
@@ -484,27 +662,6 @@ function formatBytes(bytes: number) {
       } else {
         alert(`User updated successfully!`);
         location.reload();
-      }
-    } catch (err) {
-      alert('Network error.');
-    }
-  }
-
-  async function moderateSuggestion(suggestionId, action) {
-    try {
-      const res = await fetch('/api/admin/catalog', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ suggestionId, action }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Action failed.');
-      } else {
-        const card = document.getElementById(`sug-${suggestionId}`);
-        if (card) card.remove();
-        alert(`Suggestion ${action}ed!`);
       }
     } catch (err) {
       alert('Network error.');

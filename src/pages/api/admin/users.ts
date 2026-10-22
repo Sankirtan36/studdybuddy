@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../../server/db/mongo';
 import { revokeAllUserSessions } from '../../../server/auth/session';
-import { ObjectId } from 'mongodb';
+import { findUserById, updateUser } from '../../../server/auth/userStore';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const adminUser = locals.user;
@@ -23,13 +23,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    const db = await getDb();
-    let query: any = { _id: userId };
-    if (ObjectId.isValid(userId)) {
-      query = { $or: [{ _id: new ObjectId(userId) }, { _id: userId }] };
-    }
-
-    const targetUser = await db.collection('users').findOne(query);
+    const targetUser = await findUserById(userId);
     if (!targetUser) {
       return new Response(JSON.stringify({ error: 'User not found' }), {
         status: 404,
@@ -79,18 +73,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    await db.collection('users').updateOne(query, { $set: updates });
+    await updateUser(userId, updates);
 
-    // Append-only audit record
-    await db.collection('auditLogs').insertOne({
-      actorId: adminUser.id,
-      actorEmail: adminUser.email,
-      action: `user_${action}`,
-      targetType: 'user',
-      targetId: userId,
-      reason: reason || action,
-      createdAt: now,
-    });
+    // Append-only audit record in MongoDB if available
+    try {
+      const db = await getDb();
+      await db.collection('auditLogs').insertOne({
+        actorId: adminUser.id,
+        actorEmail: adminUser.email,
+        action: `user_${action}`,
+        targetType: 'user',
+        targetId: userId,
+        reason: reason || action,
+        createdAt: now,
+      });
+    } catch {}
 
     return new Response(JSON.stringify({ ok: true, action, userId }), {
       status: 200,

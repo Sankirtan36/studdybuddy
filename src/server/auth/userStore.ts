@@ -14,7 +14,7 @@ function ensureDataDir() {
   }
 }
 
-function readLocalUsers(): User[] {
+export function readLocalUsers(): User[] {
   ensureDataDir();
   if (!fs.existsSync(USERS_FILE)) return [];
   try {
