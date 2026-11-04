@@ -174,6 +174,15 @@ export interface SavedResource {
   createdAt: Date;
 }
 
+// Recently Viewed Resources
+export interface RecentlyViewedResource {
+  _id?: ObjectId | string;
+  userId: string;
+  universityId: string;
+  resourceId: string;
+  viewedAt: Date;
+}
+
 // Catalog Suggestions
 export interface CatalogSuggestion {
   _id?: ObjectId | string;

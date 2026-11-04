@@ -3,7 +3,8 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/layout/Header.astro';
 import Footer from '../../components/layout/Footer.astro';
 import ResourceCard from '../../components/resources/ResourceCard.astro';
-import { getResourceById, incrementResourceView, searchResources } from '../../server/repositories/resourceRepository';
+import { getResourceById, incrementResourceView, recordResourceView, searchResources } from '../../server/repositories/resourceRepository';
+import { getUniversityBySlug } from '../../server/repositories/catalogRepository';
 
 const { id } = Astro.params;
 
@@ -14,16 +15,36 @@ if (!id) {
 const resource = await getResourceById(id);
 
 // Only approved resources are publicly visible
-if (!resource || resource.status !== 'approved') {
+if (!resource || (resource.status !== 'approved' && (resource.status as string) !== 'published')) {
   return new Response('Resource Not Found or Pending Moderation', { status: 404 });
+}
+
+const currentUser = Astro.locals.user;
+
+// Strict University Isolation: If user has an assigned university, block cross-university access
+if (currentUser && currentUser.universityId && resource.universityId) {
+  if (currentUser.universityId !== resource.universityId && currentUser.role !== 'admin' && currentUser.role !== 'owner') {
+    return new Response('Access Denied: This resource is restricted to its authorized university campus.', { status: 403 });
+  }
 }
 
 // Increment view count asynchronously
 await incrementResourceView(id);
 
+// Track in student's recently viewed history
+if (currentUser?.id && resource.universityId) {
+  await recordResourceView(currentUser.id, resource.universityId, id);
+}
+
+// Fetch university for accurate academic branding
+const resourceUni = resource.universityId ? await getUniversityBySlug(resource.universityId) : null;
+const universityName = resourceUni?.name || resource.universityId || 'Parul University';
+const universitySlug = resourceUni?.slug || resource.universityId || 'parul-university';
+
 // Fetch related resources in the same program or subject
 const relatedRes = await searchResources({
   status: 'approved',
+  universityId: resource.universityId,
   programId: resource.programId,
   limit: 3,
 });
@@ -55,7 +76,7 @@ const resourceUrl = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).
       <span>/</span>
       <a href="/resources" class="hover:text-indigo-600 dark:hover:text-indigo-400">Resources</a>
       <span>/</span>
-      <a href={`/university/parul-university`} class="hover:text-indigo-600 dark:hover:text-indigo-400">Parul University</a>
+      <a href={`/university/${universitySlug}`} class="hover:text-indigo-600 dark:hover:text-indigo-400">{universityName}</a>
       <span>/</span>
       <span class="text-slate-900 dark:text-white font-medium truncate max-w-xs">{resource.title}</span>
     </nav>
@@ -85,7 +106,7 @@ const resourceUrl = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
         <div>
           <span class="block text-slate-400 font-medium uppercase text-[10px]">Institution</span>
-          <span class="font-semibold text-slate-800 dark:text-slate-200">Parul University</span>
+          <span class="font-semibold text-slate-800 dark:text-slate-200">{universityName}</span>
         </div>
         <div>
           <span class="block text-slate-400 font-medium uppercase text-[10px]">Exam Session</span>

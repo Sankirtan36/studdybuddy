@@ -29,13 +29,14 @@ import { getStorage } from "firebase/storage";
 
 // Firebase configuration provided by user
 export const firebaseConfig = {
-  apiKey: "AIzaSyB9PQsxEze-qr2vbVL-1kOHVnjpozvAzEo",
-  authDomain: "studdybuddy-49db8.firebaseapp.com",
-  projectId: "studdybuddy-49db8",
-  storageBucket: "studdybuddy-49db8.firebasestorage.app",
-  messagingSenderId: "1002920824791",
-  appId: "1:1002920824791:web:b28a7ec17842e988740592",
-  measurementId: "G-MT9KTZK2PL"
+  
+  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.PUBLIC_FIREBASE_APP_ID,
+  measurementID:import.meta.env.MEASUREMENT_ID
 };
 
 // Initialize Firebase App safely (singleton pattern)

@@ -1,5 +1,5 @@
 import { getDb } from '../db/mongo';
-import type { Resource, ResourceCategory, ResourceStatus, SupportedFileExtension } from '../../types';
+import type { Resource, ResourceCategory, ResourceStatus, SupportedFileExtension, RecentlyViewedResource } from '../../types';
 import { ObjectId } from 'mongodb';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,6 +8,7 @@ import { deleteObjectFromStorage } from '../storage/storage';
 
 const DATA_DIR = path.resolve(process.cwd(), '.data');
 const RESOURCES_FILE = path.join(DATA_DIR, 'resources.json');
+const RECENT_VIEWS_FILE = path.join(DATA_DIR, 'recent-views.json');
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -29,6 +30,26 @@ export function readLocalResources(): Resource[] {
 export function writeLocalResources(resources: Resource[]) {
   ensureDataDir();
   fs.writeFileSync(RESOURCES_FILE, JSON.stringify(resources, null, 2), 'utf8');
+}
+
+export function readLocalRecentViews(): RecentlyViewedResource[] {
+  ensureDataDir();
+  if (!fs.existsSync(RECENT_VIEWS_FILE)) return [];
+  try {
+    const raw = fs.readFileSync(RECENT_VIEWS_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed.map((item: any) => ({
+      ...item,
+      viewedAt: new Date(item.viewedAt),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export function writeLocalRecentViews(views: RecentlyViewedResource[]) {
+  ensureDataDir();
+  fs.writeFileSync(RECENT_VIEWS_FILE, JSON.stringify(views, null, 2), 'utf8');
 }
 
 export interface ResourceFilterOptions {
@@ -323,5 +344,119 @@ export async function deleteUserResource(
   } catch (err: any) {
     return { success: false, error: err?.message || 'Database error deleting resource' };
   }
+}
+
+/**
+ * Record a student viewing a resource. Updates viewedAt if already viewed, shifting to front.
+ */
+export async function recordResourceView(
+  userId: string,
+  universityId: string,
+  resourceId: string
+): Promise<void> {
+  if (!userId || !resourceId || !universityId) return;
+  const now = new Date();
+
+  // 1. Persist to MongoDB if available
+  try {
+    const db = await getDb();
+    await db.collection('recentlyViewedResources').updateOne(
+      { userId, resourceId },
+      {
+        $set: {
+          universityId,
+          viewedAt: now,
+        },
+      },
+      { upsert: true }
+    );
+  } catch (err: any) {
+    // Non-blocking MongoDB fallback
+  }
+
+  // 2. Always maintain local fallback store in sync
+  try {
+    const views = readLocalRecentViews();
+    const filtered = views.filter((v) => !(v.userId === userId && v.resourceId === resourceId));
+    filtered.unshift({
+      userId,
+      universityId,
+      resourceId,
+      viewedAt: now,
+    });
+    // Keep reasonable limit per student
+    writeLocalRecentViews(filtered.slice(0, 100));
+  } catch (err: any) {
+    console.warn('[ResourceRepository] Local recent views write error:', err?.message);
+  }
+}
+
+/**
+ * Get recently viewed resources for a student within their authorized university space.
+ * Only returns resources that still exist, are approved, and belong to this university.
+ */
+export async function getRecentlyViewedResources(
+  userId: string,
+  universityId: string,
+  limit: number = 6
+): Promise<Array<Resource & { viewedAt: Date }>> {
+  if (!userId || !universityId) return [];
+
+  let recentEntries: Array<{ resourceId: string; viewedAt: Date }> = [];
+
+  // 1. Try fetching from MongoDB
+  try {
+    const db = await getDb();
+    const docs = await db
+      .collection<RecentlyViewedResource>('recentlyViewedResources')
+      .find({ userId, universityId })
+      .sort({ viewedAt: -1 })
+      .limit(limit * 2)
+      .toArray();
+
+    if (docs.length > 0) {
+      recentEntries = docs.map((d) => ({
+        resourceId: d.resourceId,
+        viewedAt: new Date(d.viewedAt),
+      }));
+    }
+  } catch (err) {
+    // fallback
+  }
+
+  // 2. Fallback to local store if DB was empty or unavailable
+  if (recentEntries.length === 0) {
+    const localViews = readLocalRecentViews();
+    recentEntries = localViews
+      .filter((v) => v.userId === userId && v.universityId === universityId)
+      .sort((a, b) => b.viewedAt.getTime() - a.viewedAt.getTime())
+      .slice(0, limit * 2)
+      .map((d) => ({ resourceId: d.resourceId, viewedAt: d.viewedAt }));
+  }
+
+  // 3. Resolve exact resources and re-verify access & existence
+  const result: Array<Resource & { viewedAt: Date }> = [];
+  const seenIds = new Set<string>();
+
+  for (const entry of recentEntries) {
+    if (seenIds.has(entry.resourceId)) continue;
+    seenIds.add(entry.resourceId);
+
+    const resource = await getResourceById(entry.resourceId);
+    if (!resource) continue;
+
+    // Strict access validation: must be approved and match university
+    if (resource.status !== 'approved' && (resource.status as string) !== 'published') continue;
+    if (resource.universityId && resource.universityId !== universityId) continue;
+
+    result.push({
+      ...resource,
+      viewedAt: entry.viewedAt,
+    });
+
+    if (result.length >= limit) break;
+  }
+
+  return result;
 }
 

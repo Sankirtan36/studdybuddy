@@ -43,10 +43,10 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
     });
   }
 
-  // University-specific access enforcement for campus-restricted materials
-  if ((resource as any).isCampusRestricted && resource.universityId) {
-    const user = locals?.user;
-    if (!user || (user.universityId !== resource.universityId && user.role !== 'admin' && user.role !== 'owner')) {
+  // University-specific access enforcement
+  const user = locals?.user;
+  if (user && user.universityId && resource.universityId) {
+    if (user.universityId !== resource.universityId && user.role !== 'admin' && user.role !== 'owner') {
       return new Response(JSON.stringify({ error: 'This resource is restricted to verified campus students.' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },

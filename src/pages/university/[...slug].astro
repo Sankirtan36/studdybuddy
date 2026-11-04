@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/layout/Header.astro';
 import Footer from '../../components/layout/Footer.astro';
 import ResourceCard from '../../components/resources/ResourceCard.astro';
+import RecentResourceCard from '../../components/resources/RecentResourceCard.astro';
 import SemesterCard from '../../components/academic/SemesterCard.astro';
 import SubjectCard from '../../components/academic/SubjectCard.astro';
 import AcademicBreadcrumb from '../../components/academic/AcademicBreadcrumb.astro';
@@ -17,8 +18,9 @@ import {
   getSubjectsByProgramAndTerm,
   getSubjectsByProgram,
   getSubjectBySlug,
+  getUniversitySearchItems,
 } from '../../server/repositories/catalogRepository';
-import { searchResources } from '../../server/repositories/resourceRepository';
+import { searchResources, getRecentlyViewedResources } from '../../server/repositories/resourceRepository';
 import type { Resource } from '../../types';
 
 const { slug } = Astro.params;
@@ -52,6 +54,14 @@ let terms: any[] = [];
 let subjects: any[] = [];
 let resources: Resource[] = [];
 let categoryCounts: Record<string, number> = {};
+
+// Level 1 University Space: Smart Search & Recently Viewed state
+let recentlyViewed: Array<Resource & { viewedAt: Date }> = [];
+let searchQuery = '';
+let searchResults: Resource[] = [];
+let searchTotal = 0;
+let smartSearchItems: any[] = [];
+let matchingSubjects: any[] = [];
 
 let activeCategoryMeta = {
   title: 'All Study Materials',
@@ -239,6 +249,35 @@ if (subject) {
 } else {
   // LEVEL 1: University Overview -> List Faculties / Departments
   faculties = await getFacultiesByUniversity(uniSlug);
+  smartSearchItems = await getUniversitySearchItems(uniSlug);
+
+  const currentUser = Astro.locals.user;
+  if (currentUser?.id) {
+    recentlyViewed = await getRecentlyViewedResources(currentUser.id, uniSlug, 6);
+  }
+
+  // University-Specific Smart Search query
+  const q = (Astro.url.searchParams.get('q') || Astro.url.searchParams.get('search') || '').trim();
+  if (q) {
+    searchQuery = q;
+    const qLower = q.toLowerCase();
+    matchingSubjects = smartSearchItems.filter(
+      (item) =>
+        item.name.toLowerCase().includes(qLower) ||
+        (item.code && item.code.toLowerCase().includes(qLower)) ||
+        item.semester.toLowerCase().includes(qLower) ||
+        item.branch.toLowerCase().includes(qLower)
+    );
+
+    const searchRes = await searchResources({
+      search: q,
+      universityId: uniSlug,
+      status: 'approved',
+      limit: 24,
+    });
+    searchResults = searchRes.resources;
+    searchTotal = searchResults.length + matchingSubjects.length;
+  }
 }
 
 // Dynamic Titles
@@ -450,9 +489,6 @@ if (subject) {
         <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div class="flex items-center gap-2 mb-2">
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
-                Step 3 of 5
-              </span>
               <span class="text-xs text-slate-400 font-medium">{faculty?.name}</span>
             </div>
             <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -497,9 +533,6 @@ if (subject) {
         <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div class="flex items-center gap-2 mb-2">
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
-                Step 2 of 5
-              </span>
               <span class="text-xs text-slate-400 font-medium">{university.name}</span>
             </div>
             <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -558,9 +591,6 @@ if (subject) {
         <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div class="flex items-center gap-2 mb-2">
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
-                Step 1 of 5
-              </span>
               <span class="text-xs text-slate-400 font-medium">{university.location}</span>
             </div>
             <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -587,37 +617,412 @@ if (subject) {
           </div>
         </div>
 
-        <!-- Faculties Grid -->
-        <div class="space-y-4">
-          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Academic Faculties & Departments ({faculties.length})
-          </h2>
+        <!-- Campus Affinity Notice (if student belongs to another campus) -->
+        {Astro.locals.user?.universityId && Astro.locals.user.universityId !== uniSlug && Astro.locals.user.role !== 'admin' && Astro.locals.user.role !== 'owner' && (
+          <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-200 text-xs flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-base">ℹ️</span>
+              <span>
+                You are currently exploring <strong>{university.name}</strong>. Search results and course materials on this page are strictly isolated to this institution.
+              </span>
+            </div>
+            <a
+              href={`/university/${Astro.locals.user.universityId}`}
+              class="font-bold underline hover:text-amber-900 dark:hover:text-amber-100 shrink-0"
+            >
+              Go to my campus →
+            </a>
+          </div>
+        )}
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {faculties.map((fac) => (
+        <!-- University-Specific Smart Search Box with Google-style Autocomplete -->
+        <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
+                <h2 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                  Smart Search
+                </h2>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Type subject name or subject code to instantly find curriculum courses, PYQs, and notes.
+              </p>
+            </div>
+            {searchQuery && (
               <a
-                href={`/university/${uniSlug}/${fac.slug}`}
-                class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+                href={`/university/${uniSlug}`}
+                class="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline shrink-0"
               >
-                <div>
-                  <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm mb-3 group-hover:scale-105 transition-transform">
-                    {fac.name.charAt(0)}
-                  </div>
-                  <h3 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {fac.name}
-                  </h3>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{university.name}</p>
-                </div>
-                <span class="mt-4 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                  Explore Programs →
-                </span>
+                ✕ Clear search
               </a>
-            ))}
+            )}
+          </div>
+
+          <div class="relative z-30" id="smart-search-wrapper">
+            <form action={`/university/${uniSlug}`} method="GET" class="relative flex items-center gap-2">
+              <div class="relative flex-1">
+                <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  id="smart-search-input"
+                  type="text"
+                  name="q"
+                  autocomplete="off"
+                  value={searchQuery}
+                  placeholder="Search by subject name or code (e.g. Data Structures, CSE102, Math 1)..."
+                  class="w-full pl-10 pr-10 py-3 text-sm rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                />
+                <button
+                  type="button"
+                  id="smart-search-clear"
+                  class={`absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 text-xs font-bold rounded-full ${searchQuery ? '' : 'hidden'}`}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              </div>
+              <button
+                type="submit"
+                class="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0"
+              >
+                Search
+              </button>
+            </form>
+
+            <!-- Google-Style Autocomplete Floating Menu -->
+            <div
+              id="smart-search-dropdown"
+              class="hidden absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/80 max-h-96 overflow-y-auto text-left z-50 transition-all"
+            ></div>
           </div>
         </div>
+
+        <!-- Recently Viewed Resources (Isolated to student and this university) -->
+        {!searchQuery && recentlyViewed.length > 0 && (
+          <div class="space-y-4">
+            <div class="flex items-center justify-between px-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                  Recently Viewed Resources ({recentlyViewed.length})
+                </h3>
+              </div>
+              <span class="text-xs text-slate-400">Reopen your active study files directly</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recentlyViewed.map((res) => (
+                <RecentResourceCard resource={res} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <!-- Search Results (When query is active) -->
+        {searchQuery ? (
+          <div class="space-y-8">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800">
+              <div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white">
+                  Search Results ({searchTotal})
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Matches for &ldquo;<span class="font-semibold text-slate-700 dark:text-slate-200">{searchQuery}</span>&rdquo; in this university
+                </p>
+              </div>
+              <a
+                href={`/university/${uniSlug}`}
+                class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                View all faculties →
+              </a>
+            </div>
+
+            {/* Matching Subjects Section */}
+            {matchingSubjects.length > 0 && (
+              <div class="space-y-3">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <span>Matching Subjects ({matchingSubjects.length})</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {matchingSubjects.map((subj) => (
+                    <a
+                      href={subj.url}
+                      class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+                    >
+                      <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
+                            {subj.code ? subj.code : 'Subject'}
+                          </span>
+                          <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{subj.semester}</span>
+                        </div>
+                        <h4 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {subj.name} {subj.code && `(${subj.code})`}
+                        </h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{subj.branch}</p>
+                      </div>
+                      <div class="mt-4 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                        <span>Open Subject Hub</span>
+                        <span class="group-hover:translate-x-1 transition-transform">→</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Matching Uploaded Materials */}
+            {searchResults.length > 0 && (
+              <div class="space-y-3">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <span>Uploaded Study Materials & PYQs ({searchResults.length})</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {searchResults.map((res) => (
+                    <ResourceCard resource={res} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {matchingSubjects.length === 0 && searchResults.length === 0 && (
+              <div class="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 space-y-4 shadow-sm">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl font-bold">
+                  🔍
+                </div>
+                <div class="space-y-1">
+                  <h4 class="text-lg font-bold text-slate-900 dark:text-white">
+                    No Matching Courses or Resources Found
+                  </h4>
+                  <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                    We couldn't find any subjects or approved study materials matching &ldquo;{searchQuery}&rdquo;.
+                  </p>
+                </div>
+                <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+                  <a
+                    href={`/upload?university=${encodeURIComponent(university.slug)}`}
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-transform hover:scale-105"
+                  >
+                    + Upload This Material
+                  </a>
+                  <a
+                    href={`/university/${uniSlug}`}
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl transition-colors"
+                  >
+                    Clear Search
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Academic Faculties & Departments ({faculties.length})
+            </h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {faculties.map((fac) => (
+                <a
+                  href={`/university/${uniSlug}/${fac.slug}`}
+                  class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+                >
+                  <div>
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm mb-3 group-hover:scale-105 transition-transform">
+                      {fac.name.charAt(0)}
+                    </div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      {fac.name}
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{university.name}</p>
+                  </div>
+                  <span class="mt-4 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                    Explore Programs →
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )}
   </div>
+
+  <!-- Smart Search Catalog Payload & Google-Style Dropdown Script -->
+  <script id="smart-search-catalog-data" type="application/json" set:html={JSON.stringify(smartSearchItems)} />
+
+  <script is:inline>
+    function initSmartSearch() {
+      const input = document.getElementById('smart-search-input');
+      const dropdown = document.getElementById('smart-search-dropdown');
+      const wrapper = document.getElementById('smart-search-wrapper');
+      const clearBtn = document.getElementById('smart-search-clear');
+      const dataTag = document.getElementById('smart-search-catalog-data');
+
+      if (!input || !dropdown || !dataTag) return;
+
+      let items = [];
+      try {
+        items = JSON.parse(dataTag.textContent || '[]');
+      } catch (e) {
+        items = [];
+      }
+
+      let currentMatches = [];
+      let selectedIndex = -1;
+
+      function escapeHtml(str) {
+        return (str || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+      }
+
+      function highlightMatch(text, query) {
+        if (!query) return escapeHtml(text);
+        const safeText = escapeHtml(text);
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedQuery})`, 'gi');
+        return safeText.replace(regex, '<span class="text-indigo-600 dark:text-indigo-400 font-extrabold underline decoration-indigo-300 dark:decoration-indigo-700">$1</span>');
+      }
+
+      function renderDropdown(matches, query) {
+        currentMatches = matches;
+        selectedIndex = -1;
+
+        if (!matches.length) {
+          if (query) {
+            dropdown.innerHTML = `
+              <div class="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                No subjects found matching &ldquo;<span class="font-bold text-slate-700 dark:text-slate-200">${escapeHtml(query)}</span>&rdquo;.
+                <div class="mt-1 text-[11px] text-slate-400">Press Enter to search all uploaded materials.</div>
+              </div>
+            `;
+            dropdown.classList.remove('hidden');
+          } else {
+            dropdown.classList.add('hidden');
+          }
+          return;
+        }
+
+        const rows = matches.slice(0, 8).map((item, idx) => {
+          const codeText = item.code ? ` (${item.code})` : '';
+          const titleWithCode = `${item.name}${codeText}`;
+          return `
+            <a
+              href="${item.url}"
+              data-index="${idx}"
+              class="smart-dropdown-item flex items-center justify-between px-4 py-3 hover:bg-indigo-50/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer group"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-100/60 dark:border-indigo-900/60 group-hover:scale-105 transition-transform">
+                  ${item.type === 'resource' ? '📄' : '📘'}
+                </div>
+                <div class="min-w-0 text-left">
+                  <div class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                    ${highlightMatch(titleWithCode, query)}
+                  </div>
+                  <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                    <span class="font-semibold text-indigo-600 dark:text-indigo-400 shrink-0">${escapeHtml(item.semester || 'Curriculum')}</span>
+                    <span class="text-slate-300 dark:text-slate-600">•</span>
+                    <span class="truncate">${escapeHtml(item.branch || '')}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0 pl-3 text-xs font-semibold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
+                <span>Open</span>
+                <span>→</span>
+              </div>
+            </a>
+          `;
+        }).join('');
+
+        const footer = `
+          <div class="px-4 py-2 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Use <kbd class="px-1 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 text-[10px]">↑</kbd> <kbd class="px-1 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 text-[10px]">↓</kbd> to navigate, <kbd class="px-1 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 text-[10px]">↵ Enter</kbd> to select</span>
+            <span class="text-indigo-600 dark:text-indigo-400 font-semibold">${matches.length} matches</span>
+          </div>
+        `;
+
+        dropdown.innerHTML = rows + footer;
+        dropdown.classList.remove('hidden');
+      }
+
+      function updateActive() {
+        const dropdownItems = dropdown.querySelectorAll('.smart-dropdown-item');
+        dropdownItems.forEach((item, idx) => {
+          if (idx === selectedIndex) {
+            item.classList.add('bg-indigo-50', 'dark:bg-slate-800');
+            item.scrollIntoView({ block: 'nearest' });
+          } else {
+            item.classList.remove('bg-indigo-50', 'dark:bg-slate-800');
+          }
+        });
+      }
+
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        if (clearBtn) {
+          if (q) clearBtn.classList.remove('hidden');
+          else clearBtn.classList.add('hidden');
+        }
+
+        if (!q) {
+          dropdown.classList.add('hidden');
+          return;
+        }
+
+        const matches = items.filter((item) => {
+          const nameMatch = item.name && item.name.toLowerCase().includes(q);
+          const codeMatch = item.code && item.code.toLowerCase().includes(q);
+          const semMatch = item.semester && item.semester.toLowerCase().includes(q);
+          const branchMatch = item.branch && item.branch.toLowerCase().includes(q);
+          return nameMatch || codeMatch || semMatch || branchMatch;
+        });
+
+        renderDropdown(matches, input.value.trim());
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (dropdown.classList.contains('hidden')) return;
+
+        const maxIdx = currentMatches.length - 1;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          selectedIndex = selectedIndex < maxIdx ? selectedIndex + 1 : 0;
+          updateActive();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : maxIdx;
+          updateActive();
+        } else if (e.key === 'Enter') {
+          if (selectedIndex >= 0 && currentMatches[selectedIndex]) {
+            e.preventDefault();
+            window.location.href = currentMatches[selectedIndex].url;
+          }
+        } else if (e.key === 'Escape') {
+          dropdown.classList.add('hidden');
+        }
+      });
+
+      clearBtn?.addEventListener('click', () => {
+        input.value = '';
+        clearBtn.classList.add('hidden');
+        dropdown.classList.add('hidden');
+        input.focus();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (wrapper && !wrapper.contains(e.target)) {
+          dropdown.classList.add('hidden');
+        }
+      });
+    }
+
+    initSmartSearch();
+    document.addEventListener('DOMContentLoaded', initSmartSearch);
+    document.addEventListener('astro:page-load', initSmartSearch);
+  </script>
 
   <Footer slot="footer" />
 </Layout>

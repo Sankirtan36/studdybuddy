@@ -149,6 +149,10 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await db.collection('savedResources').createIndex({ userId: 1, resourceId: 1 }, { unique: true });
   await db.collection('savedResources').createIndex({ userId: 1 });
 
+  // Recently Viewed Resources: unique per user+resource with fast lookup by university
+  await db.collection('recentlyViewedResources').createIndex({ userId: 1, resourceId: 1 }, { unique: true });
+  await db.collection('recentlyViewedResources').createIndex({ userId: 1, universityId: 1, viewedAt: -1 });
+
   // Catalog Suggestions
   await db.collection('catalogSuggestions').createIndex({ status: 1 });
   await db.collection('catalogSuggestions').createIndex({ entityType: 1 });

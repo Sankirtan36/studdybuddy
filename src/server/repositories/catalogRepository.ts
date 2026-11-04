@@ -326,3 +326,40 @@ export async function getSubjectsByProgramAndTerm(
   return filtered.length > 0 ? filtered : allSubjects;
 }
 
+export interface SmartSearchCatalogItem {
+  type: 'subject' | 'resource';
+  name: string;
+  code?: string;
+  semester: string;
+  branch: string;
+  url: string;
+}
+
+/**
+ * Get all searchable subject items for Google-like smart search autocomplete
+ */
+export async function getUniversitySearchItems(uniSlug: string): Promise<SmartSearchCatalogItem[]> {
+  const items: SmartSearchCatalogItem[] = [];
+
+  for (const group of INITIAL_ACADEMIC_GROUPS) {
+    for (const prog of group.programs) {
+      let orderIndex = 1;
+      for (const [termName, subjectList] of Object.entries(prog.subjects)) {
+        for (const subj of subjectList) {
+          items.push({
+            type: 'subject',
+            name: subj.name,
+            code: subj.code || '',
+            semester: termName,
+            branch: prog.name,
+            url: `/university/${uniSlug}/${group.slug}/${prog.slug}/semester-${orderIndex}/${subj.slug}`,
+          });
+        }
+        orderIndex++;
+      }
+    }
+  }
+
+  return items;
+}
+
