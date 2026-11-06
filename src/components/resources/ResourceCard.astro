@@ -71,9 +71,16 @@ const id = resource._id?.toString() || '';
           <span>Exam: {resource.examYear} {resource.examSession ? `(${resource.examSession})` : ''}</span>
         </span>
       )}
-      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
-        Parul University
-      </span>
+      {resource.universityId && (
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-medium">
+          {resource.universityId.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+        </span>
+      )}
+      {resource.subjectId && (
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[11px]">
+          {resource.subjectId.replace(/^subj-/, '').replace(/-/g, ' ')}
+        </span>
+      )}
     </div>
   </div>
 

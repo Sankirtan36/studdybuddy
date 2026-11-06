@@ -24,6 +24,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
+    if (locals.user?.restrictions?.communityBlocked) {
+      return new Response(JSON.stringify({ error: 'Your account has been restricted from posting in community discussions.' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const universityId = body.universityId?.toString().trim() || locals.user?.universityId || 'parul-university';
     const now = new Date();
 
     // Guest Chat 8-hour expiry rule
@@ -38,6 +46,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       authorId: locals.user?.id || undefined,
       authorName: locals.user?.displayName || authorName,
       isGuest,
+      universityId,
       expiresAt,
       replyCount: 0,
       createdAt: now,

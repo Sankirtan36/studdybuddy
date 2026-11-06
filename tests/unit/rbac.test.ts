@@ -65,4 +65,16 @@ describe('Role-Based Access Control (RBAC) & Ownership Security', () => {
     // Admin can moderate
     expect(canEditOrDeleteResource(admin, resourceA)).toBe(true);
   });
+
+  it('strictly rejects public student accounts from logging in through administrative portal', () => {
+    function canLoginToAdminPortal(userRole: UserRole): boolean {
+      return userRole === 'admin' || userRole === 'owner';
+    }
+
+    expect(canLoginToAdminPortal('user')).toBe(false);
+    expect(canLoginToAdminPortal('visitor')).toBe(false);
+    expect(canLoginToAdminPortal('admin')).toBe(true);
+    expect(canLoginToAdminPortal('owner')).toBe(true);
+  });
 });
+

@@ -2,81 +2,230 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/layout/Header.astro';
 import Footer from '../components/layout/Footer.astro';
+import { getUserProcessedPdfs } from '../server/pdf/pdfStorage';
 
 const user = Astro.locals.user;
+const userFiles = user ? getUserProcessedPdfs(user.id) : [];
+
+function formatBytes(bytes: number) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getHoursRemaining(expiresAt: number): number {
+  const diff = expiresAt - Date.now();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / (1000 * 60 * 60));
+}
 ---
 
 <Layout
   title="Academic PDF Utilities — Merge, Split, Compress & Convert | StuddyBuddy"
-  description="Free student document tools: merge lecture slides, split question paper page ranges, compress bulky PDFs, and convert handwritten notes images into PDF."
+  description="Free student document tools: merge lecture slides, split question paper page ranges, compress bulky PDFs, and convert handwritten notes images into PDF. Max 3MB per file."
 >
   <Header slot="header" user={user} />
 
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-10">
-    <!-- Header -->
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-8">
+    
+    <!-- Hero / Header -->
     <div class="text-center space-y-3">
-      <span class="inline-block px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
-        Student Document Utilities
-      </span>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
+        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+        Fast Academic Document Processing
+      </div>
       <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
         Academic PDF & Note Tools
       </h1>
       <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
-        Format and prepare your semester materials. Real, private document processing with immediate downloads.
+        Merge chapter slides, split exam questions, compress documents, and convert handwritten notes to PDF. Max 3 MB per file.
       </p>
     </div>
+
+    <!-- Storage Retention Policy Banner (6 Hours for Guests / 48 Hours for Logged-In Users) -->
+    <div class={`p-4 sm:p-5 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs ${
+      user 
+        ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900/60 text-indigo-950 dark:text-indigo-200' 
+        : 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/60 text-amber-950 dark:text-amber-200'
+    }`}>
+      <div class="flex items-center gap-3">
+        <div class={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+          user ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/70 dark:text-amber-300'
+        }`}>
+          🕒
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold uppercase text-[10px] tracking-wider px-2 py-0.5 rounded-full bg-white dark:bg-slate-900 shadow-xs">
+              {user ? '48-Hour Retention Active' : '6-Hour Guest Policy'}
+            </span>
+            <span class="font-bold text-xs">
+              {user ? 'Logged-In Account Storage' : 'Unauthenticated Guest Mode'}
+            </span>
+          </div>
+          <p class="text-[11px] mt-1 text-slate-600 dark:text-slate-300 leading-relaxed">
+            {user ? (
+              <span>
+                Logged in as <strong>{user.email}</strong>. Processed PDFs are saved for <strong>48 hours</strong> in your account before automatic deletion.
+              </span>
+            ) : (
+              <span>
+                Bina login/signup kiye use karne par documents server par <strong>sirf 6 hours</strong> tak save rahenge, uske baad automatically delete ho jayenge.
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      {!user && (
+        <a
+          href="/login?redirect=/pdf-tools"
+          class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-700 hover:to-indigo-700 text-white font-bold text-xs whitespace-nowrap shadow-sm transition-transform hover:scale-105 shrink-0"
+        >
+          Login for 48h Storage →
+        </a>
+      )}
+    </div>
+
+    <!-- Active Processed Files List for Logged-In Users (Saved for 48 Hours) -->
+    {user && (
+      <div id="user-files-section" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span>📁 Your Processed Documents (Saved for 48 Hours)</span>
+            <span id="user-files-count" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+              {userFiles.length}
+            </span>
+          </h2>
+          <span class="text-[11px] text-slate-400">Auto-deleted after 48 hours</span>
+        </div>
+
+        <div id="user-files-container" class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          {userFiles.length > 0 ? (
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th class="p-3.5">Document Name</th>
+                    <th class="p-3.5">Operation</th>
+                    <th class="p-3.5">File Size</th>
+                    <th class="p-3.5">Auto-Deletes In</th>
+                    <th class="p-3.5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="user-files-tbody" class="divide-y divide-slate-100 dark:divide-slate-800">
+                  {userFiles.map((file) => (
+                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td class="p-3.5">
+                        <span class="font-bold text-slate-900 dark:text-white block">{file.outputName}</span>
+                        <span class="text-[10px] text-slate-400">Original: {file.originalName}</span>
+                      </td>
+                      <td class="p-3.5 font-medium uppercase text-[10px] text-slate-600 dark:text-slate-400">
+                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold">{file.tool}</span>
+                      </td>
+                      <td class="p-3.5 text-slate-500">
+                        {formatBytes(file.fileSizeBytes)}
+                      </td>
+                      <td class="p-3.5">
+                        <span class="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                          ⏱️ ~{getHoursRemaining(file.expiresAt)} hours left
+                        </span>
+                      </td>
+                      <td class="p-3.5 text-right">
+                        <a
+                          href={`/api/pdf/download?id=${file.id}`}
+                          download={file.outputName}
+                          class="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white font-bold text-xs transition-colors"
+                        >
+                          Download
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div id="no-files-placeholder" class="p-6 text-center text-xs text-slate-500">
+              No recent documents yet. Process any PDF below and it will be saved here for 48 hours!
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    <!-- Status Alert Box -->
+    <div id="tool-status-alert" class="hidden p-4 rounded-2xl text-xs font-semibold"></div>
 
     <!-- Tool Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       
       <!-- TOOL 1: Merge PDFs -->
-      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
-        <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
-          M
-        </div>
-        <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Merge Multiple PDFs</h2>
-          <p class="text-xs text-slate-500 mt-1">Combine separate chapter notes or lecture slides into a single document.</p>
+      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+              M
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Max 3 MB / file</span>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Merge Multiple PDFs</h2>
+            <p class="text-xs text-slate-500 mt-1">Combine separate chapter notes or lecture slides into a single document.</p>
+          </div>
         </div>
 
-        <form action="/api/pdf/process" method="POST" enctype="multipart/form-data" class="space-y-3 text-xs">
+        <form class="pdf-tool-form space-y-3 text-xs" data-tool-name="merge">
           <input type="hidden" name="tool" value="merge" />
-          <input
-            type="file"
-            name="files"
-            multiple
-            required
-            accept="application/pdf"
-            class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700"
-          />
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select 2 or more PDFs:</label>
+            <input
+              type="file"
+              name="files"
+              multiple
+              required
+              accept="application/pdf"
+              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 cursor-pointer"
+            />
+          </div>
           <button
             type="submit"
-            class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01]"
+            class="submit-btn w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            Merge & Download PDF
+            <span>Merge & Download PDF</span>
           </button>
         </form>
       </div>
 
       <!-- TOOL 2: Split PDF -->
-      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
-        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm">
-          S
-        </div>
-        <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Split PDF by Pages</h2>
-          <p class="text-xs text-slate-500 mt-1">Extract specific unit pages or exam questions from large textbooks.</p>
+      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm">
+              S
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Max 3 MB</span>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Split PDF by Pages</h2>
+            <p class="text-xs text-slate-500 mt-1">Extract specific unit pages or exam questions from large textbooks.</p>
+          </div>
         </div>
 
-        <form action="/api/pdf/process" method="POST" enctype="multipart/form-data" class="space-y-3 text-xs">
+        <form class="pdf-tool-form space-y-3 text-xs" data-tool-name="split">
           <input type="hidden" name="tool" value="split" />
-          <input
-            type="file"
-            name="file"
-            required
-            accept="application/pdf"
-            class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700"
-          />
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select PDF file:</label>
+            <input
+              type="file"
+              name="file"
+              required
+              accept="application/pdf"
+              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 dark:file:bg-sky-950 file:text-sky-700 dark:file:text-sky-300 cursor-pointer"
+            />
+          </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block font-medium text-slate-600 dark:text-slate-400 text-[10px] mb-1">Start Page</label>
@@ -86,7 +235,7 @@ const user = Astro.locals.user;
                 value="1"
                 min="1"
                 required
-                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
               />
             </div>
             <div>
@@ -97,72 +246,88 @@ const user = Astro.locals.user;
                 value="5"
                 min="1"
                 required
-                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
               />
             </div>
           </div>
           <button
             type="submit"
-            class="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01]"
+            class="submit-btn w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            Extract & Download
+            <span>Extract & Download</span>
           </button>
         </form>
       </div>
 
       <!-- TOOL 3: Images to PDF -->
-      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
-        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
-          IMG
-        </div>
-        <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Convert Images to PDF</h2>
-          <p class="text-xs text-slate-500 mt-1">Convert photos of your handwritten notebook pages into a clean PDF document.</p>
+      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+              IMG
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Max 3 MB / image</span>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Convert Images to PDF</h2>
+            <p class="text-xs text-slate-500 mt-1">Convert photos of handwritten notes or diagrams into a single clean PDF.</p>
+          </div>
         </div>
 
-        <form action="/api/pdf/process" method="POST" enctype="multipart/form-data" class="space-y-3 text-xs">
+        <form class="pdf-tool-form space-y-3 text-xs" data-tool-name="image-to-pdf">
           <input type="hidden" name="tool" value="image-to-pdf" />
-          <input
-            type="file"
-            name="files"
-            multiple
-            required
-            accept="image/jpeg,image/png"
-            class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700"
-          />
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select Images (JPG, PNG):</label>
+            <input
+              type="file"
+              name="files"
+              multiple
+              required
+              accept="image/jpeg,image/png,image/jpg"
+              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-950 file:text-emerald-700 dark:file:text-emerald-300 cursor-pointer"
+            />
+          </div>
           <button
             type="submit"
-            class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01]"
+            class="submit-btn w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            Convert Images to PDF
+            <span>Convert & Download PDF</span>
           </button>
         </form>
       </div>
 
       <!-- TOOL 4: Compress PDF -->
-      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
-        <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-sm">
-          ZIP
-        </div>
-        <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Optimize & Compress PDF</h2>
-          <p class="text-xs text-slate-500 mt-1">Re-encode PDF object streams to reduce file size for easy sharing.</p>
+      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-sm">
+              ZIP
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Max 3 MB</span>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Optimize & Compress PDF</h2>
+            <p class="text-xs text-slate-500 mt-1">Re-encode PDF object streams to reduce file size for easy sharing.</p>
+          </div>
         </div>
 
-        <form action="/api/pdf/process" method="POST" enctype="multipart/form-data" class="space-y-3 text-xs">
+        <form class="pdf-tool-form space-y-3 text-xs" data-tool-name="compress">
           <input type="hidden" name="tool" value="compress" />
-          <input
-            type="file"
-            name="file"
-            required
-            accept="application/pdf"
-            class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700"
-          />
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select PDF to Compress:</label>
+            <input
+              type="file"
+              name="file"
+              required
+              accept="application/pdf"
+              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-50 dark:file:bg-purple-950 file:text-purple-700 dark:file:text-purple-300 cursor-pointer"
+            />
+          </div>
           <button
             type="submit"
-            class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01]"
+            class="submit-btn w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            Compress & Download
+            <span>Compress & Download</span>
           </button>
         </form>
       </div>
@@ -172,3 +337,125 @@ const user = Astro.locals.user;
 
   <Footer slot="footer" />
 </Layout>
+
+<script is:inline>
+  const MAX_SIZE = 3 * 1024 * 1024; // 3 MB
+
+  const statusAlert = document.getElementById('tool-status-alert');
+
+  function showAlert(msg, isError) {
+    if (!statusAlert) return;
+    statusAlert.className = `p-4 rounded-2xl text-xs font-semibold ${
+      isError 
+        ? 'bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300' 
+        : 'bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300'
+    }`;
+    statusAlert.innerHTML = msg;
+    statusAlert.classList.remove('hidden');
+    statusAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  document.querySelectorAll('.pdf-tool-form').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusAlert?.classList.add('hidden');
+
+      const submitBtn = form.querySelector('.submit-btn');
+      const originalText = submitBtn.innerHTML;
+
+      // Validate files <= 3 MB
+      const fileInputs = form.querySelectorAll('input[type="file"]');
+      let oversized = null;
+
+      fileInputs.forEach((input) => {
+        if (input.files) {
+          for (let i = 0; i < input.files.length; i++) {
+            const f = input.files[i];
+            if (f.size > MAX_SIZE) {
+              oversized = f;
+            }
+          }
+        }
+      });
+
+      if (oversized) {
+        const mb = (oversized.size / (1024 * 1024)).toFixed(2);
+        showAlert(`⚠️ File "${oversized.name}" is ${mb} MB, which exceeds the 3 MB maximum size limit. Please choose a smaller file.`, true);
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Processing Document...</span>
+      `;
+
+      try {
+        const formData = new FormData(form);
+        const res = await fetch('/api/pdf/process', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          let errMsg = 'Failed to process document.';
+          try {
+            const errData = await res.json();
+            errMsg = errData.error || errMsg;
+          } catch {}
+          showAlert(`❌ ${errMsg}`, true);
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+          return;
+        }
+
+        // Extract filename from Content-Disposition header
+        const disp = res.headers.get('Content-Disposition') || '';
+        let filename = res.headers.get('X-Original-Filename') || 'processed-document.pdf';
+        
+        const filenameMatch = disp.match(/filename\*=UTF-8''([^;]+)/i) || disp.match(/filename="?([^";]+)"?/i);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = decodeURIComponent(filenameMatch[1]);
+        }
+
+        const storageTtl = res.headers.get('X-Storage-TTL') || '6-hours';
+        const docId = res.headers.get('X-Document-Id');
+
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(downloadUrl);
+          a.remove();
+        }, 1000);
+
+        const ttlText = storageTtl === '48-hours' 
+          ? '✓ <strong>Success!</strong> "' + filename + '" has been downloaded and is saved in your account for <strong>48 hours</strong>.'
+          : '✓ <strong>Success!</strong> "' + filename + '" has been downloaded. <em>(Guest files are automatically deleted after 6 hours)</em>.';
+
+        showAlert(ttlText, false);
+        form.reset();
+
+        // If user files table is present, reload after a brief moment to show new entry
+        if (document.getElementById('user-files-section')) {
+          setTimeout(() => {
+            location.reload();
+          }, 1500);
+        }
+      } catch (err) {
+        showAlert('Network error occurred while processing document.', true);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  });
+</script>

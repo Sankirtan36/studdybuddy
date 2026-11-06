@@ -26,4 +26,18 @@ describe('Authentication & Password Security', () => {
     const p2 = await hashPassword('SamePassword');
     expect(p1).not.toBe(p2);
   });
+
+  it('updates password and invalidates previous password', async () => {
+    const originalPass = 'OldSecretPass123';
+    const newPass = 'NewSecurePass456';
+
+    const originalHash = await hashPassword(originalPass);
+    expect(await verifyPassword(originalPass, originalHash)).toBe(true);
+
+    const updatedHash = await hashPassword(newPass);
+    // Old password fails against updated hash
+    expect(await verifyPassword(originalPass, updatedHash)).toBe(false);
+    // New password succeeds against updated hash
+    expect(await verifyPassword(newPass, updatedHash)).toBe(true);
+  });
 });

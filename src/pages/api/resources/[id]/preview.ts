@@ -3,15 +3,23 @@ import { getResourceById } from '../../../../server/repositories/resourceReposit
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, locals }) => {
   const { id } = params;
   if (!id) {
     return new Response('Missing resource ID', { status: 400 });
   }
 
   const resource = await getResourceById(id);
-  if (!resource || resource.status !== 'approved') {
+  if (!resource || (resource.status !== 'approved' && (resource.status as string) !== 'published')) {
     return new Response('Resource not found', { status: 404 });
+  }
+
+  // University authorization check
+  const user = locals?.user;
+  if (user && user.universityId && resource.universityId) {
+    if (user.universityId !== resource.universityId && user.role !== 'admin' && user.role !== 'owner') {
+      return new Response('Access Denied: Restricted to authorized campus students', { status: 403 });
+    }
   }
 
   try {

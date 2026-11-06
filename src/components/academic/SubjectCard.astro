@@ -1,0 +1,52 @@
+---
+import type { Subject } from '../../types';
+
+interface Props {
+  subject: Subject;
+  baseHref: string;
+}
+
+const { subject, baseHref } = Astro.props;
+
+const categories = [
+  { label: 'Syllabus', query: 'syllabus' },
+  { label: 'All Unit', query: 'bank' },
+  { label: 'Notes & Assignment', query: 'notes' },
+  { label: 'Lab Manual & VIVA', query: 'lab' },
+  { label: 'PYQs', query: 'pyq' },
+  { label: 'All Material', query: 'all' },
+];
+---
+
+<div class="p-6 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-600/80 transition-all duration-300 flex flex-col items-center text-center group">
+  <!-- Subject Code Badge (if exists) -->
+  {subject.code && (
+    <span class="text-[10px] font-mono font-bold tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/70 px-2 py-0.5 rounded-full mb-2">
+      {subject.code}
+    </span>
+  )}
+
+  <!-- Subject Title (Direct link to hub) -->
+  <a
+    href={`${baseHref}?category=all`}
+    class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors leading-snug line-clamp-2 min-h-[3rem] flex items-center justify-center"
+    title={subject.name}
+  >
+    {subject.name}
+  </a>
+
+  <!-- Accent Underline Indicator (as seen in user screenshot) -->
+  <div class="w-10 h-1 rounded-full bg-indigo-600 dark:bg-indigo-500 mt-2 mb-5 group-hover:w-16 transition-all duration-300"></div>
+
+  <!-- Resource Categories Stack Buttons (Matching Learnify Verse screenshot) -->
+  <div class="w-full space-y-2 mt-auto">
+    {categories.map((cat) => (
+      <a
+        href={`${baseHref}?category=${cat.query}`}
+        class="w-full py-2 px-3 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-300 bg-indigo-50/70 hover:bg-indigo-600 hover:text-white dark:bg-slate-800/80 dark:hover:bg-indigo-600 dark:hover:text-white border border-indigo-100/60 dark:border-slate-700/60 hover:border-indigo-600 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center active:scale-[0.98]"
+      >
+        <span>{cat.label}</span>
+      </a>
+    ))}
+  </div>
+</div>

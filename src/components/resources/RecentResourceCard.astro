@@ -1,0 +1,99 @@
+---
+import type { Resource } from '../../types';
+
+interface Props {
+  resource: Resource & { viewedAt?: Date };
+}
+
+const { resource } = Astro.props;
+
+function formatBytes(bytes: number, decimals = 1) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function formatRelativeTime(date?: Date) {
+  if (!date) return 'Recently viewed';
+  const now = new Date();
+  const diffMs = now.getTime() - new Date(date).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+const categoryColors: Record<string, string> = {
+  'Previous Year Question Paper': 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  'Mid-Semester Paper': 'bg-orange-100 text-orange-800 dark:bg-orange-950/70 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+  'End-Semester Paper': 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+  'Notes': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  'Question Bank': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+  'Assignment': 'bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+  'Assignment Solution': 'bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+  'Solved Paper': 'bg-teal-100 text-teal-800 dark:bg-teal-950/70 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+};
+
+const badgeClass = categoryColors[resource.category] || 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+const fileExt = (resource.fileExtension || 'pdf').toUpperCase();
+const id = resource._id?.toString() || '';
+const relativeTime = formatRelativeTime(resource.viewedAt);
+---
+
+<a
+  href={`/resources/${id}`}
+  class="group relative flex flex-col justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+>
+  <div>
+    <!-- Top Row: Category pill & Last-viewed indicator -->
+    <div class="flex items-center justify-between gap-2 mb-2.5">
+      <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeClass} truncate max-w-[150px]`}>
+        {resource.category}
+      </span>
+      <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 dark:text-slate-500 shrink-0">
+        <svg class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>{relativeTime}</span>
+      </span>
+    </div>
+
+    <!-- Title -->
+    <h4 class="text-sm font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mb-2">
+      {resource.title}
+    </h4>
+
+    <!-- Academic Context Badges -->
+    <div class="flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+      {resource.subjectId && (
+        <span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+          {resource.subjectId.replace(/^subj-/, '').replace(/-/g, ' ')}
+        </span>
+      )}
+      {resource.examYear && (
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px]">
+          {resource.examYear} {resource.examSession || ''}
+        </span>
+      )}
+    </div>
+  </div>
+
+  <!-- Footer Info & Direct Reopen Cue -->
+  <div class="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+    <span class="text-slate-400 font-medium">
+      {fileExt} • {formatBytes(resource.fileSizeBytes)}
+    </span>
+    <span class="font-bold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+      <span>Reopen</span>
+      <span>→</span>
+    </span>
+  </div>
+</a>

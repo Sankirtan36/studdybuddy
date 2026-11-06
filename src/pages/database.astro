@@ -4,10 +4,11 @@ import Header from '../components/layout/Header.astro';
 import Footer from '../components/layout/Footer.astro';
 import { getDb } from '../server/db/mongo';
 import { readFirestoreCollection } from '../lib/firebase';
+import { readLocalResources } from '../server/repositories/resourceRepository';
 
 const user = Astro.locals.user;
 if (!user) {
-  return Astro.redirect('/login?redirect=/database');
+  return Astro.redirect('/admin/login?redirect=/database');
 }
 if (user.role !== 'admin' && user.role !== 'owner') {
   return Astro.redirect('/dashboard?error=unauthorized_database');
@@ -22,11 +23,14 @@ try {
   initialResources = await db.collection('resources').find({}).limit(10).toArray();
   mongoConnected = true;
 } catch (err) {
-  // If MongoDB is offline, read from Firestore
+  // If MongoDB is offline, try Firestore first, then local store
   try {
     initialResources = await readFirestoreCollection('resources', 10);
   } catch (fsErr) {
     initialResources = [];
+  }
+  if (!initialResources || initialResources.length === 0) {
+    initialResources = readLocalResources().slice(0, 10);
   }
 }
 ---

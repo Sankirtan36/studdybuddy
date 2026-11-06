@@ -1,6 +1,22 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../../server/db/mongo';
-import { ObjectId } from 'mongodb';
+import { updateResource, deleteResource } from '../../../server/repositories/resourceRepository';
+import fs from 'node:fs';
+import path from 'node:path';
+
+function appendLocalAudit(log: any) {
+  try {
+    const dataDir = path.resolve(process.cwd(), '.data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    const auditFile = path.join(dataDir, 'auditLogs.json');
+    let logs: any[] = [];
+    if (fs.existsSync(auditFile)) {
+      logs = JSON.parse(fs.readFileSync(auditFile, 'utf8'));
+    }
+    logs.unshift(log);
+    fs.writeFileSync(auditFile, JSON.stringify(logs.slice(0, 200), null, 2), 'utf8');
+  } catch {}
+}
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const user = locals.user;
@@ -24,10 +40,42 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    let targetStatus: 'approved' | 'rejected' | 'removed';
+    const now = new Date();
+
+    if (action === 'delete' || action === 'remove') {
+      const ok = await deleteResource(resourceId);
+      if (!ok) {
+        return new Response(JSON.stringify({ error: 'Resource not found or already deleted' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      const log = {
+        actorId: user.id,
+        actorEmail: user.email,
+        action: 'resource_deleted',
+        targetType: 'resource',
+        targetId: resourceId,
+        reason: reason || 'Admin deleted resource',
+        createdAt: now,
+      };
+      appendLocalAudit(log);
+
+      try {
+        const db = await getDb();
+        await db.collection('auditLogs').insertOne(log);
+      } catch {}
+
+      return new Response(JSON.stringify({ ok: true, resourceId, action: 'deleted' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    let targetStatus: 'approved' | 'rejected' | 'pending' | 'published';
     if (action === 'approve') targetStatus = 'approved';
     else if (action === 'reject') targetStatus = 'rejected';
-    else if (action === 'remove') targetStatus = 'removed';
     else {
       return new Response(JSON.stringify({ error: 'Invalid moderation action' }), {
         status: 400,
@@ -35,32 +83,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    const db = await getDb();
-    let query: any = { _id: resourceId };
-    if (ObjectId.isValid(resourceId)) {
-      query = { $or: [{ _id: new ObjectId(resourceId) }, { _id: resourceId }] };
-    }
-
-    const now = new Date();
-    const updateResult = await db.collection('resources').updateOne(query, {
-      $set: {
-        status: targetStatus,
-        moderatedBy: user.id,
-        moderationReason: reason || undefined,
-        moderatedAt: now,
-        updatedAt: now,
-      },
+    const updated = await updateResource(resourceId, {
+      status: targetStatus as any,
+      moderatedBy: user.id,
+      moderationReason: reason || undefined,
+      moderatedAt: now,
     });
 
-    if (updateResult.matchedCount === 0) {
+    if (!updated) {
       return new Response(JSON.stringify({ error: 'Resource not found' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Append-only audit log
-    await db.collection('auditLogs').insertOne({
+    const log = {
       actorId: user.id,
       actorEmail: user.email,
       action: `resource_${action}`,
@@ -68,15 +105,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
       targetId: resourceId,
       reason: reason || 'Moderator action',
       createdAt: now,
-    });
+    };
+    appendLocalAudit(log);
 
-    // Analytics event
-    await db.collection('analyticsEvents').insertOne({
-      eventType: targetStatus === 'approved' ? 'resource_approved' : 'resource_rejected',
-      resourceId,
-      userId: user.id,
-      timestamp: now,
-    });
+    try {
+      const db = await getDb();
+      await db.collection('auditLogs').insertOne(log);
+      await db.collection('analyticsEvents').insertOne({
+        eventType: targetStatus === 'approved' ? 'resource_approved' : 'resource_rejected',
+        resourceId,
+        userId: user.id,
+        timestamp: now,
+      });
+    } catch {}
 
     return new Response(
       JSON.stringify({ ok: true, resourceId, status: targetStatus }),

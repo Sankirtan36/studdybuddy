@@ -145,7 +145,7 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
 </Layout>
 
 <script>
-  import { signInWithGoogle } from '../lib/firebase';
+  import { signInWithGoogle, signInWithGoogleRedirect, checkGoogleRedirectResult } from '../lib/firebase';
 
   const form = document.getElementById('register-form') as HTMLFormElement;
   const alertEl = document.getElementById('error-alert') as HTMLDivElement;
@@ -158,6 +158,41 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
 
   const urlParams = new URLSearchParams(window.location.search);
   const redirect = urlParams.get('redirect') || '/dashboard';
+
+  // Check if returning from Google Redirect Auth
+  checkGoogleRedirectResult().then(async (result) => {
+    if (result && result.user) {
+      if (googleBtn) googleBtn.disabled = true;
+      if (googleBtnText) googleBtnText.innerText = 'Finishing Google sign-in...';
+      try {
+        const res = await fetch('/api/auth/firebase-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: result.user.email,
+            displayName: result.user.displayName,
+            photoUrl: result.user.photoURL,
+            uid: result.user.uid,
+            idToken: result.idToken,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (successText) successText.innerText = `✓ Account connected! Welcome, ${result.user.displayName || 'Student'}! Opening dashboard...`;
+          if (successEl) successEl.classList.remove('hidden');
+          setTimeout(() => {
+            window.location.href = redirect;
+          }, 800);
+        } else {
+          if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+          if (alertEl) alertEl.classList.remove('hidden');
+        }
+      } catch (err: any) {
+        if (errorText) errorText.innerText = 'Error finalizing Google sign in.';
+        if (alertEl) alertEl.classList.remove('hidden');
+      }
+    }
+  });
 
   // Email / Password Form Submit
   form?.addEventListener('submit', async (e) => {
@@ -209,7 +244,13 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
     if (googleBtnText) googleBtnText.innerText = 'Connecting with Google...';
 
     try {
-      const { user, idToken } = await signInWithGoogle();
+      const authResult = await signInWithGoogle();
+      if (!authResult) {
+        if (googleBtnText) googleBtnText.innerText = 'Redirecting to Google...';
+        return;
+      }
+
+      const { user, idToken } = authResult;
 
       const res = await fetch('/api/auth/firebase-login', {
         method: 'POST',
@@ -240,6 +281,20 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
       let msg = err?.message || 'Google sign-in was cancelled or failed.';
+      if (err?.code === 'auth/popup-blocked') {
+        if (errorText) {
+          errorText.innerHTML = '⚠️ Pop-up was blocked by your browser. <button type="button" id="retry-google-redirect" class="underline font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 ml-1">Click here to sign in with Google Redirect →</button> or allow pop-ups for localhost in your browser address bar.';
+          setTimeout(() => {
+            document.getElementById('retry-google-redirect')?.addEventListener('click', () => {
+              signInWithGoogleRedirect();
+            });
+          }, 50);
+        }
+        if (alertEl) alertEl.classList.remove('hidden');
+        googleBtn.disabled = false;
+        if (googleBtnText) googleBtnText.innerText = 'Sign up with Google';
+        return;
+      }
       if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
         msg = 'Google provider is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
       }

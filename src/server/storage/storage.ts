@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { SupportedFileExtension } from '../../types';
 
 const STORAGE_BUDGET_BYTES = parseInt(process.env.STORAGE_BUDGET_BYTES || '21474836480', 10); // 20 GB
-const MAX_UPLOAD_SIZE_BYTES = parseInt(process.env.MAX_UPLOAD_SIZE_BYTES || '26214400', 10); // 25 MB
+const MAX_UPLOAD_SIZE_BYTES = parseInt(process.env.MAX_UPLOAD_SIZE_BYTES || '3145728', 10); // 3 MB limit
 
 const ALLOWED_EXTENSIONS: Record<string, SupportedFileExtension> = {
   pdf: 'pdf',

@@ -13,6 +13,8 @@ declare global {
         role: string;
         status: string;
         restrictions?: any;
+        universityId?: string | null;
+        isUniversityVerified?: boolean;
       } | null;
     }
   }
@@ -35,6 +37,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       role: authenticatedUser.role,
       status: authenticatedUser.status,
       restrictions: authenticatedUser.restrictions,
+      universityId: authenticatedUser.universityId,
+      isUniversityVerified: authenticatedUser.isUniversityVerified,
     };
   } else {
     context.locals.user = null;

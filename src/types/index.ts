@@ -21,6 +21,8 @@ export interface User {
   status: UserStatus;
   restrictions?: UserRestrictions;
   universityId?: string | null;
+  isUniversityVerified?: boolean;
+  universityEmail?: string;
   programId?: string | null;
   academicTermId?: string | null;
   currentSemester?: string | null;
@@ -90,6 +92,7 @@ export interface AcademicTerm {
   _id?: ObjectId | string;
   programId: string;
   name: string; // e.g. "Semester 1", "Year 1"
+  slug?: string;
   orderIndex: number;
   isActive: boolean;
   createdAt: Date;
@@ -124,7 +127,7 @@ export type ResourceCategory =
   | 'Reference Material'
   | 'Other';
 
-export type ResourceStatus = 'pending' | 'approved' | 'rejected' | 'removed';
+export type ResourceStatus = 'pending' | 'approved' | 'published' | 'rejected' | 'removed';
 
 export type SupportedFileExtension = 'pdf' | 'ppt' | 'pptx' | 'doc' | 'docx' | 'jpg' | 'jpeg' | 'png' | 'webp';
 
@@ -174,6 +177,15 @@ export interface SavedResource {
   userId: string;
   resourceId: string;
   createdAt: Date;
+}
+
+// Recently Viewed Resources
+export interface RecentlyViewedResource {
+  _id?: ObjectId | string;
+  userId: string;
+  universityId: string;
+  resourceId: string;
+  viewedAt: Date;
 }
 
 // Catalog Suggestions
