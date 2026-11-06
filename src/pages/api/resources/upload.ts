@@ -1,7 +1,19 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../../server/db/mongo';
-import { validateUploadFile, reserveUploadCapacity, generateStorageKey, uploadObjectToStorage } from '../../../server/storage/storage';
+import {
+  validateUploadFile,
+  reserveUploadCapacity,
+  generateStorageKey,
+  uploadObjectToStorage,
+  validateMagicBytes,
+  scanBufferForThreats,
+  computeFileChecksum,
+} from '../../../server/storage/storage';
 import { createResource } from '../../../server/repositories/resourceRepository';
+import { fulfillResourceRequest } from '../../../server/repositories/requestRepository';
+import { awardReputation, REPUTATION_REWARDS } from '../../../server/reputation/reputationService';
+import { createNotification } from '../../../server/notifications/notificationService';
+import { isUploadRateLimited } from '../../../server/security/rateLimiter';
 import type { Resource, ResourceCategory } from '../../../types';
 
 export const POST: APIRoute = async ({ request, locals }) => {
@@ -22,6 +34,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
   }
 
+  // 3. Sliding-window rate limit check
+  const rateLimit = isUploadRateLimited(user.id);
+  if (!rateLimit.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: `Upload rate limit reached. Please wait ${rateLimit.resetSeconds} seconds before uploading more materials.`,
+      }),
+      { status: 429, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     const formData = await request.formData();
 
@@ -32,6 +55,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    // Optional requestId if student is fulfilling a peer request
+    const requestId = formData.get('requestId')?.toString().trim();
 
     // Auto title if not provided
     const rawTitle = formData.get('title')?.toString().trim();
@@ -53,7 +79,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const examYearStr = formData.get('examYear')?.toString().trim();
     const examSession = formData.get('examSession')?.toString().trim() || undefined;
 
-    // 3. Validate file
+    // 4. Validate file size and extension
     const fileValidation = validateUploadFile(file.name, file.type, file.size);
     if (!fileValidation.valid || !fileValidation.extension) {
       return new Response(JSON.stringify({ error: fileValidation.error }), {
@@ -62,7 +88,47 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    // 4. Check & reserve storage capacity (20 GB budget check)
+    // 5. Read buffer and perform Magic Bytes verification
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const magicCheck = validateMagicBytes(fileBuffer, fileValidation.extension);
+    if (!magicCheck.valid) {
+      return new Response(JSON.stringify({ error: magicCheck.error }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 6. Automated malware and security threat scanning
+    const threatCheck = scanBufferForThreats(fileBuffer);
+    if (!threatCheck.safe) {
+      return new Response(
+        JSON.stringify({
+          error: `Security scan alert: ${threatCheck.reason}`,
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 7. Duplicate detection using SHA-256 Checksum
+    const checksum = computeFileChecksum(fileBuffer);
+    try {
+      const db = await getDb();
+      const existingDuplicate = await db.collection<Resource>('resources').findOne({
+        checksum,
+        status: { $ne: 'removed' },
+      });
+      if (existingDuplicate) {
+        return new Response(
+          JSON.stringify({
+            error: `Duplicate file detected: This exact document has already been uploaded as "${existingDuplicate.title}". Please browse existing resources.`,
+            duplicateResourceId: existingDuplicate._id?.toString(),
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch {}
+
+    // 8. Check & reserve storage capacity (20 GB budget check)
     const reservation = await reserveUploadCapacity(user.id, file.size);
     if (!reservation.ok) {
       return new Response(JSON.stringify({ error: reservation.error }), {
@@ -71,13 +137,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    // 5. Generate safe storage key grouped by Subject folder & upload file binary
+    // 9. Generate safe storage key & upload file binary
     const storageKey = generateStorageKey(universityId, subjectSlug, fileValidation.extension);
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-
     await uploadObjectToStorage(storageKey, fileBuffer, fileValidation.mimeType || file.type);
 
-    // 6. Insert into store with status: 'approved' (instantly available)
+    // 10. Automated Approval: Files that pass extension, magic bytes, threat scan & duplicate check are auto-approved
     const now = new Date();
     const examYear = examYearStr ? parseInt(examYearStr, 10) : new Date().getFullYear();
 
@@ -97,9 +161,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
       fileExtension: fileValidation.extension,
       mimeType: fileValidation.mimeType || file.type,
       fileSizeBytes: file.size,
+      checksum,
       examYear,
       examSession,
-      status: 'approved', // Auto-approved: instantly live and accessible to all students
+      status: 'approved',
       viewCount: 0,
       downloadCount: 0,
       createdAt: now,
@@ -109,7 +174,28 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const created = await createResource(newResource);
     const resourceId = created._id?.toString() || '';
 
-    // Mark storage reservation completed & record analytics if DB is available
+    // 11. Award reputation points for verified upload (+10 points)
+    await awardReputation(user.id, REPUTATION_REWARDS.UPLOAD_APPROVED, 'upload_approved', resourceId);
+
+    // 12. If fulfilling an existing request, auto-link & award +25 points
+    let fulfillmentMessage = '';
+    if (requestId) {
+      const fulfillRes = await fulfillResourceRequest(requestId, resourceId, user.id, user.displayName);
+      if (fulfillRes.success) {
+        fulfillmentMessage = ' Resource request automatically fulfilled (+25 reputation bonus awarded)!';
+      }
+    }
+
+    // 13. Create in-app notification for contributor
+    await createNotification(
+      user.id,
+      'upload_status',
+      'Resource Published Live!',
+      `"${title}" was verified and published to ${rawSubject} curriculum.`,
+      `/resources/${resourceId}`
+    );
+
+    // 14. Mark storage reservation completed & record analytics
     try {
       const db = await getDb();
       if (reservation.reservationId) {
@@ -136,16 +222,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
           timestamp: now,
         },
       ]);
-    } catch (dbErr) {
-      // Non-blocking: resource and files are already persisted safely
-    }
+    } catch {}
 
     return new Response(
       JSON.stringify({
         ok: true,
         resourceId,
         status: 'approved',
-        message: 'Resource published successfully! It is now live and accessible to all students.',
+        message: `Resource verified & published successfully! It is now live.${fulfillmentMessage}`,
       }),
       { status: 201, headers: { 'Content-Type': 'application/json' } }
     );

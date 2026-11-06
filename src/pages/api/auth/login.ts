@@ -4,7 +4,7 @@ import { verifyPassword, createSession, SESSION_COOKIE_NAME } from '../../../ser
 import { findUserByEmail, updateUser } from '../../../server/auth/userStore';
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address').toLowerCase().trim(),
+  email: z.string().email({ message: 'Please enter a valid email address' }).toLowerCase().trim(),
   password: z.string().min(1, 'Password is required'),
 });
 

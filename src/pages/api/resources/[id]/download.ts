@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getResourceById, incrementResourceDownload } from '../../../../server/repositories/resourceRepository';
 import { getDb } from '../../../../server/db/mongo';
+import { isDownloadRateLimited } from '../../../../server/security/rateLimiter';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import fs from 'node:fs';
@@ -23,6 +24,15 @@ const s3AccessKey = process.env.OBJECT_STORAGE_ACCESS_KEY_ID;
 const s3SecretKey = process.env.OBJECT_STORAGE_SECRET_ACCESS_KEY;
 
 export const GET: APIRoute = async ({ params, request }) => {
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('cf-connecting-ip') || '127.0.0.1';
+  const rateLimit = isDownloadRateLimited(clientIp);
+  if (!rateLimit.allowed) {
+    return new Response(
+      JSON.stringify({ error: `Download rate limit reached. Please wait ${rateLimit.resetSeconds} seconds.` }),
+      { status: 429, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   const { id } = params;
 
   if (!id) {

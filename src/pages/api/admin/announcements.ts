@@ -58,6 +58,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
       createdAt: now,
     });
 
+    // Broadcast automated notification to users if high/urgent priority
+    try {
+      const activeUsers = await db.collection('users').find({ status: 'active' }).limit(100).toArray();
+      const notifDocs = activeUsers.map((u) => ({
+        userId: u._id.toString(),
+        type: 'announcement',
+        title: `📢 University Notice: ${title}`,
+        message: content.slice(0, 150),
+        actionUrl: ctaUrl || '/',
+        isRead: false,
+        createdAt: now,
+      }));
+      if (notifDocs.length > 0) {
+        await db.collection('notifications').insertMany(notifDocs);
+      }
+    } catch {}
+
     return new Response(
       JSON.stringify({ ok: true, announcementId: insertRes.insertedId.toString() }),
       { status: 201, headers: { 'Content-Type': 'application/json' } }

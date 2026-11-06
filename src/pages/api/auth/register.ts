@@ -6,7 +6,7 @@ import type { User } from '../../../types';
 
 const registerSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters').max(50),
-  email: z.string().email('Please enter a valid email address').toLowerCase().trim(),
+  email: z.string().email({ message: 'Please enter a valid email address' }).toLowerCase().trim(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
