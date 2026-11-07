@@ -16,11 +16,9 @@ const studentNavLinks = [
   { label: 'Browse Resources', href: '/resources' },
   { label: 'Requests', href: '/requests' },
   { label: 'Community', href: '/community' },
-  { label: 'PDF Tools', href: '/pdf-tools' },
 ];
 
 const staffNavLinks = [
-  { label: '🛠️ PDF Tools Suite', href: '/pdf-tools' },
   { label: '⚙️ Admin Control Center', href: '/admin' },
 ];
 
@@ -38,7 +36,7 @@ const navLinks = isStaff ? staffNavLinks : studentNavLinks;
       </div>
       <div class="flex flex-col">
         <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-sky-600 dark:from-indigo-400 dark:to-sky-400 bg-clip-text text-transparent">StuddyBuddy</span>
-        <span class="text-[10px] font-medium tracking-wider text-slate-500 dark:text-slate-400 uppercase">{isStaff ? 'Admin Control' : 'Academic Resources'}</span>
+        <span class="text-[10px] font-medium tracking-wider text-slate-500 dark:text-slate-400 uppercase">Academic Resources</span>
       </div>
     </a>
 

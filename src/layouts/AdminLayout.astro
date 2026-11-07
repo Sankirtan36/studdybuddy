@@ -4,7 +4,7 @@ import Footer from '../components/layout/Footer.astro';
 
 interface Props {
   title?: string;
-  activeNav?: 'overview' | 'colleges' | 'moderation' | 'pdf-tools' | 'broadcasts' | 'revenue' | 'users' | 'database' | 'audit';
+  activeNav?: 'overview' | 'colleges' | 'moderation' | 'pdf-tools' | 'broadcasts' | 'revenue' | 'users' | 'database' | 'audit' | 'settings';
   pendingUniCount?: number;
   pendingDocCount?: number;
 }
@@ -51,7 +51,7 @@ const navLinks = [
     label: 'PDF Tools Suite',
     href: '/admin/pdf-tools',
     iconColor: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
-    icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
+    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
     badge: { text: 'Workbench', color: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' },
   },
   {
@@ -81,8 +81,8 @@ const navLinks = [
   {
     id: 'database',
     label: 'Database Explorer',
-    href: '/database',
-    iconColor: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+    href: '/admin/database',
+    iconColor: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
     icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4',
     badge: null,
   },
@@ -92,6 +92,14 @@ const navLinks = [
     href: '/admin/audit',
     iconColor: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
     icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+    badge: null,
+  },
+  {
+    id: 'settings',
+    label: 'Platform & Settings',
+    href: '/admin/settings',
+    iconColor: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+    icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
     badge: null,
   },
 ];
@@ -278,11 +286,26 @@ const navLinks = [
               <span>🛠️ PDF Workbench</span>
             </a>
             <a
-              href="/database"
+              href="/admin/database"
               target="_self"
-              class="hidden sm:inline-flex px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold items-center gap-1.5"
+              class={`hidden sm:inline-flex px-3 py-1.5 rounded-xl border text-xs font-semibold items-center gap-1.5 transition-colors ${
+                activeNav === 'database'
+                  ? 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800'
+                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+              }`}
             >
               <span>Database</span>
+            </a>
+            <a
+              href="/admin/settings"
+              target="_self"
+              class={`hidden sm:inline-flex px-3 py-1.5 rounded-xl border text-xs font-semibold items-center gap-1.5 transition-colors ${
+                activeNav === 'settings'
+                  ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'
+                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <span>⚙️ Settings</span>
             </a>
             <form action="/api/auth/logout" method="POST" class="inline">
               <button

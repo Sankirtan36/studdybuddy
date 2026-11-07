@@ -1,0 +1,500 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getSystemSettings } from '../../server/repositories/settingsRepository';
+import { findUserById } from '../../server/auth/userStore';
+
+const user = Astro.locals.user;
+if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+  return Astro.redirect('/admin/login?redirect=/admin/settings');
+}
+
+const fullUser = await findUserById(user.id);
+const settings = await getSystemSettings();
+---
+
+<AdminLayout title="Platform & Account Settings" activeNav="settings">
+  <div class="space-y-8 max-w-5xl">
+
+    <!-- Header Banner -->
+    <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 text-white shadow-xl relative overflow-hidden">
+      <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 backdrop-blur-md text-indigo-300 text-xs font-bold uppercase tracking-wider mb-2 border border-indigo-500/30">
+            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+            Administrative Configuration
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black tracking-tight">Platform & Account Settings</h1>
+          <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
+            Manage your administrative identity, security credentials, academic governance rules, and PDF storage policies.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="px-3 py-1.5 rounded-xl bg-white/10 text-white text-xs font-bold border border-white/10 flex items-center gap-1.5">
+            <span>Role:</span>
+            <span class="uppercase text-amber-300">{user.role}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback Alerts Container -->
+    <div id="settings-alert" class="hidden p-4 rounded-2xl text-xs font-semibold flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span id="alert-icon"></span>
+        <span id="alert-msg"></span>
+      </div>
+      <button type="button" onclick="document.getElementById('settings-alert').classList.add('hidden')" class="text-xs font-bold opacity-70 hover:opacity-100">✕</button>
+    </div>
+
+    <!-- 1. Admin Profile & Identity Settings -->
+    <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-6">
+      <div class="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white">Admin Identity & Profile</h2>
+          <p class="text-xs text-slate-500">Update how your administrative account is displayed across activity logs and notifications.</p>
+        </div>
+      </div>
+
+      <form id="profile-form" class="space-y-4 max-w-xl">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Admin Display Name / Username
+          </label>
+          <input
+            id="admin-username-input"
+            type="text"
+            required
+            value={fullUser?.displayName || user.displayName || 'Administrator'}
+            class="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="e.g. Lead Administrator"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Admin Email Address (Verified)
+          </label>
+          <div class="flex items-center gap-2">
+            <input
+              type="email"
+              disabled
+              value={user.email}
+              class="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-500 dark:text-slate-400 cursor-not-allowed"
+            />
+            <span class="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 font-bold text-xs shrink-0 flex items-center gap-1">
+              ✓ Verified
+            </span>
+          </div>
+          <span class="text-[11px] text-slate-400 mt-1 block">Primary administrator emails are locked to maintain system audit continuity.</span>
+        </div>
+
+        <div class="pt-2">
+          <button
+            id="profile-save-btn"
+            type="submit"
+            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            Save Profile Changes
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 2. Change Admin Password -->
+    <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-6">
+      <div class="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white">Change Admin Password</h2>
+          <p class="text-xs text-slate-500">Rotate administrative master passwords regularly. Minimum 8 characters required.</p>
+        </div>
+      </div>
+
+      <form id="password-form" class="space-y-4 max-w-xl">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Current Password
+          </label>
+          <input
+            id="current-password-input"
+            type="password"
+            required
+            autocomplete="current-password"
+            placeholder="••••••••••••"
+            class="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              New Password
+            </label>
+            <input
+              id="new-password-input"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+              placeholder="••••••••••••"
+              class="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              Confirm New Password
+            </label>
+            <input
+              id="confirm-password-input"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+              placeholder="••••••••••••"
+              class="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button
+            id="password-save-btn"
+            type="submit"
+            class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md shadow-amber-600/20 transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            Update Admin Password
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 3. Academic Governance & Platform SaaS Settings -->
+    <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-6">
+      <div class="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white">Academic Governance & Storage Rules</h2>
+          <p class="text-xs text-slate-500">Fine-tune moderation sensitivity, college duplicate rejection, and PDF garbage-collection timers.</p>
+        </div>
+      </div>
+
+      <form id="governance-form" class="space-y-6">
+        
+        <!-- Toggle: Allow University Submissions -->
+        <div class="flex items-start justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 gap-4">
+          <div class="space-y-0.5">
+            <span class="text-xs font-bold text-slate-900 dark:text-white block">Student University Submissions</span>
+            <span class="text-xs text-slate-500 dark:text-slate-400 block">
+              Allow students to submit new university / college addition requests. When disabled, the submission form shows a maintenance notice.
+            </span>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              id="allow-uni-toggle"
+              type="checkbox"
+              checked={settings.allowUniversitySubmissions}
+              class="sr-only peer"
+            />
+            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+
+        <!-- Toggle: Strict Duplicate Checking -->
+        <div class="flex items-start justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 gap-4">
+          <div class="space-y-0.5">
+            <span class="text-xs font-bold text-slate-900 dark:text-white block">Strict Duplicate College Enforcement</span>
+            <span class="text-xs text-slate-500 dark:text-slate-400 block">
+              Instantly blocks users from submitting duplicate universities based on fuzzy slug and alias matching (e.g. Parul University / PU).
+            </span>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              id="strict-dup-toggle"
+              type="checkbox"
+              checked={settings.strictDuplicateCheck}
+              class="sr-only peer"
+            />
+            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
+
+        <!-- Moderation Mode Selector -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+            Resource Upload Moderation Policy
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+              <input
+                type="radio"
+                name="moderation-mode"
+                value="manual_first"
+                checked={settings.moderationMode === 'manual_first'}
+                class="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+              />
+              <div class="text-xs">
+                <span class="font-bold text-slate-900 dark:text-white block">Manual Review First (Recommended)</span>
+                <span class="text-slate-500 text-[11px]">Uploads require admin approval before appearing in public student search.</span>
+              </div>
+            </label>
+
+            <label class="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+              <input
+                type="radio"
+                name="moderation-mode"
+                value="instant_publish"
+                checked={settings.moderationMode === 'instant_publish'}
+                class="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+              />
+              <div class="text-xs">
+                <span class="font-bold text-slate-900 dark:text-white block">Instant Publish (Post-Moderation)</span>
+                <span class="text-slate-500 text-[11px]">Uploads go live immediately and only get held if reported by students.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- PDF Storage Retention Timers -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              Guest PDF Retention Limit (Hours)
+            </label>
+            <input
+              id="guest-retention-input"
+              type="number"
+              min="1"
+              max="72"
+              value={settings.guestPdfRetentionHours}
+              class="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <span class="text-[11px] text-slate-400 mt-1 block">Default: 6 hours before permanent automated cleanup.</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              Registered Student PDF Retention (Hours)
+            </label>
+            <input
+              id="user-retention-input"
+              type="number"
+              min="6"
+              max="720"
+              value={settings.userPdfRetentionHours}
+              class="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <span class="text-[11px] text-slate-400 mt-1 block">Default: 48 hours for authenticated student workbench files.</span>
+          </div>
+        </div>
+
+        <!-- Maintenance Mode Toggle -->
+        <div class="p-4 rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 space-y-3">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <span class="text-xs font-bold text-rose-900 dark:text-rose-300 block">Platform Maintenance Mode</span>
+              <span class="text-xs text-rose-700/80 dark:text-rose-400 block">
+                Puts StuddyBuddy into temporary maintenance. Only platform owners can access the control panel.
+              </span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                id="maintenance-toggle"
+                type="checkbox"
+                checked={settings.maintenanceMode}
+                class="sr-only peer"
+              />
+              <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 mb-1">
+              Maintenance Notice Displayed to Users
+            </label>
+            <input
+              id="maintenance-notice-input"
+              type="text"
+              value={settings.maintenanceNotice}
+              class="w-full px-3.5 py-2 text-xs rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+            />
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button
+            id="governance-save-btn"
+            type="submit"
+            class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            Save Platform Governance Rules
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</AdminLayout>
+
+<script>
+  const alertBox = document.getElementById('settings-alert') as HTMLDivElement;
+  const alertIcon = document.getElementById('alert-icon') as HTMLSpanElement;
+  const alertMsg = document.getElementById('alert-msg') as HTMLSpanElement;
+
+  function showAlert(msg: string, type: 'success' | 'error') {
+    if (!alertBox || !alertMsg || !alertIcon) return;
+    alertBox.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-200', 'bg-rose-50', 'text-rose-800', 'border-rose-200', 'dark:bg-emerald-950/60', 'dark:text-emerald-300', 'dark:bg-rose-950/60', 'dark:text-rose-300');
+    
+    if (type === 'success') {
+      alertBox.classList.add('bg-emerald-50', 'text-emerald-800', 'border', 'border-emerald-200', 'dark:bg-emerald-950/60', 'dark:text-emerald-300');
+      alertIcon.innerText = '✓';
+    } else {
+      alertBox.classList.add('bg-rose-50', 'text-rose-800', 'border', 'border-rose-200', 'dark:bg-rose-950/60', 'dark:text-rose-300');
+      alertIcon.innerText = '⚠️';
+    }
+    alertMsg.innerText = msg;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // 1. Profile Form
+  const profileForm = document.getElementById('profile-form') as HTMLFormElement;
+  const profileBtn = document.getElementById('profile-save-btn') as HTMLButtonElement;
+  const usernameInput = document.getElementById('admin-username-input') as HTMLInputElement;
+
+  profileForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    profileBtn.disabled = true;
+    profileBtn.innerText = 'Saving...';
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_profile',
+          displayName: usernameInput.value.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert(data.error || 'Failed to update administrative profile.', 'error');
+      } else {
+        showAlert(data.message || 'Profile updated successfully!', 'success');
+      }
+    } catch {
+      showAlert('Network error while saving profile.', 'error');
+    } finally {
+      profileBtn.disabled = false;
+      profileBtn.innerText = 'Save Profile Changes';
+    }
+  });
+
+  // 2. Password Form
+  const passwordForm = document.getElementById('password-form') as HTMLFormElement;
+  const passwordBtn = document.getElementById('password-save-btn') as HTMLButtonElement;
+  const currentPwInput = document.getElementById('current-password-input') as HTMLInputElement;
+  const newPwInput = document.getElementById('new-password-input') as HTMLInputElement;
+  const confirmPwInput = document.getElementById('confirm-password-input') as HTMLInputElement;
+
+  passwordForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (newPwInput.value !== confirmPwInput.value) {
+      showAlert('New password and confirmation password do not match.', 'error');
+      return;
+    }
+
+    passwordBtn.disabled = true;
+    passwordBtn.innerText = 'Verifying & Updating...';
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'change_password',
+          currentPassword: currentPwInput.value,
+          newPassword: newPwInput.value,
+          confirmPassword: confirmPwInput.value,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert(data.error || 'Failed to update administrative password.', 'error');
+      } else {
+        showAlert(data.message || 'Password updated successfully!', 'success');
+        passwordForm.reset();
+      }
+    } catch {
+      showAlert('Network error while updating password.', 'error');
+    } finally {
+      passwordBtn.disabled = false;
+      passwordBtn.innerText = 'Update Admin Password';
+    }
+  });
+
+  // 3. Governance Form
+  const governanceForm = document.getElementById('governance-form') as HTMLFormElement;
+  const governanceBtn = document.getElementById('governance-save-btn') as HTMLButtonElement;
+  const allowUniToggle = document.getElementById('allow-uni-toggle') as HTMLInputElement;
+  const strictDupToggle = document.getElementById('strict-dup-toggle') as HTMLInputElement;
+  const guestRetentionInput = document.getElementById('guest-retention-input') as HTMLInputElement;
+  const userRetentionInput = document.getElementById('user-retention-input') as HTMLInputElement;
+  const maintenanceToggle = document.getElementById('maintenance-toggle') as HTMLInputElement;
+  const maintenanceNoticeInput = document.getElementById('maintenance-notice-input') as HTMLInputElement;
+
+  governanceForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    governanceBtn.disabled = true;
+    governanceBtn.innerText = 'Applying Settings...';
+
+    const moderationModeEl = document.querySelector('input[name="moderation-mode"]:checked') as HTMLInputElement;
+    const moderationMode = moderationModeEl ? moderationModeEl.value : 'manual_first';
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_platform_settings',
+          allowUniversitySubmissions: allowUniToggle.checked,
+          strictDuplicateCheck: strictDupToggle.checked,
+          moderationMode,
+          guestPdfRetentionHours: Number(guestRetentionInput.value) || 6,
+          userPdfRetentionHours: Number(userRetentionInput.value) || 48,
+          maintenanceMode: maintenanceToggle.checked,
+          maintenanceNotice: maintenanceNoticeInput.value.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert(data.error || 'Failed to save platform governance settings.', 'error');
+      } else {
+        showAlert(data.message || 'Platform governance rules saved!', 'success');
+      }
+    } catch {
+      showAlert('Network error while saving settings.', 'error');
+    } finally {
+      governanceBtn.disabled = false;
+      governanceBtn.innerText = 'Save Platform Governance Rules';
+    }
+  });
+</script>
+

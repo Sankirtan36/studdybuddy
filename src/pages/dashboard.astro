@@ -143,14 +143,6 @@ const displayLibrary = mySavedResources.length > 0 ? mySavedResources : myContri
         >
           View Requests Board →
         </a>
-        {(user.role === 'admin' || user.role === 'owner') && (
-          <a
-            href="/admin"
-            class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-transform hover:scale-105"
-          >
-            ★ Admin Control Panel →
-          </a>
-        )}
         <a
           href="/upload"
           class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-transform hover:scale-105 flex items-center gap-1.5"

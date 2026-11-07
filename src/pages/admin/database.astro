@@ -1,0 +1,272 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../server/db/mongo';
+import { readFirestoreCollection } from '../../lib/firebase';
+import { readLocalResources } from '../../server/repositories/resourceRepository';
+
+// Verify Admin Role
+const user = Astro.locals.user;
+if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+  return Astro.redirect('/admin/login?redirect=/admin/database');
+}
+
+// Initial server-side read of resources collection
+let initialResources: any[] = [];
+let mongoConnected = false;
+
+try {
+  const db = await getDb();
+  initialResources = await db.collection('resources').find({}).limit(10).toArray();
+  mongoConnected = true;
+} catch (err) {
+  try {
+    initialResources = await readFirestoreCollection('resources', 10);
+  } catch (fsErr) {
+    initialResources = [];
+  }
+  if (!initialResources || initialResources.length === 0) {
+    initialResources = readLocalResources().slice(0, 10);
+  }
+}
+---
+
+<AdminLayout title="Database Explorer & Cloud Sync" activeNav="database">
+  <div class="space-y-6">
+
+    <!-- Header Banner -->
+    <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 text-white shadow-xl relative overflow-hidden">
+      <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-emerald-100 text-xs font-bold uppercase tracking-wider mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+            Direct Datastore Telemetry
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black tracking-tight">Database Explorer & Cloud Sync</h1>
+          <p class="text-xs sm:text-sm text-emerald-100/90 mt-1 max-w-2xl">
+            Real-time inspection and querying across Cloud Firestore collections, MongoDB Atlas clusters, and persistent local fallbacks.
+          </p>
+        </div>
+
+        <!-- Connection Badges -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/20">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Cloud Datastore: Active
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/20">
+            <span class={`w-2 h-2 rounded-full ${mongoConnected ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+            MongoDB: {mongoConnected ? 'Connected' : 'Local Standby'}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collection Query Toolbar -->
+    <div class="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Quick Collections:</span>
+          <button data-col="resources" class="col-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-sm transition-all cursor-pointer">
+            resources
+          </button>
+          <button data-col="users" class="col-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer">
+            users
+          </button>
+          <button data-col="universityRequests" class="col-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer">
+            universityRequests
+          </button>
+          <button data-col="announcements" class="col-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer">
+            announcements
+          </button>
+          <button data-col="auditLogs" class="col-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer">
+            auditLogs
+          </button>
+          <button data-col="systemSettings" class="col-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer">
+            systemSettings
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input
+            id="custom-col-input"
+            type="text"
+            placeholder="Custom collection..."
+            class="px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full sm:w-48"
+          />
+          <button
+            id="read-btn"
+            type="button"
+            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/25 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span id="read-btn-text">Read Collection</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Target Bar -->
+      <div id="status-bar" class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between">
+        <span>Active Target: <strong id="current-col-label" class="text-indigo-600 dark:text-indigo-400">resources</strong></span>
+        <span id="doc-count-badge" class="font-bold text-slate-800 dark:text-slate-200">Loaded: {initialResources.length} documents</span>
+      </div>
+    </div>
+
+    <!-- Results Display -->
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span>Collection Documents</span>
+          <span id="count-pill" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
+            {initialResources.length}
+          </span>
+        </h2>
+
+        <button
+          id="copy-json-btn"
+          type="button"
+          class="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors shadow-sm cursor-pointer"
+        >
+          Copy JSON
+        </button>
+      </div>
+
+      <!-- JSON Container -->
+      <div id="results-container" class="space-y-3">
+        {initialResources.length > 0 ? (
+          initialResources.map((doc, idx) => (
+            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                  #{idx + 1} — ID: {doc._id || doc.id || 'N/A'}
+                </span>
+                <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                  {doc.category || doc.role || doc.entityType || 'Document'}
+                </span>
+              </div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">
+                {doc.title || doc.displayName || doc.name || doc.proposedName || 'Untitled Record'}
+              </h3>
+              <pre class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 text-[11px] font-mono text-slate-700 dark:text-slate-300 overflow-x-auto max-h-56 border border-slate-200/50 dark:border-slate-800/50">
+                {JSON.stringify(doc, null, 2)}
+              </pre>
+            </div>
+          ))
+        ) : (
+          <div class="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+            <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">No documents found in this collection yet.</p>
+            <p class="text-xs text-slate-400">Select another collection above or click "Read Collection".</p>
+          </div>
+        )}
+      </div>
+    </div>
+
+  </div>
+</AdminLayout>
+
+<script>
+  let currentCollection = 'resources';
+  let loadedDocs: any[] = [];
+
+  const readBtn = document.getElementById('read-btn') as HTMLButtonElement;
+  const readBtnText = document.getElementById('read-btn-text') as HTMLSpanElement;
+  const customColInput = document.getElementById('custom-col-input') as HTMLInputElement;
+  const colButtons = document.querySelectorAll('.col-btn');
+  const resultsContainer = document.getElementById('results-container') as HTMLDivElement;
+  const currentColLabel = document.getElementById('current-col-label') as HTMLElement;
+  const docCountBadge = document.getElementById('doc-count-badge') as HTMLElement;
+  const countPill = document.getElementById('count-pill') as HTMLElement;
+  const copyJsonBtn = document.getElementById('copy-json-btn') as HTMLButtonElement;
+
+  colButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      colButtons.forEach((b) => {
+        b.classList.remove('bg-indigo-600', 'text-white');
+        b.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+      });
+      btn.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+      btn.classList.add('bg-indigo-600', 'text-white');
+
+      currentCollection = btn.getAttribute('data-col') || 'resources';
+      if (customColInput) customColInput.value = '';
+      fetchAndRenderCollection(currentCollection);
+    });
+  });
+
+  readBtn?.addEventListener('click', () => {
+    if (customColInput && customColInput.value.trim()) {
+      currentCollection = customColInput.value.trim();
+    }
+    fetchAndRenderCollection(currentCollection);
+  });
+
+  copyJsonBtn?.addEventListener('click', () => {
+    navigator.clipboard.writeText(JSON.stringify(loadedDocs, null, 2));
+    const origText = copyJsonBtn.innerText;
+    copyJsonBtn.innerText = 'Copied!';
+    setTimeout(() => {
+      copyJsonBtn.innerText = origText;
+    }, 1500);
+  });
+
+  async function fetchAndRenderCollection(colName: string) {
+    if (currentColLabel) currentColLabel.innerText = colName;
+    if (readBtnText) readBtnText.innerText = 'Reading...';
+    readBtn.disabled = true;
+
+    try {
+      const res = await fetch(`/api/firebase/database?collection=${encodeURIComponent(colName)}&limit=50`);
+      const result = await res.json();
+
+      loadedDocs = result.data || [];
+      const count = loadedDocs.length;
+
+      if (docCountBadge) docCountBadge.innerText = `Loaded: ${count} documents`;
+      if (countPill) countPill.innerText = count.toString();
+
+      if (count === 0) {
+        resultsContainer.innerHTML = `
+          <div class="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">No documents in collection "${colName}".</p>
+            <p class="text-xs text-slate-400">The collection is currently empty.</p>
+          </div>
+        `;
+      } else {
+        resultsContainer.innerHTML = loadedDocs.map((doc, idx) => `
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                #${idx + 1} — ID: ${doc._id || doc.id || 'N/A'}
+              </span>
+              <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                ${doc.category || doc.role || doc.entityType || 'Document'}
+              </span>
+            </div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">
+              ${escapeHtml(doc.title || doc.displayName || doc.name || doc.proposedName || 'Untitled Record')}
+            </h3>
+            <pre class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 text-[11px] font-mono text-slate-700 dark:text-slate-300 overflow-x-auto max-h-56 border border-slate-200/50 dark:border-slate-800/50">
+${escapeHtml(JSON.stringify(doc, null, 2))}
+            </pre>
+          </div>
+        `).join('');
+      }
+    } catch (err: any) {
+      resultsContainer.innerHTML = `
+        <div class="p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs">
+          Failed to read database collection "${colName}": ${err?.message || 'Network error'}
+        </div>
+      `;
+    } finally {
+      if (readBtnText) readBtnText.innerText = 'Read Collection';
+      readBtn.disabled = false;
+    }
+  }
+
+  function escapeHtml(str: string) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+</script>
+

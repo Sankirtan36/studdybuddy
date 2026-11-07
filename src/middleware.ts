@@ -51,6 +51,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (pathname === '/pdf-tools') {
       return context.redirect('/admin/pdf-tools');
     }
+    if (pathname === '/database') {
+      return context.redirect('/admin/database');
+    }
     if (
       pathname === '/' ||
       pathname.startsWith('/dashboard') ||
@@ -62,23 +65,25 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
+  // Redirect legacy /database and /pdf-tools to dedicated Admin routes
+  if (pathname === '/database') {
+    return context.redirect('/admin/database');
+  }
+  if (pathname === '/pdf-tools') {
+    return context.redirect('/admin/pdf-tools');
+  }
+
   // Protect Admin Area on the server (Requires login and admin/owner role)
   if (pathname.startsWith('/admin')) {
+    // Admin login page itself must be public
+    if (pathname === '/admin/login') {
+      return next();
+    }
     if (!context.locals.user) {
       return context.redirect(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
     if (context.locals.user.role !== 'admin' && context.locals.user.role !== 'owner') {
       return context.redirect('/dashboard?error=unauthorized_admin');
-    }
-  }
-
-  // Protect Database Explorer (Only Admin/Owner can access)
-  if (pathname.startsWith('/database')) {
-    if (!context.locals.user) {
-      return context.redirect(`/login?redirect=${encodeURIComponent(pathname)}`);
-    }
-    if (context.locals.user.role !== 'admin' && context.locals.user.role !== 'owner') {
-      return context.redirect('/dashboard?error=unauthorized_database');
     }
   }
 
