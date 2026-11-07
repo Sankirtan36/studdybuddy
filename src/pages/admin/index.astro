@@ -240,14 +240,16 @@ function formatBytes(bytes: number) {
   <!-- Empty header slot: eliminates consumer header with Requests/Community on admin pages -->
   <div slot="header"></div>
 
-  <style>
+  <style is:global>
     /* Sleek no-scrollbar rule for sidebar */
     .no-scrollbar {
-      -ms-overflow-style: none; /* IE and Edge */
-      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none !important; /* IE and Edge */
+      scrollbar-width: none !important; /* Firefox */
     }
     .no-scrollbar::-webkit-scrollbar {
-      display: none; /* Chrome, Safari, Opera */
+      display: none !important; /* Chrome, Safari, Opera */
+      width: 0 !important;
+      height: 0 !important;
     }
   </style>
 
@@ -266,7 +268,7 @@ function formatBytes(bytes: number) {
         id="sidebar-toggle-btn"
         type="button"
         aria-label="Toggle sidebar expansion"
-        class="absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105 transition-all cursor-pointer z-50 focus:outline-none"
+        class="absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-14 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 hover:scale-105 transition-all cursor-pointer z-50 focus:outline-none"
         title="Toggle Sidebar (Expand/Collapse)"
       >
         <svg id="sidebar-toggle-icon" class="w-3.5 h-3.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -275,7 +277,7 @@ function formatBytes(bytes: number) {
       </button>
 
       <!-- Sidebar Top: Brand & Navigation (Zero Visible Scrollbars) -->
-      <div class="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar p-3.5 space-y-6">
+      <div class="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar p-3.5 space-y-6" style="-ms-overflow-style: none; scrollbar-width: none;">
         
         <!-- Brand Header -->
         <div class="flex items-center gap-3 px-2 py-1">

@@ -46,6 +46,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const pathname = context.url.pathname;
 
+  // Automatic staff isolation: administrators & owners are strictly kept within Admin/PDF workbench
+  if (context.locals.user && (context.locals.user.role === 'admin' || context.locals.user.role === 'owner')) {
+    if (
+      pathname === '/' ||
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/community') ||
+      pathname.startsWith('/requests') ||
+      pathname.startsWith('/upload')
+    ) {
+      return context.redirect('/admin');
+    }
+  }
+
   // Protect Admin Area on the server (Requires login and admin/owner role)
   if (pathname.startsWith('/admin')) {
     if (!context.locals.user) {
