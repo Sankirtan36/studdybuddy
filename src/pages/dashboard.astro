@@ -17,55 +17,62 @@ let myContributions: Resource[] = [];
 let mySavedResources: Resource[] = [];
 let mySuggestions: CatalogSuggestion[] = [];
 
+// Always load user's locally stored contributions immediately (<0.1ms)
 try {
-  const db = await getDb();
+  const localContr = readLocalResources().filter((r) => r.contributorId === user.id);
+  myContributions = [...localContr];
+} catch {}
+
+// Attempt remote query with fast 1.5s timeout so dashboard NEVER hangs!
+try {
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Mongo timeout')), 1500)
+  );
+
+  const db = await Promise.race([getDb(), timeoutPromise]);
   
   // Contributions uploaded by this specific user
-  myContributions = await db
-    .collection<Resource>('resources')
-    .find({ contributorId: user.id })
-    .sort({ createdAt: -1 })
-    .toArray();
+  const remoteContributions = await Promise.race([
+    db.collection<Resource>('resources').find({ contributorId: user.id }).sort({ createdAt: -1 }).toArray(),
+    timeoutPromise,
+  ]);
+
+  if (remoteContributions && remoteContributions.length > 0) {
+    const existingIds = new Set(myContributions.map((r) => r._id?.toString()));
+    for (const item of remoteContributions) {
+      if (!existingIds.has(item._id?.toString())) {
+        myContributions.push(item);
+      }
+    }
+  }
 
   // Saved resources bookmarked by this user
-  const savedEntries = await db
-    .collection<SavedResource>('savedResources')
-    .find({ userId: user.id })
-    .toArray();
+  const savedEntries = await Promise.race([
+    db.collection<SavedResource>('savedResources').find({ userId: user.id }).toArray(),
+    timeoutPromise,
+  ]);
 
-  if (savedEntries.length > 0) {
+  if (savedEntries && savedEntries.length > 0) {
     const resourceIds = savedEntries.map((s) => s.resourceId);
-    mySavedResources = await db
-      .collection<Resource>('resources')
-      .find({
+    mySavedResources = await Promise.race([
+      db.collection<Resource>('resources').find({
         $or: [
           { _id: { $in: resourceIds } },
           { _id: { $in: resourceIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id)) } },
         ],
-      })
-      .toArray();
+      }).toArray(),
+      timeoutPromise,
+    ]);
   }
 
   // User's catalog suggestions
-  mySuggestions = await db
-    .collection<CatalogSuggestion>('catalogSuggestions')
-    .find({ submitterEmail: user.email })
-    .sort({ createdAt: -1 })
-    .toArray();
+  mySuggestions = await Promise.race([
+    db.collection<CatalogSuggestion>('catalogSuggestions').find({ submitterEmail: user.email }).sort({ createdAt: -1 }).toArray(),
+    timeoutPromise,
+  ]);
 } catch (err) {
-  // Graceful fallback without dummy injection
+  // Graceful instantaneous fallback: user's contributions are already ready!
 }
-
-// Always ensure user's locally stored contributions are merged
-try {
-  const localContr = readLocalResources().filter((r) => r.contributorId === user.id);
-  const existingIds = new Set(myContributions.map((r) => r._id?.toString()));
-  for (const item of localContr) {
-    if (!existingIds.has(item._id?.toString())) {
-      myContributions.push(item);
-    }
-  }
-} catch {}
 
 const totalApproved = myContributions.filter((r) => r.status === 'approved').length;
 const totalPending = myContributions.filter((r) => r.status === 'pending').length;

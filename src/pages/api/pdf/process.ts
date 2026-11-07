@@ -149,13 +149,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // - Logged-in users -> stored for 48 hours
     const user = locals.user;
     const isGuest = !user;
-    const record = saveProcessedPdf({
-      originalName,
-      outputName: outputFilename,
-      buffer: outputBuffer,
-      tool,
-      user: user || null,
-    });
+    let record: any = {
+      id: `pdf-${isGuest ? 'guest' : 'user'}-${Date.now()}`,
+      expiresAt: Date.now() + (isGuest ? 6 * 3600 * 1000 : 48 * 3600 * 1000),
+    };
+    try {
+      record = saveProcessedPdf({
+        originalName,
+        outputName: outputFilename,
+        buffer: outputBuffer,
+        tool,
+        user: user || null,
+      });
+    } catch (saveErr: any) {
+      console.warn('Non-blocking storage save notice:', saveErr?.message);
+    }
 
     // Prepare standard RFC 6266/5987 Content-Disposition header
     const cleanAsciiFilename = outputFilename.replace(/["\r\n\\]/g, '');

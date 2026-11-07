@@ -5,7 +5,12 @@ import Footer from '../components/layout/Footer.astro';
 import { getUserProcessedPdfs } from '../server/pdf/pdfStorage';
 
 const user = Astro.locals.user;
-const userFiles = user ? getUserProcessedPdfs(user.id) : [];
+let userFiles: any[] = [];
+try {
+  userFiles = user ? getUserProcessedPdfs(user.id) : [];
+} catch {
+  userFiles = [];
+}
 
 function formatBytes(bytes: number) {
   if (!bytes) return '0 B';
@@ -157,12 +162,12 @@ function getHoursRemaining(expiresAt: number): number {
     )}
 
     <!-- Status Alert Box -->
-    <div id="tool-status-alert" class="hidden p-4 rounded-2xl text-xs font-semibold"></div>
+    <div id="tool-status-alert" class="hidden p-4 rounded-2xl text-xs font-semibold shadow-sm transition-all"></div>
 
     <!-- Tool Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       
-      <!-- TOOL 1: Merge PDFs -->
+      <!-- TOOL 1: Merge Multiple PDFs -->
       <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
         <div class="space-y-3">
           <div class="flex items-center justify-between">
@@ -177,29 +182,71 @@ function getHoursRemaining(expiresAt: number): number {
           </div>
         </div>
 
-        <form class="pdf-tool-form space-y-3 text-xs" data-tool-name="merge">
+        <form
+          id="merge-form"
+          action="/api/pdf/process"
+          method="POST"
+          enctype="multipart/form-data"
+          class="pdf-tool-form space-y-3 text-xs"
+          data-tool-name="merge"
+        >
           <input type="hidden" name="tool" value="merge" />
-          <div>
-            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select 2 or more PDFs:</label>
-            <input
-              type="file"
-              name="files"
-              multiple
-              required
-              accept="application/pdf"
-              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 cursor-pointer"
-            />
+
+          <!-- Dynamic Multi-File Dropzone / Picker -->
+          <div class="space-y-2">
+            <div
+              id="merge-dropzone"
+              class="border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-indigo-50/40 dark:bg-indigo-950/20"
+            >
+              <div class="space-y-1">
+                <svg class="w-7 h-7 mx-auto text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="font-bold text-xs text-indigo-700 dark:text-indigo-300">
+                  Click to Add PDF Files
+                </p>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400">
+                  Ek-ek karke ya ek saath multiple PDFs select karein (min 2 PDFs)
+                </p>
+              </div>
+              <input
+                id="merge-file-input"
+                type="file"
+                multiple
+                accept="application/pdf"
+                class="hidden"
+              />
+            </div>
+
+            <!-- Selected Files List -->
+            <div id="merge-file-list" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+
+            <div class="flex items-center justify-between text-[11px] pt-1">
+              <span id="merge-count-hint" class="font-medium text-slate-500">
+                0 PDFs selected
+              </span>
+              <button
+                id="merge-add-more-btn"
+                type="button"
+                class="text-indigo-600 dark:text-indigo-400 hover:underline font-bold hidden"
+              >
+                + Add Another PDF
+              </button>
+            </div>
           </div>
+
           <button
+            id="merge-submit-btn"
             type="submit"
-            class="submit-btn w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
+            disabled
+            class="submit-btn w-full py-2.5 bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
           >
             <span>Merge & Download PDF</span>
           </button>
         </form>
       </div>
 
-      <!-- TOOL 2: Split PDF -->
+      <!-- TOOL 2: Split PDF by Pages -->
       <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
         <div class="space-y-3">
           <div class="flex items-center justify-between">
@@ -214,22 +261,34 @@ function getHoursRemaining(expiresAt: number): number {
           </div>
         </div>
 
-        <form class="pdf-tool-form space-y-3 text-xs" data-tool-name="split">
+        <form
+          id="split-form"
+          action="/api/pdf/process"
+          method="POST"
+          enctype="multipart/form-data"
+          class="pdf-tool-form space-y-3 text-xs"
+          data-tool-name="split"
+        >
           <input type="hidden" name="tool" value="split" />
+          
           <div>
             <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select PDF file:</label>
             <input
+              id="split-file-input"
               type="file"
               name="file"
               required
               accept="application/pdf"
               class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 dark:file:bg-sky-950 file:text-sky-700 dark:file:text-sky-300 cursor-pointer"
             />
+            <p id="split-file-name" class="text-[10px] text-slate-400 mt-1 hidden"></p>
           </div>
+
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block font-medium text-slate-600 dark:text-slate-400 text-[10px] mb-1">Start Page</label>
               <input
+                id="split-start-page"
                 type="number"
                 name="startPage"
                 value="1"
@@ -241,6 +300,7 @@ function getHoursRemaining(expiresAt: number): number {
             <div>
               <label class="block font-medium text-slate-600 dark:text-slate-400 text-[10px] mb-1">End Page</label>
               <input
+                id="split-end-page"
                 type="number"
                 name="endPage"
                 value="5"
@@ -250,7 +310,9 @@ function getHoursRemaining(expiresAt: number): number {
               />
             </div>
           </div>
+
           <button
+            id="split-submit-btn"
             type="submit"
             class="submit-btn w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
           >
@@ -274,22 +336,64 @@ function getHoursRemaining(expiresAt: number): number {
           </div>
         </div>
 
-        <form class="pdf-tool-form space-y-3 text-xs" data-tool-name="image-to-pdf">
+        <form
+          id="images-form"
+          action="/api/pdf/process"
+          method="POST"
+          enctype="multipart/form-data"
+          class="pdf-tool-form space-y-3 text-xs"
+          data-tool-name="image-to-pdf"
+        >
           <input type="hidden" name="tool" value="image-to-pdf" />
-          <div>
-            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select Images (JPG, PNG):</label>
-            <input
-              type="file"
-              name="files"
-              multiple
-              required
-              accept="image/jpeg,image/png,image/jpg"
-              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-950 file:text-emerald-700 dark:file:text-emerald-300 cursor-pointer"
-            />
+
+          <!-- Multi-Image Dropzone -->
+          <div class="space-y-2">
+            <div
+              id="image-dropzone"
+              class="border-2 border-dashed border-emerald-200 dark:border-emerald-800/80 hover:border-emerald-500 dark:hover:border-emerald-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-emerald-50/40 dark:bg-emerald-950/20"
+            >
+              <div class="space-y-1">
+                <svg class="w-7 h-7 mx-auto text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p class="font-bold text-xs text-emerald-700 dark:text-emerald-300">
+                  Click to Add Photos (JPG, PNG)
+                </p>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400">
+                  Select multiple photos of notes or add them one by one
+                </p>
+              </div>
+              <input
+                id="image-file-input"
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/jpg"
+                class="hidden"
+              />
+            </div>
+
+            <!-- Selected Images List -->
+            <div id="image-file-list" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+
+            <div class="flex items-center justify-between text-[11px] pt-1">
+              <span id="image-count-hint" class="font-medium text-slate-500">
+                0 images selected
+              </span>
+              <button
+                id="image-add-more-btn"
+                type="button"
+                class="text-emerald-600 dark:text-emerald-400 hover:underline font-bold hidden"
+              >
+                + Add Another Photo
+              </button>
+            </div>
           </div>
+
           <button
+            id="image-submit-btn"
             type="submit"
-            class="submit-btn w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
+            disabled
+            class="submit-btn w-full py-2.5 bg-emerald-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
           >
             <span>Convert & Download PDF</span>
           </button>
@@ -311,19 +415,29 @@ function getHoursRemaining(expiresAt: number): number {
           </div>
         </div>
 
-        <form class="pdf-tool-form space-y-3 text-xs" data-tool-name="compress">
+        <form
+          id="compress-form"
+          action="/api/pdf/process"
+          method="POST"
+          enctype="multipart/form-data"
+          class="pdf-tool-form space-y-3 text-xs"
+          data-tool-name="compress"
+        >
           <input type="hidden" name="tool" value="compress" />
           <div>
             <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select PDF to Compress:</label>
             <input
+              id="compress-file-input"
               type="file"
               name="file"
               required
               accept="application/pdf"
               class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-50 dark:file:bg-purple-950 file:text-purple-700 dark:file:text-purple-300 cursor-pointer"
             />
+            <p id="compress-file-name" class="text-[10px] text-slate-400 mt-1 hidden"></p>
           </div>
           <button
+            id="compress-submit-btn"
             type="submit"
             class="submit-btn w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
           >
@@ -338,124 +452,408 @@ function getHoursRemaining(expiresAt: number): number {
   <Footer slot="footer" />
 </Layout>
 
-<script is:inline>
+<script>
   const MAX_SIZE = 3 * 1024 * 1024; // 3 MB
 
-  const statusAlert = document.getElementById('tool-status-alert');
-
-  function showAlert(msg, isError) {
-    if (!statusAlert) return;
-    statusAlert.className = `p-4 rounded-2xl text-xs font-semibold ${
-      isError 
-        ? 'bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300' 
-        : 'bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300'
-    }`;
-    statusAlert.innerHTML = msg;
-    statusAlert.classList.remove('hidden');
-    statusAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  function formatBytes(bytes: number) {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  document.querySelectorAll('.pdf-tool-form').forEach((form) => {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      statusAlert?.classList.add('hidden');
+  function initPdfTools() {
+    const statusAlert = document.getElementById('tool-status-alert');
 
-      const submitBtn = form.querySelector('.submit-btn');
-      const originalText = submitBtn.innerHTML;
+    function showAlert(msg: string, isError: boolean) {
+      if (!statusAlert) return;
+      statusAlert.className = `p-4 rounded-2xl text-xs font-semibold shadow-sm ${
+        isError 
+          ? 'bg-rose-50 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200' 
+          : 'bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+      }`;
+      statusAlert.innerHTML = msg;
+      statusAlert.classList.remove('hidden');
+      statusAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
-      // Validate files <= 3 MB
-      const fileInputs = form.querySelectorAll('input[type="file"]');
-      let oversized = null;
+    // ==========================================
+    // 1. TOOL 1: MERGE MULTIPLE PDFS QUEUE
+    // ==========================================
+    const mergeDropzone = document.getElementById('merge-dropzone');
+    const mergeFileInput = document.getElementById('merge-file-input') as HTMLInputElement | null;
+    const mergeFileList = document.getElementById('merge-file-list');
+    const mergeCountHint = document.getElementById('merge-count-hint');
+    const mergeAddMoreBtn = document.getElementById('merge-add-more-btn');
+    const mergeSubmitBtn = document.getElementById('merge-submit-btn') as HTMLButtonElement | null;
+    const mergeForm = document.getElementById('merge-form') as HTMLFormElement | null;
 
-      fileInputs.forEach((input) => {
-        if (input.files) {
-          for (let i = 0; i < input.files.length; i++) {
-            const f = input.files[i];
-            if (f.size > MAX_SIZE) {
-              oversized = f;
-            }
-          }
-        }
-      });
+    let selectedMergeFiles: File[] = [];
 
-      if (oversized) {
-        const mb = (oversized.size / (1024 * 1024)).toFixed(2);
-        showAlert(`⚠️ File "${oversized.name}" is ${mb} MB, which exceeds the 3 MB maximum size limit. Please choose a smaller file.`, true);
+    function updateMergeUI() {
+      if (!mergeFileList || !mergeCountHint || !mergeSubmitBtn) return;
+      mergeFileList.innerHTML = '';
+
+      if (selectedMergeFiles.length === 0) {
+        mergeCountHint.innerText = '0 PDFs selected (min 2 required)';
+        mergeCountHint.className = 'font-medium text-slate-500';
+        mergeSubmitBtn.disabled = true;
+        mergeSubmitBtn.innerHTML = '<span>Select At Least 2 PDFs</span>';
+        if (mergeAddMoreBtn) mergeAddMoreBtn.classList.add('hidden');
         return;
       }
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span>Processing Document...</span>
-      `;
+      if (mergeAddMoreBtn) mergeAddMoreBtn.classList.remove('hidden');
 
-      try {
-        const formData = new FormData(form);
-        const res = await fetch('/api/pdf/process', {
-          method: 'POST',
-          body: formData,
+      selectedMergeFiles.forEach((file, idx) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs';
+        item.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold flex items-center justify-center shrink-0">
+              ${idx + 1}
+            </span>
+            <span class="font-semibold text-slate-800 dark:text-slate-200 truncate block max-w-[180px] sm:max-w-xs" title="${file.name}">
+              ${file.name}
+            </span>
+            <span class="text-[10px] text-slate-400 shrink-0">
+              (${formatBytes(file.size)})
+            </span>
+          </div>
+          <button type="button" data-remove-index="${idx}" class="remove-merge-file text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg p-1 transition-colors cursor-pointer" title="Remove file">
+            ✕
+          </button>
+        `;
+        mergeFileList.appendChild(item);
+      });
+
+      // Bind remove buttons
+      mergeFileList.querySelectorAll('.remove-merge-file').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetIdx = parseInt(btn.getAttribute('data-remove-index') || '0', 10);
+          selectedMergeFiles.splice(targetIdx, 1);
+          updateMergeUI();
         });
+      });
 
-        if (!res.ok) {
-          let errMsg = 'Failed to process document.';
-          try {
-            const errData = await res.json();
-            errMsg = errData.error || errMsg;
-          } catch {}
-          showAlert(`❌ ${errMsg}`, true);
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = originalText;
-          return;
+      if (selectedMergeFiles.length < 2) {
+        mergeCountHint.innerHTML = `<span class="text-amber-600 dark:text-amber-400 font-bold">⚠️ 1 PDF selected</span> — Add at least 1 more PDF to merge`;
+        mergeSubmitBtn.disabled = true;
+        mergeSubmitBtn.innerHTML = '<span>Add 1 More PDF to Merge</span>';
+      } else {
+        mergeCountHint.innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-bold">✓ ${selectedMergeFiles.length} PDFs ready</span>`;
+        mergeSubmitBtn.disabled = false;
+        mergeSubmitBtn.innerHTML = `<span>Merge ${selectedMergeFiles.length} PDFs & Download</span>`;
+      }
+    }
+
+    function addMergeFiles(files: FileList | File[]) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > MAX_SIZE) {
+          showAlert(`⚠️ File "${file.name}" is ${formatBytes(file.size)}, which exceeds the 3 MB maximum size limit.`, true);
+          continue;
         }
-
-        // Extract filename from Content-Disposition header
-        const disp = res.headers.get('Content-Disposition') || '';
-        let filename = res.headers.get('X-Original-Filename') || 'processed-document.pdf';
-        
-        const filenameMatch = disp.match(/filename\*=UTF-8''([^;]+)/i) || disp.match(/filename="?([^";]+)"?/i);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = decodeURIComponent(filenameMatch[1]);
+        if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+          showAlert(`⚠️ File "${file.name}" is not a PDF document.`, true);
+          continue;
         }
+        selectedMergeFiles.push(file);
+      }
+      updateMergeUI();
+    }
 
-        const storageTtl = res.headers.get('X-Storage-TTL') || '6-hours';
-        const docId = res.headers.get('X-Document-Id');
+    mergeDropzone?.addEventListener('click', () => mergeFileInput?.click());
+    mergeAddMoreBtn?.addEventListener('click', () => mergeFileInput?.click());
 
-        const blob = await res.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = downloadUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          window.URL.revokeObjectURL(downloadUrl);
-          a.remove();
-        }, 1000);
-
-        const ttlText = storageTtl === '48-hours' 
-          ? '✓ <strong>Success!</strong> "' + filename + '" has been downloaded and is saved in your account for <strong>48 hours</strong>.'
-          : '✓ <strong>Success!</strong> "' + filename + '" has been downloaded. <em>(Guest files are automatically deleted after 6 hours)</em>.';
-
-        showAlert(ttlText, false);
-        form.reset();
-
-        // If user files table is present, reload after a brief moment to show new entry
-        if (document.getElementById('user-files-section')) {
-          setTimeout(() => {
-            location.reload();
-          }, 1500);
-        }
-      } catch (err) {
-        showAlert('Network error occurred while processing document.', true);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+    mergeFileInput?.addEventListener('change', () => {
+      if (mergeFileInput.files && mergeFileInput.files.length > 0) {
+        addMergeFiles(mergeFileInput.files);
+        mergeFileInput.value = ''; // Reset input so user can pick same file or another file again
       }
     });
-  });
+
+    // Drag and Drop
+    mergeDropzone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      mergeDropzone.classList.add('border-indigo-500');
+    });
+    mergeDropzone?.addEventListener('dragleave', () => {
+      mergeDropzone.classList.remove('border-indigo-500');
+    });
+    mergeDropzone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      mergeDropzone.classList.remove('border-indigo-500');
+      if (e.dataTransfer && e.dataTransfer.files) {
+        addMergeFiles(e.dataTransfer.files);
+      }
+    });
+
+    // ==========================================
+    // 2. TOOL 3: IMAGES TO PDF QUEUE
+    // ==========================================
+    const imageDropzone = document.getElementById('image-dropzone');
+    const imageFileInput = document.getElementById('image-file-input') as HTMLInputElement | null;
+    const imageFileList = document.getElementById('image-file-list');
+    const imageCountHint = document.getElementById('image-count-hint');
+    const imageAddMoreBtn = document.getElementById('image-add-more-btn');
+    const imageSubmitBtn = document.getElementById('image-submit-btn') as HTMLButtonElement | null;
+    const imagesForm = document.getElementById('images-form') as HTMLFormElement | null;
+
+    let selectedImageFiles: File[] = [];
+
+    function updateImageUI() {
+      if (!imageFileList || !imageCountHint || !imageSubmitBtn) return;
+      imageFileList.innerHTML = '';
+
+      if (selectedImageFiles.length === 0) {
+        imageCountHint.innerText = '0 images selected';
+        imageCountHint.className = 'font-medium text-slate-500';
+        imageSubmitBtn.disabled = true;
+        imageSubmitBtn.innerHTML = '<span>Select At Least 1 Image</span>';
+        if (imageAddMoreBtn) imageAddMoreBtn.classList.add('hidden');
+        return;
+      }
+
+      if (imageAddMoreBtn) imageAddMoreBtn.classList.remove('hidden');
+
+      selectedImageFiles.forEach((file, idx) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs';
+        item.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center justify-center shrink-0">
+              ${idx + 1}
+            </span>
+            <span class="font-semibold text-slate-800 dark:text-slate-200 truncate block max-w-[180px] sm:max-w-xs" title="${file.name}">
+              ${file.name}
+            </span>
+            <span class="text-[10px] text-slate-400 shrink-0">
+              (${formatBytes(file.size)})
+            </span>
+          </div>
+          <button type="button" data-remove-index="${idx}" class="remove-image-file text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg p-1 transition-colors cursor-pointer" title="Remove image">
+            ✕
+          </button>
+        `;
+        imageFileList.appendChild(item);
+      });
+
+      // Bind remove buttons
+      imageFileList.querySelectorAll('.remove-image-file').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetIdx = parseInt(btn.getAttribute('data-remove-index') || '0', 10);
+          selectedImageFiles.splice(targetIdx, 1);
+          updateImageUI();
+        });
+      });
+
+      imageCountHint.innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-bold">✓ ${selectedImageFiles.length} photos ready</span>`;
+      imageSubmitBtn.disabled = false;
+      imageSubmitBtn.innerHTML = `<span>Convert ${selectedImageFiles.length} Images to PDF</span>`;
+    }
+
+    function addImageFiles(files: FileList | File[]) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > MAX_SIZE) {
+          showAlert(`⚠️ Image "${file.name}" is ${formatBytes(file.size)}, which exceeds the 3 MB maximum size limit.`, true);
+          continue;
+        }
+        if (!file.type.startsWith('image/')) {
+          showAlert(`⚠️ File "${file.name}" is not a supported image (JPG, PNG).`, true);
+          continue;
+        }
+        selectedImageFiles.push(file);
+      }
+      updateImageUI();
+    }
+
+    imageDropzone?.addEventListener('click', () => imageFileInput?.click());
+    imageAddMoreBtn?.addEventListener('click', () => imageFileInput?.click());
+
+    imageFileInput?.addEventListener('change', () => {
+      if (imageFileInput.files && imageFileInput.files.length > 0) {
+        addImageFiles(imageFileInput.files);
+        imageFileInput.value = '';
+      }
+    });
+
+    imageDropzone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      imageDropzone.classList.add('border-emerald-500');
+    });
+    imageDropzone?.addEventListener('dragleave', () => {
+      imageDropzone.classList.remove('border-emerald-500');
+    });
+    imageDropzone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      imageDropzone.classList.remove('border-emerald-500');
+      if (e.dataTransfer && e.dataTransfer.files) {
+        addImageFiles(e.dataTransfer.files);
+      }
+    });
+
+    // ==========================================
+    // 3. TOOL 2 (SPLIT) & TOOL 4 (COMPRESS) FEEDBACK
+    // ==========================================
+    const splitInput = document.getElementById('split-file-input') as HTMLInputElement | null;
+    const splitName = document.getElementById('split-file-name');
+    splitInput?.addEventListener('change', () => {
+      if (splitInput.files && splitInput.files[0] && splitName) {
+        const f = splitInput.files[0];
+        splitName.innerText = `Selected: ${f.name} (${formatBytes(f.size)})`;
+        splitName.classList.remove('hidden');
+      }
+    });
+
+    const compressInput = document.getElementById('compress-file-input') as HTMLInputElement | null;
+    const compressName = document.getElementById('compress-file-name');
+    compressInput?.addEventListener('change', () => {
+      if (compressInput.files && compressInput.files[0] && compressName) {
+        const f = compressInput.files[0];
+        compressName.innerText = `Selected: ${f.name} (${formatBytes(f.size)})`;
+        compressName.classList.remove('hidden');
+      }
+    });
+
+    // ==========================================
+    // 4. GENERAL SUBMIT HANDLER (FETCH API)
+    // ==========================================
+    document.querySelectorAll<HTMLFormElement>('.pdf-tool-form').forEach((form) => {
+      // Prevent attaching duplicate listeners
+      if ((form as any)._initialized) return;
+      (form as any)._initialized = true;
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        statusAlert?.classList.add('hidden');
+
+        const submitBtn = form.querySelector('.submit-btn') as HTMLButtonElement | null;
+        if (!submitBtn) return;
+        const originalText = submitBtn.innerHTML;
+
+        const toolName = form.getAttribute('data-tool-name');
+
+        // Form-specific validations
+        if (toolName === 'merge') {
+          if (selectedMergeFiles.length < 2) {
+            showAlert('⚠️ Please select at least 2 PDF files to merge.', true);
+            return;
+          }
+        } else if (toolName === 'image-to-pdf') {
+          if (selectedImageFiles.length === 0) {
+            showAlert('⚠️ Please select at least 1 image to convert.', true);
+            return;
+          }
+        }
+
+        // Build FormData
+        const formData = new FormData(form);
+
+        if (toolName === 'merge') {
+          formData.delete('files');
+          selectedMergeFiles.forEach((file) => {
+            formData.append('files', file);
+          });
+        } else if (toolName === 'image-to-pdf') {
+          formData.delete('files');
+          selectedImageFiles.forEach((file) => {
+            formData.append('files', file);
+          });
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Processing Document... Please wait...</span>
+        `;
+
+        try {
+          const res = await fetch('/api/pdf/process', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!res.ok) {
+            let errMsg = 'Failed to process document. Please ensure files are valid.';
+            try {
+              const errData = await res.json();
+              errMsg = errData.error || errMsg;
+            } catch {}
+            showAlert(`❌ ${errMsg}`, true);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            return;
+          }
+
+          // Extract filename from Content-Disposition header
+          const disp = res.headers.get('Content-Disposition') || '';
+          let filename = res.headers.get('X-Original-Filename') || 'processed-document.pdf';
+          
+          const filenameMatch = disp.match(/filename\*=UTF-8''([^;]+)/i) || disp.match(/filename="?([^";]+)"?/i);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = decodeURIComponent(filenameMatch[1]);
+          }
+
+          const storageTtl = res.headers.get('X-Storage-TTL') || '6-hours';
+
+          const blob = await res.blob();
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = downloadUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            window.URL.revokeObjectURL(downloadUrl);
+            a.remove();
+          }, 1000);
+
+          const ttlText = storageTtl === '48-hours' 
+            ? `✓ <strong>Document Ready!</strong> "${filename}" has been downloaded and is saved in your account for <strong>48 hours</strong>.`
+            : `✓ <strong>Document Ready!</strong> "${filename}" has been downloaded. <em>(Guest files expire automatically after 6 hours)</em>.`;
+
+          showAlert(ttlText, false);
+
+          // Reset specific queue
+          if (toolName === 'merge') {
+            selectedMergeFiles = [];
+            updateMergeUI();
+          } else if (toolName === 'image-to-pdf') {
+            selectedImageFiles = [];
+            updateImageUI();
+          }
+          form.reset();
+
+          if (document.getElementById('user-files-section')) {
+            setTimeout(() => {
+              location.reload();
+            }, 1800);
+          }
+        } catch (err) {
+          showAlert('❌ Network connection error occurred while processing document.', true);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+      });
+    });
+  }
+
+  // Execute on initial DOM load and Astro View Transitions
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPdfTools);
+  } else {
+    initPdfTools();
+  }
+  document.addEventListener('astro:page-load', initPdfTools);
 </script>

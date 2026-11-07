@@ -69,6 +69,66 @@ const navLinks = [
         </svg>
       </button>
 
+      <!-- Universal Campus Notifications Bell (Visible to ALL users: Guests & Logged-In) -->
+      <div class="relative" id="notif-wrapper">
+        <button
+          id="notif-bell-btn"
+          type="button"
+          aria-label="Campus announcements and notifications"
+          class="relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+          title="Announcements & Notifications"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <!-- Unread Badge -->
+          <span
+            id="notif-badge"
+            class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-rose-500 rounded-full items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse"
+          >
+            0
+          </span>
+        </button>
+
+        <!-- Notification Dropdown Panel -->
+        <div
+          id="notif-dropdown"
+          class="hidden absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 z-50 overflow-hidden text-left"
+        >
+          <!-- Header -->
+          <div class="p-3.5 px-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/80 dark:bg-slate-800/50">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                Announcements
+              </h3>
+              <span id="notif-unread-count-pill" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                0 new
+              </span>
+            </div>
+            <button
+              id="notif-mark-all-read"
+              type="button"
+              class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            >
+              Mark all as read
+            </button>
+          </div>
+
+          <!-- Notification Items Container -->
+          <div id="notif-items-container" class="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/80">
+            <div class="p-8 text-center text-xs text-slate-400">
+              Loading platform notifications...
+            </div>
+          </div>
+
+          <!-- Footer Banner -->
+          <div class="px-4 py-2 bg-slate-50/60 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/80 text-center text-[10px] text-slate-400 font-medium">
+            <span>📢 Official broadcasts delivered to all users & guests</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Upload Button -->
       <a
         href="/upload"
@@ -152,6 +212,9 @@ const navLinks = [
 </header>
 
 <script is:inline>
+  const NOTIF_STORAGE_KEY = 'studdybuddy_read_notifs';
+  let cachedNotifications = [];
+
   function updateThemeIcons() {
     const isDark = document.documentElement.classList.contains('dark');
     const sun = document.getElementById('theme-icon-sun');
@@ -160,9 +223,190 @@ const navLinks = [
     if (moon) moon.style.display = isDark ? 'none' : 'block';
   }
 
+  function getReadNotificationIds() {
+    try {
+      const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function markNotificationAsRead(id) {
+    try {
+      const read = getReadNotificationIds();
+      if (!read.includes(id)) {
+        read.push(id);
+        localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(read));
+      }
+      updateNotificationUI();
+    } catch {}
+  }
+
+  function markAllNotificationsAsRead() {
+    try {
+      const allIds = cachedNotifications.map((n) => n.id);
+      localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(allIds));
+      updateNotificationUI();
+    } catch {}
+  }
+
+  function formatRelativeTime(dateInput) {
+    if (!dateInput) return 'Recently';
+    const date = new Date(dateInput);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHours = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function updateNotificationUI() {
+    const badge = document.getElementById('notif-badge');
+    const pill = document.getElementById('notif-unread-count-pill');
+    const container = document.getElementById('notif-items-container');
+
+    const readIds = getReadNotificationIds();
+    const unreadCount = cachedNotifications.filter((n) => !readIds.includes(n.id)).length;
+
+    // Update Badge
+    if (badge) {
+      if (unreadCount > 0) {
+        badge.innerText = unreadCount > 9 ? '9+' : unreadCount.toString();
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+      }
+    }
+
+    // Update Header Pill
+    if (pill) {
+      pill.innerText = `${unreadCount} new`;
+    }
+
+    // Render Items
+    if (!container) return;
+
+    if (cachedNotifications.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 text-center space-y-2">
+          <div class="w-10 h-10 mx-auto rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center text-lg">
+            🔔
+          </div>
+          <p class="text-xs font-bold text-slate-700 dark:text-slate-300">All caught up!</p>
+          <p class="text-[11px] text-slate-400">No new announcements right now.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = cachedNotifications
+      .map((n) => {
+        const isRead = readIds.includes(n.id);
+        const priority = n.priority || 'normal';
+
+        let badgeStyle = 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
+        let badgeLabel = 'Announcement';
+        if (priority === 'urgent') {
+          badgeStyle = 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 animate-pulse';
+          badgeLabel = 'URGENT';
+        } else if (priority === 'high') {
+          badgeStyle = 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+          badgeLabel = 'IMPORTANT';
+        }
+
+        const ctaHtml = n.callToActionUrl
+          ? `<a
+              href="${escapeHtml(n.callToActionUrl)}"
+              class="inline-flex items-center gap-1 mt-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              <span>${escapeHtml(n.callToActionLabel || 'View Details')}</span>
+              <span>→</span>
+            </a>`
+          : '';
+
+        return `
+          <div
+            data-notif-id="${n.id}"
+            class="notif-item p-4 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer ${
+              isRead ? 'opacity-75' : 'bg-indigo-50/20 dark:bg-indigo-950/20'
+            }"
+          >
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${badgeStyle}">
+                ${badgeLabel}
+              </span>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="text-[11px] text-slate-400 font-medium">
+                  ${formatRelativeTime(n.publishedAt)}
+                </span>
+                ${
+                  !isRead
+                    ? '<span class="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shrink-0"></span>'
+                    : ''
+                }
+              </div>
+            </div>
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white leading-snug">
+              ${escapeHtml(n.title)}
+            </h4>
+            <p class="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed whitespace-pre-line">
+              ${escapeHtml(n.content)}
+            </p>
+            ${ctaHtml}
+          </div>
+        `;
+      })
+      .join('');
+
+    // Attach click listener to each notif item to mark read
+    container.querySelectorAll('.notif-item').forEach((el) => {
+      el.addEventListener('click', () => {
+        const id = el.getAttribute('data-notif-id');
+        if (id) markNotificationAsRead(id);
+      });
+    });
+  }
+
+  async function fetchNotifications() {
+    try {
+      const res = await fetch('/api/notifications', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.notifications)) {
+          cachedNotifications = data.notifications;
+          updateNotificationUI();
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch notifications:', err);
+    }
+  }
+
   function initHeaderControls() {
     updateThemeIcons();
 
+    // Theme Toggle
     const themeBtn = document.getElementById('theme-toggle-btn');
     if (themeBtn && !themeBtn.dataset.bound) {
       themeBtn.dataset.bound = 'true';
@@ -173,6 +417,7 @@ const navLinks = [
       });
     }
 
+    // Mobile Menu
     const menuBtn = document.getElementById('mobile-menu-btn');
     const mobileMenu = document.getElementById('mobile-menu');
     if (menuBtn && !menuBtn.dataset.bound) {
@@ -180,6 +425,53 @@ const navLinks = [
       menuBtn.addEventListener('click', () => {
         mobileMenu?.classList.toggle('hidden');
       });
+    }
+
+    // Notification Dropdown Toggle
+    const notifBtn = document.getElementById('notif-bell-btn');
+    const notifDropdown = document.getElementById('notif-dropdown');
+    const notifWrapper = document.getElementById('notif-wrapper');
+    const markAllBtn = document.getElementById('notif-mark-all-read');
+
+    if (notifBtn && !notifBtn.dataset.bound) {
+      notifBtn.dataset.bound = 'true';
+      notifBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (notifDropdown) {
+          notifDropdown.classList.toggle('hidden');
+        }
+      });
+    }
+
+    if (markAllBtn && !markAllBtn.dataset.bound) {
+      markAllBtn.dataset.bound = 'true';
+      markAllBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        markAllNotificationsAsRead();
+      });
+    }
+
+    // Close on click outside
+    document.addEventListener('click', (e) => {
+      if (notifWrapper && !notifWrapper.contains(e.target)) {
+        notifDropdown?.classList.add('hidden');
+      }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        notifDropdown?.classList.add('hidden');
+      }
+    });
+
+    // Initial fetch of notifications
+    fetchNotifications();
+
+    // Auto-refresh notifications every 30 seconds so all users (even guests) get real-time broadcasts
+    if (!window.__notifIntervalSet) {
+      window.__notifIntervalSet = true;
+      setInterval(fetchNotifications, 30000);
     }
   }
 

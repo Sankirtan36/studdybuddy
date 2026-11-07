@@ -8,14 +8,21 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+  const contentType = request.headers.get('content-type') || '';
+  const accept = request.headers.get('accept') || '';
+  const isJson = contentType.includes('application/json') || accept.includes('application/json');
+
+  let body: any = {};
+  let redirectTarget = '/dashboard';
+
   try {
-    const contentType = request.headers.get('content-type') || '';
-    let body: any = {};
     if (contentType.includes('application/json')) {
       body = await request.json();
+      redirectTarget = body.redirect || '/dashboard';
     } else {
       const formData = await request.formData();
+      redirectTarget = (formData.get('redirect') as string) || '/dashboard';
       body = {
         email: formData.get('email'),
         password: formData.get('password'),
@@ -24,10 +31,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const validation = loginSchema.safeParse(body);
     if (!validation.success) {
-      return new Response(
-        JSON.stringify({ error: validation.error.issues[0]?.message || 'Invalid input' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      const errMsg = validation.error.issues[0]?.message || 'Invalid input';
+      if (isJson) {
+        return new Response(
+          JSON.stringify({ error: errMsg }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return redirect(`/login?error=${encodeURIComponent(errMsg)}&email=${encodeURIComponent(body?.email || '')}`);
     }
 
     const { email, password } = validation.data;
@@ -35,27 +46,39 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Generic error message to prevent email enumeration
     if (!user || !user.passwordHash) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid email address or password.' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
+      const errMsg = 'Invalid email address or password.';
+      if (isJson) {
+        return new Response(
+          JSON.stringify({ error: errMsg }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return redirect(`/login?error=${encodeURIComponent(errMsg)}&email=${encodeURIComponent(email)}`);
     }
 
     // Check suspension status
     if (user.status === 'suspended') {
-      return new Response(
-        JSON.stringify({ error: 'Your account has been suspended by an administrator. Please contact support.' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
-      );
+      const errMsg = 'Your account has been suspended by an administrator. Please contact support.';
+      if (isJson) {
+        return new Response(
+          JSON.stringify({ error: errMsg }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return redirect(`/login?error=${encodeURIComponent(errMsg)}&email=${encodeURIComponent(email)}`);
     }
 
     // Verify password hash
     const isValid = await verifyPassword(password, user.passwordHash);
     if (!isValid) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid email address or password.' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
+      const errMsg = 'Invalid email address or password.';
+      if (isJson) {
+        return new Response(
+          JSON.stringify({ error: errMsg }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return redirect(`/login?error=${encodeURIComponent(errMsg)}&email=${encodeURIComponent(email)}`);
     }
 
     // Update lastLoginAt
@@ -72,23 +95,31 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });
 
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        user: {
-          id: user._id!.toString(),
-          email: user.email,
-          displayName: user.displayName,
-          role: user.role,
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    if (isJson) {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          user: {
+            id: user._id!.toString(),
+            email: user.email,
+            displayName: user.displayName,
+            role: user.role,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return redirect(redirectTarget);
   } catch (err: any) {
     console.error('Login error:', err);
-    return new Response(
-      JSON.stringify({ error: err?.message || 'Internal server error during login' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    const errMsg = err?.message || 'Internal server error during login';
+    if (isJson) {
+      return new Response(
+        JSON.stringify({ error: errMsg }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    return redirect(`/login?error=${encodeURIComponent(errMsg)}&email=${encodeURIComponent(body?.email || '')}`);
   }
 };

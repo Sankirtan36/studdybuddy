@@ -1,9 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { randomBytes } from 'node:crypto';
-
-const STORAGE_DIR = path.resolve(process.cwd(), '.data', 'pdf-tools');
-const MANIFEST_FILE = path.join(STORAGE_DIR, 'manifest.json');
 
 // Retention TTLs
 export const GUEST_TTL_MS = 6 * 60 * 60 * 1000;    // 6 Hours for Unauthenticated Guests
@@ -23,26 +21,115 @@ export interface ProcessedPdfRecord {
   filePath: string;
 }
 
-function ensureStorageDir() {
-  if (!fs.existsSync(STORAGE_DIR)) {
-    fs.mkdirSync(STORAGE_DIR, { recursive: true });
+// In-memory cache for fast lookup and serverless fallback
+const inMemoryRecords = new Map<string, ProcessedPdfRecord>();
+const inMemoryBuffers = new Map<string, Buffer>();
+
+let cachedStorageDir: string | null = null;
+
+/**
+ * Returns a writable directory for processed PDFs.
+ * In serverless environments (Vercel, AWS Lambda) where /var/task is read-only,
+ * this automatically and safely uses os.tmpdir().
+ */
+export function getSafeStorageDir(): string {
+  if (cachedStorageDir) {
+    try {
+      if (!fs.existsSync(cachedStorageDir)) {
+        fs.mkdirSync(cachedStorageDir, { recursive: true });
+      }
+      return cachedStorageDir;
+    } catch {}
   }
+
+  // Detect serverless environment (Vercel, AWS Lambda, Netlify)
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.NETLIFY ||
+    (typeof process.cwd === 'function' && process.cwd().startsWith('/var/task'))
+  );
+
+  if (isServerless) {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-pdf-tools');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+      cachedStorageDir = tmp;
+      return tmp;
+    } catch {}
+  }
+
+  const candidates = [
+    path.resolve(process.cwd(), '.data', 'pdf-tools'),
+    path.resolve(process.cwd(), 'studdybuddy', '.data', 'pdf-tools'),
+    path.join(os.tmpdir(), 'studdybuddy-pdf-tools'),
+  ];
+
+  for (const dir of candidates) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const testFile = path.join(dir, `.write-test-${Date.now()}`);
+      fs.writeFileSync(testFile, 'ok');
+      fs.unlinkSync(testFile);
+      cachedStorageDir = dir;
+      return dir;
+    } catch {
+      continue;
+    }
+  }
+
+  const fallback = path.join(os.tmpdir(), 'studdybuddy-pdf-tools');
+  try {
+    if (!fs.existsSync(fallback)) fs.mkdirSync(fallback, { recursive: true });
+  } catch {}
+  cachedStorageDir = fallback;
+  return fallback;
+}
+
+function getManifestPath(): string {
+  return path.join(getSafeStorageDir(), 'manifest.json');
+}
+
+function ensureStorageDir(): string {
+  return getSafeStorageDir();
 }
 
 function readManifest(): ProcessedPdfRecord[] {
-  ensureStorageDir();
-  if (!fs.existsSync(MANIFEST_FILE)) return [];
+  const manifestFile = getManifestPath();
+  let diskRecords: ProcessedPdfRecord[] = [];
   try {
-    const raw = fs.readFileSync(MANIFEST_FILE, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
+    if (fs.existsSync(manifestFile)) {
+      const raw = fs.readFileSync(manifestFile, 'utf8');
+      diskRecords = JSON.parse(raw);
+    }
+  } catch {}
+
+  // Sync disk state with in-memory records
+  for (const r of diskRecords) {
+    inMemoryRecords.set(r.id, r);
   }
+
+  // Also include any memory-only records that haven't been written to disk yet
+  const result: ProcessedPdfRecord[] = [...diskRecords];
+  const diskIds = new Set(diskRecords.map((r) => r.id));
+  for (const [id, r] of inMemoryRecords.entries()) {
+    if (!diskIds.has(id)) {
+      result.push(r);
+    }
+  }
+
+  return result.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 function writeManifest(records: ProcessedPdfRecord[]) {
-  ensureStorageDir();
-  fs.writeFileSync(MANIFEST_FILE, JSON.stringify(records, null, 2), 'utf8');
+  const manifestFile = getManifestPath();
+  try {
+    fs.writeFileSync(manifestFile, JSON.stringify(records, null, 2), 'utf8');
+  } catch (err: any) {
+    console.warn('[PdfStorage] Could not write manifest to disk, keeping in memory:', err?.message);
+  }
 }
 
 /**
@@ -60,12 +147,14 @@ export function cleanupExpiredPdfFiles(): { removedCount: number } {
 
     for (const record of records) {
       if (record.expiresAt <= now) {
-        // Expired -> Delete from disk
-        if (fs.existsSync(record.filePath)) {
+        // Expired -> Delete from disk and memory
+        if (record.filePath && fs.existsSync(record.filePath)) {
           try {
             fs.unlinkSync(record.filePath);
           } catch {}
         }
+        inMemoryRecords.delete(record.id);
+        inMemoryBuffers.delete(record.id);
         removedCount++;
       } else {
         remaining.push(record);
@@ -106,7 +195,7 @@ export function saveProcessedPdf(options: {
   tool: string;
   user?: { id?: string; email?: string } | null;
 }): ProcessedPdfRecord {
-  ensureStorageDir();
+  const storageDir = ensureStorageDir();
   cleanupExpiredPdfFiles();
 
   const { originalName, outputName, buffer, tool, user } = options;
@@ -118,9 +207,19 @@ export function saveProcessedPdf(options: {
   const prefix = isGuest ? 'guest' : 'user';
   const id = `pdf-${prefix}-${now}-${randomBytes(6).toString('hex')}`;
   const fileName = `${id}.pdf`;
-  const filePath = path.join(STORAGE_DIR, fileName);
+  const filePath = path.join(storageDir, fileName);
 
-  fs.writeFileSync(filePath, Buffer.from(buffer));
+  const nodeBuffer = Buffer.from(buffer);
+
+  // Store in memory cache
+  inMemoryBuffers.set(id, nodeBuffer);
+
+  // Attempt to write to disk
+  try {
+    fs.writeFileSync(filePath, nodeBuffer);
+  } catch (err: any) {
+    console.warn('[PdfStorage] Could not write file to disk, relying on memory cache:', err?.message);
+  }
 
   const record: ProcessedPdfRecord = {
     id,
@@ -136,9 +235,13 @@ export function saveProcessedPdf(options: {
     filePath,
   };
 
-  const records = readManifest();
-  records.unshift(record);
-  writeManifest(records);
+  inMemoryRecords.set(id, record);
+
+  try {
+    const records = readManifest().filter((r) => r.id !== id);
+    records.unshift(record);
+    writeManifest(records);
+  } catch {}
 
   return record;
 }
@@ -149,24 +252,36 @@ export function saveProcessedPdf(options: {
 export function getProcessedPdf(id: string): { record: ProcessedPdfRecord; buffer: Buffer } | null {
   cleanupExpiredPdfFiles();
   const records = readManifest();
-  const record = records.find((r) => r.id === id);
+  const record = records.find((r) => r.id === id) || inMemoryRecords.get(id);
 
   if (!record) return null;
 
   if (record.expiresAt <= Date.now()) {
     // Expired
-    if (fs.existsSync(record.filePath)) {
+    if (record.filePath && fs.existsSync(record.filePath)) {
       try {
         fs.unlinkSync(record.filePath);
       } catch {}
     }
+    inMemoryRecords.delete(id);
+    inMemoryBuffers.delete(id);
     return null;
   }
 
-  if (!fs.existsSync(record.filePath)) return null;
+  // 1. Check in-memory buffer
+  if (inMemoryBuffers.has(id)) {
+    return { record, buffer: inMemoryBuffers.get(id)! };
+  }
 
-  const buffer = fs.readFileSync(record.filePath);
-  return { record, buffer };
+  // 2. Check disk file
+  if (record.filePath && fs.existsSync(record.filePath)) {
+    try {
+      const buffer = fs.readFileSync(record.filePath);
+      return { record, buffer };
+    } catch {}
+  }
+
+  return null;
 }
 
 /**

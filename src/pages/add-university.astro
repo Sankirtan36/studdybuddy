@@ -1,0 +1,388 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+
+const user = Astro.locals.user;
+const initialName = Astro.url.searchParams.get('name') || '';
+---
+
+<Layout
+  title="Add Your University or College | StuddyBuddy"
+  description="Request to add your university or college to StuddyBuddy. Once approved by the administrator, you can add academic departments, upload syllabus, and share study materials."
+>
+  <Header slot="header" user={user} />
+
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
+    <!-- Breadcrumb -->
+    <nav class="mb-6 flex items-center gap-2 text-xs text-slate-500">
+      <a href="/" target="_self" class="hover:text-indigo-600 dark:hover:text-indigo-400">Home</a>
+      <span>/</span>
+      <span class="text-slate-900 dark:text-white font-medium">Add University / College</span>
+    </nav>
+
+    <!-- Success Container (Shown upon submission) -->
+    <div id="success-box" class="hidden p-8 sm:p-10 rounded-3xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 shadow-xl space-y-6 text-center animate-fade-in">
+      <div class="w-16 h-16 mx-auto rounded-3xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl shadow-inner">
+        ✓
+      </div>
+
+      <div class="space-y-2">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+          Request Submitted to Admin
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          University Request Received!
+        </h1>
+      </div>
+
+      <!-- Exact user-specified message -->
+      <div class="p-5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-sm font-medium leading-relaxed">
+        <p class="font-bold text-base mb-1">📢 Agla Kadam (Next Steps):</p>
+        <p id="success-display-message">
+          Aapki university/college add karne ki request admin ko bhej di gayi hai. Admin ki approval ke baad uske andar aap apne departments etc chize bana sakte hai aur kaam chalu kar sakte hai.
+        </p>
+      </div>
+
+      <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a
+          href="/"
+          target="_self"
+          class="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all hover:scale-105"
+        >
+          Explore Live Campuses
+        </a>
+        <button
+          type="button"
+          id="btn-submit-another"
+          class="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 font-semibold text-xs"
+        >
+          Submit Another Request
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Submission Form Container -->
+    <div id="form-box" class="p-6 sm:p-10 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-8">
+      
+      <!-- Header -->
+      <div class="border-b border-slate-100 dark:border-slate-800 pb-5">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            Campus Network Expansion
+          </span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          Add Your University / College
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+          Can't find your institution? Submit this form to have it verified by the admin team. Once approved, you and your classmates can create departments, upload syllabus, and share question papers.
+        </p>
+      </div>
+
+      <!-- Live Duplicate or Pending Warning Banner -->
+      <div id="duplicate-warning" class="hidden p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-medium space-y-2">
+        <div class="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
+          <span>⚠️</span>
+          <span id="duplicate-warning-title">Yeh University Pehle Se Register Hai</span>
+        </div>
+        <p id="duplicate-warning-desc">
+          Ek baar jo university ban gayi hai, koi aur duplicate create nahi kar sakta.
+        </p>
+        <div id="duplicate-link-container" class="pt-1">
+          <a
+            id="duplicate-link-btn"
+            href="#"
+            target="_self"
+            class="inline-block px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-all"
+          >
+            Go to Existing University Page →
+          </a>
+        </div>
+      </div>
+
+      <!-- Submission Error Alert -->
+      <div id="submit-error" class="hidden p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-semibold"></div>
+
+      <!-- Form -->
+      <form id="uni-request-form" class="space-y-6">
+        
+        <!-- University Name -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label for="input-uni-name" class="text-xs font-bold text-slate-800 dark:text-slate-200">
+              University or College Full Name *
+            </label>
+            <span id="name-status-indicator" class="text-[11px] text-slate-400"></span>
+          </div>
+          <input
+            id="input-uni-name"
+            name="name"
+            type="text"
+            required
+            value={initialName}
+            placeholder="e.g. Parul University, Delhi Technological University, IIT Bombay..."
+            class="w-full px-4 py-3 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium transition-all"
+          />
+          <p class="text-[11px] text-slate-400">
+            Note: StuddyBuddy strictly prohibits duplicate university registrations.
+          </p>
+        </div>
+
+        <!-- Campus Location -->
+        <div class="space-y-1.5">
+          <label for="input-uni-location" class="text-xs font-bold text-slate-800 dark:text-slate-200">
+            Campus Location (City, State / Region) *
+          </label>
+          <input
+            id="input-uni-location"
+            name="location"
+            type="text"
+            required
+            placeholder="e.g. Vadodara, Gujarat or New Delhi"
+            class="w-full px-4 py-3 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+          />
+        </div>
+
+        <!-- Official Website (Optional) -->
+        <div class="space-y-1.5">
+          <label for="input-uni-website" class="text-xs font-bold text-slate-800 dark:text-slate-200">
+            Official Website or Portal URL <span class="text-slate-400 font-normal">(Optional)</span>
+          </label>
+          <input
+            id="input-uni-website"
+            name="websiteUrl"
+            type="url"
+            placeholder="e.g. https://www.university.ac.in"
+            class="w-full px-4 py-3 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+          />
+        </div>
+
+        <!-- Proposed Departments / Faculties -->
+        <div class="space-y-1.5">
+          <label for="input-uni-departments" class="text-xs font-bold text-slate-800 dark:text-slate-200">
+            Initial Departments / Faculties to create <span class="text-slate-400 font-normal">(One per line)</span>
+          </label>
+          <textarea
+            id="input-uni-departments"
+            name="departments"
+            rows="3"
+            placeholder="Engineering & Technology&#10;Computer Applications (MCA/BCA)&#10;Management Studies (MBA/BBA)&#10;Applied Sciences"
+            class="w-full px-4 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono leading-relaxed"
+          ></textarea>
+          <p class="text-[11px] text-slate-400">
+            Admin approval ke baad aap is university ke andar aur bhi naye departments add kar sakenge.
+          </p>
+        </div>
+
+        <!-- Short Description (Optional) -->
+        <div class="space-y-1.5">
+          <label for="input-uni-description" class="text-xs font-bold text-slate-800 dark:text-slate-200">
+            Campus Summary / Overview <span class="text-slate-400 font-normal">(Optional)</span>
+          </label>
+          <textarea
+            id="input-uni-description"
+            name="description"
+            rows="2"
+            placeholder="Brief introduction or background about this university..."
+            class="w-full px-4 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-normal leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Submitter Info -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 space-y-3">
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+            Contributor Information
+          </span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="input-submitter-name" class="text-[11px] font-semibold text-slate-500">Your Full Name</label>
+              <input
+                id="input-submitter-name"
+                name="requestedByName"
+                type="text"
+                value={user?.displayName || ''}
+                placeholder="Student Contributor"
+                class="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label for="input-submitter-email" class="text-[11px] font-semibold text-slate-500">Your Email Address</label>
+              <input
+                id="input-submitter-email"
+                name="requestedByEmail"
+                type="email"
+                value={user?.email || ''}
+                placeholder="your.email@university.edu"
+                class="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <a href="/" target="_self" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
+            ← Cancel & Back to Directory
+          </a>
+
+          <button
+            id="submit-request-btn"
+            type="submit"
+            class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+          >
+            <span>🚀 Submit Request for Admin Approval</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <Footer slot="footer" />
+</Layout>
+
+<script>
+  const nameInput = document.getElementById('input-uni-name') as HTMLInputElement;
+  const nameStatus = document.getElementById('name-status-indicator') as HTMLElement;
+  const warningBox = document.getElementById('duplicate-warning') as HTMLElement;
+  const warningTitle = document.getElementById('duplicate-warning-title') as HTMLElement;
+  const warningDesc = document.getElementById('duplicate-warning-desc') as HTMLElement;
+  const warningLinkContainer = document.getElementById('duplicate-link-container') as HTMLElement;
+  const warningLinkBtn = document.getElementById('duplicate-link-btn') as HTMLAnchorElement;
+  const submitBtn = document.getElementById('submit-request-btn') as HTMLButtonElement;
+  const formBox = document.getElementById('form-box') as HTMLElement;
+  const successBox = document.getElementById('success-box') as HTMLElement;
+  const successMsg = document.getElementById('success-display-message') as HTMLElement;
+  const submitError = document.getElementById('submit-error') as HTMLElement;
+  const form = document.getElementById('uni-request-form') as HTMLFormElement;
+  const submitAnotherBtn = document.getElementById('btn-submit-another') as HTMLButtonElement;
+
+  let checkTimeout: any = null;
+  let isBlocked = false;
+
+  async function checkDuplicate(name: string) {
+    if (!name || name.trim().length < 2) {
+      warningBox.classList.add('hidden');
+      nameStatus.innerText = '';
+      isBlocked = false;
+      submitBtn.disabled = false;
+      return;
+    }
+
+    try {
+      nameStatus.innerText = 'Checking directory...';
+      const res = await fetch(`/api/universities/request?checkName=${encodeURIComponent(name.trim())}`);
+      const data = await res.json();
+
+      if (data.available === false) {
+        isBlocked = true;
+        submitBtn.disabled = true;
+        warningBox.classList.remove('hidden');
+
+        if (data.reason === 'exists') {
+          nameStatus.innerHTML = '<span class="text-rose-500 font-bold">✕ Already exists</span>';
+          warningTitle.innerText = 'Yeh University Pehle Se Register Hai!';
+          warningDesc.innerText = data.message || `"${name}" pehle se StuddyBuddy par registered hai. Ek university ek hi baar ban sakti hai.`;
+          if (data.existingUrl) {
+            warningLinkContainer.classList.remove('hidden');
+            warningLinkBtn.href = data.existingUrl;
+            warningLinkBtn.innerText = `View ${data.university?.name || 'University'} Resources →`;
+          } else {
+            warningLinkContainer.classList.add('hidden');
+          }
+        } else if (data.reason === 'pending') {
+          nameStatus.innerHTML = '<span class="text-amber-500 font-bold">⏳ Pending review</span>';
+          warningTitle.innerText = 'Request Pehle Se Pending Hai!';
+          warningDesc.innerText = data.message || `"${name}" ki request pehle se Admin ke approval queue mein pending hai. Admin approval ke baad ye live ho jayegi.`;
+          warningLinkContainer.classList.add('hidden');
+        }
+      } else {
+        isBlocked = false;
+        submitBtn.disabled = false;
+        nameStatus.innerHTML = '<span class="text-emerald-500 font-bold">✓ Name is available</span>';
+        warningBox.classList.add('hidden');
+      }
+    } catch (e) {
+      nameStatus.innerText = '';
+    }
+  }
+
+  nameInput?.addEventListener('input', () => {
+    clearTimeout(checkTimeout);
+    checkTimeout = setTimeout(() => {
+      checkDuplicate(nameInput.value);
+    }, 400);
+  });
+
+  if (nameInput?.value) {
+    checkDuplicate(nameInput.value);
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitError.classList.add('hidden');
+
+    if (isBlocked) {
+      submitError.innerText = 'Yeh university pehle se register ya pending hai. Duplicate submission allowed nahi hai.';
+      submitError.classList.remove('hidden');
+      return;
+    }
+
+    const formData = new FormData(form);
+    const payload = {
+      name: (formData.get('name') as string)?.trim(),
+      location: (formData.get('location') as string)?.trim(),
+      websiteUrl: (formData.get('websiteUrl') as string)?.trim(),
+      departments: (formData.get('departments') as string)?.trim(),
+      description: (formData.get('description') as string)?.trim(),
+      requestedByName: (formData.get('requestedByName') as string)?.trim(),
+      requestedByEmail: (formData.get('requestedByEmail') as string)?.trim(),
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Submitting to Admin...</span>';
+
+    try {
+      const res = await fetch('/api/universities/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        submitError.innerText = data.error || 'Request submit karne mein error aaya.';
+        submitError.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>🚀 Submit Request for Admin Approval</span>';
+      } else {
+        // Success!
+        if (data.message) {
+          successMsg.innerText = data.message;
+        }
+        formBox.classList.add('hidden');
+        successBox.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } catch (err: any) {
+      submitError.innerText = 'Network error. Kripya dobara try karein.';
+      submitError.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>🚀 Submit Request for Admin Approval</span>';
+    }
+  });
+
+  submitAnotherBtn?.addEventListener('click', () => {
+    form.reset();
+    warningBox.classList.add('hidden');
+    nameStatus.innerText = '';
+    isBlocked = false;
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>🚀 Submit Request for Admin Approval</span>';
+    successBox.classList.add('hidden');
+    formBox.classList.remove('hidden');
+  });
+</script>
+

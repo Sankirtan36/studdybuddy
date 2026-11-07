@@ -8,6 +8,9 @@ if (Astro.locals.user) {
 }
 
 const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
+const urlError = Astro.url.searchParams.get('error') || '';
+const prefillEmail = Astro.url.searchParams.get('email') || '';
+const prefillName = Astro.url.searchParams.get('displayName') || '';
 ---
 
 <Layout
@@ -43,14 +46,14 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
       </div>
 
       <!-- Error Alert -->
-      <div id="error-alert" class="hidden p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
+      <div id="error-alert" class={`${urlError ? '' : 'hidden'} p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center gap-2.5 shadow-sm`}>
         <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span id="error-text">Registration failed.</span>
+        <span id="error-text">{urlError || 'Registration failed.'}</span>
       </div>
 
-      <form id="register-form" class="space-y-4 text-xs">
+      <form id="register-form" action="/api/auth/register" method="POST" target="_self" class="space-y-4 text-xs">
         <input type="hidden" name="redirect" value={redirectUrl} />
 
         <div>
@@ -61,6 +64,7 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
             id="displayName"
             type="text"
             name="displayName"
+            value={prefillName}
             required
             placeholder="Aarav Patel"
             class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -75,6 +79,7 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
             id="email"
             type="email"
             name="email"
+            value={prefillEmail}
             required
             autocomplete="email"
             placeholder="aarav@paruluniversity.ac.in"
@@ -147,161 +152,200 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
 <script>
   import { signInWithGoogle, signInWithGoogleRedirect, checkGoogleRedirectResult } from '../lib/firebase';
 
-  const form = document.getElementById('register-form') as HTMLFormElement;
-  const alertEl = document.getElementById('error-alert') as HTMLDivElement;
-  const errorText = document.getElementById('error-text') as HTMLSpanElement;
-  const successEl = document.getElementById('success-alert') as HTMLDivElement;
-  const successText = document.getElementById('success-text') as HTMLSpanElement;
-  const btn = document.getElementById('submit-btn') as HTMLButtonElement;
-  const googleBtn = document.getElementById('google-btn') as HTMLButtonElement;
-  const googleBtnText = document.getElementById('google-btn-text') as HTMLSpanElement;
+  function initRegister() {
+    const form = document.getElementById('register-form') as HTMLFormElement | null;
+    const alertEl = document.getElementById('error-alert') as HTMLDivElement | null;
+    const errorText = document.getElementById('error-text') as HTMLSpanElement | null;
+    const successEl = document.getElementById('success-alert') as HTMLDivElement | null;
+    const successText = document.getElementById('success-text') as HTMLSpanElement | null;
+    const btn = document.getElementById('submit-btn') as HTMLButtonElement | null;
+    const googleBtn = document.getElementById('google-btn') as HTMLButtonElement | null;
+    const googleBtnText = document.getElementById('google-btn-text') as HTMLSpanElement | null;
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const redirect = urlParams.get('redirect') || '/dashboard';
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirect = urlParams.get('redirect') || '/dashboard';
 
-  // Check if returning from Google Redirect Auth
-  checkGoogleRedirectResult().then(async (result) => {
-    if (result && result.user) {
-      if (googleBtn) googleBtn.disabled = true;
-      if (googleBtnText) googleBtnText.innerText = 'Finishing Google sign-in...';
+    // Prevent duplicate listeners
+    if (form && (form as any)._initialized) return;
+    if (form) (form as any)._initialized = true;
+
+    // Check if returning from Google Redirect Auth
+    try {
+      checkGoogleRedirectResult().then(async (result) => {
+        if (result && result.user) {
+          if (googleBtn) googleBtn.disabled = true;
+          if (googleBtnText) googleBtnText.innerText = 'Finishing Google sign-in...';
+          try {
+            const res = await fetch('/api/auth/firebase-login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({
+                email: result.user.email,
+                displayName: result.user.displayName,
+                photoUrl: result.user.photoURL,
+                uid: result.user.uid,
+                idToken: result.idToken,
+              }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+              if (successText) successText.innerText = `✓ Account connected! Welcome, ${result.user.displayName || 'Student'}! Opening dashboard...`;
+              if (successEl) successEl.classList.remove('hidden');
+              setTimeout(() => {
+                window.location.href = redirect;
+              }, 800);
+            } else {
+              if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+              if (alertEl) alertEl.classList.remove('hidden');
+            }
+          } catch (err: any) {
+            if (errorText) errorText.innerText = 'Error finalizing Google sign in.';
+            if (alertEl) alertEl.classList.remove('hidden');
+          }
+        }
+      }).catch(err => {
+        console.warn('Register redirect auth check:', err);
+      });
+    } catch (e) {
+      console.warn('Register Firebase init error:', e);
+    }
+
+    // Email / Password Form Submit
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const nameInput = document.getElementById('displayName') as HTMLInputElement | null;
+      const emailInput = document.getElementById('email') as HTMLInputElement | null;
+      const passwordInput = document.getElementById('password') as HTMLInputElement | null;
+
+      const displayName = nameInput?.value?.trim();
+      const email = emailInput?.value?.trim();
+      const password = passwordInput?.value;
+
+      if (!displayName || !email || !password) {
+        if (errorText) errorText.innerText = 'Please fill out all required fields.';
+        if (alertEl) alertEl.classList.remove('hidden');
+        return;
+      }
+
+      if (password.length < 8) {
+        if (errorText) errorText.innerText = 'Password must be at least 8 characters long.';
+        if (alertEl) alertEl.classList.remove('hidden');
+        return;
+      }
+
+      if (alertEl) alertEl.classList.add('hidden');
+      if (successEl) successEl.classList.add('hidden');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Creating Account... Please wait...';
+      }
+
       try {
-        const res = await fetch('/api/auth/firebase-login', {
+        const res = await fetch('/api/auth/register', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: result.user.email,
-            displayName: result.user.displayName,
-            photoUrl: result.user.photoURL,
-            uid: result.user.uid,
-            idToken: result.idToken,
-          }),
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ displayName, email, password, redirect }),
         });
-        const data = await res.json();
-        if (res.ok) {
-          if (successText) successText.innerText = `✓ Account connected! Welcome, ${result.user.displayName || 'Student'}! Opening dashboard...`;
-          if (successEl) successEl.classList.remove('hidden');
-          setTimeout(() => {
-            window.location.href = redirect;
-          }, 800);
-        } else {
-          if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (errorText) errorText.innerText = data.error || 'Registration failed.';
           if (alertEl) alertEl.classList.remove('hidden');
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Create Account';
+          }
+        } else {
+          if (successText) successText.innerText = '✓ Badhai ho! Aapka account ban gaya hai. Dashboard khul raha hai...';
+          if (successEl) successEl.classList.remove('hidden');
+          if (btn) btn.innerText = '✓ Account Ban Gaya! Opening Dashboard...';
+          window.location.href = redirect;
         }
       } catch (err: any) {
-        if (errorText) errorText.innerText = 'Error finalizing Google sign in.';
+        console.error('Register submit error:', err);
+        if (errorText) errorText.innerText = 'Network error during registration. Please retry.';
         if (alertEl) alertEl.classList.remove('hidden');
-      }
-    }
-  });
-
-  // Email / Password Form Submit
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (alertEl) alertEl.classList.add('hidden');
-    if (successEl) successEl.classList.add('hidden');
-    btn.disabled = true;
-    btn.innerText = 'Creating Account... Please wait...';
-
-    const formData = new FormData(form);
-    const displayName = formData.get('displayName');
-    const email = formData.get('email');
-    const password = formData.get('password');
-
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        if (errorText) errorText.innerText = data.error || 'Registration failed.';
-        if (alertEl) alertEl.classList.remove('hidden');
-        btn.disabled = false;
-        btn.innerText = 'Create Account';
-      } else {
-        if (successText) successText.innerText = '✓ Badhai ho! Aapka account ban gaya hai. Dashboard khul raha hai...';
-        if (successEl) successEl.classList.remove('hidden');
-        btn.innerText = '✓ Account Ban Gaya! Opening Dashboard...';
-        setTimeout(() => {
-          window.location.href = redirect;
-        }, 1200);
-      }
-    } catch (err: any) {
-      if (errorText) errorText.innerText = 'Network error during registration. Please retry.';
-      if (alertEl) alertEl.classList.remove('hidden');
-      btn.disabled = false;
-      btn.innerText = 'Create Account';
-    }
-  });
-
-  // Google Sign-In with Firebase
-  googleBtn?.addEventListener('click', async () => {
-    if (alertEl) alertEl.classList.add('hidden');
-    if (successEl) successEl.classList.add('hidden');
-    googleBtn.disabled = true;
-    if (googleBtnText) googleBtnText.innerText = 'Connecting with Google...';
-
-    try {
-      const authResult = await signInWithGoogle();
-      if (!authResult) {
-        if (googleBtnText) googleBtnText.innerText = 'Redirecting to Google...';
-        return;
-      }
-
-      const { user, idToken } = authResult;
-
-      const res = await fetch('/api/auth/firebase-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: user.email,
-          displayName: user.displayName,
-          photoUrl: user.photoURL,
-          uid: user.uid,
-          idToken,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
-        if (alertEl) alertEl.classList.remove('hidden');
-        googleBtn.disabled = false;
-        if (googleBtnText) googleBtnText.innerText = 'Sign up with Google';
-      } else {
-        if (successText) successText.innerText = '✓ Google Sign-in successful! Dashboard khul raha hai...';
-        if (successEl) successEl.classList.remove('hidden');
-        if (googleBtnText) googleBtnText.innerText = '✓ Connected! Opening Dashboard...';
-        setTimeout(() => {
-          window.location.href = redirect;
-        }, 1200);
-      }
-    } catch (err: any) {
-      console.error('Google Sign-In Error:', err);
-      let msg = err?.message || 'Google sign-in was cancelled or failed.';
-      if (err?.code === 'auth/popup-blocked') {
-        if (errorText) {
-          errorText.innerHTML = '⚠️ Pop-up was blocked by your browser. <button type="button" id="retry-google-redirect" class="underline font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 ml-1">Click here to sign in with Google Redirect →</button> or allow pop-ups for localhost in your browser address bar.';
-          setTimeout(() => {
-            document.getElementById('retry-google-redirect')?.addEventListener('click', () => {
-              signInWithGoogleRedirect();
-            });
-          }, 50);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Create Account';
         }
+      }
+    });
+
+    // Google Sign-In with Firebase
+    googleBtn?.addEventListener('click', async () => {
+      if (alertEl) alertEl.classList.add('hidden');
+      if (successEl) successEl.classList.add('hidden');
+      googleBtn.disabled = true;
+      if (googleBtnText) googleBtnText.innerText = 'Connecting with Google...';
+
+      try {
+        const authResult = await signInWithGoogle();
+        if (!authResult) {
+          if (googleBtnText) googleBtnText.innerText = 'Redirecting to Google...';
+          return;
+        }
+
+        const { user, idToken } = authResult;
+
+        const res = await fetch('/api/auth/firebase-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            displayName: user.displayName,
+            photoUrl: user.photoURL,
+            uid: user.uid,
+            idToken,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+          if (alertEl) alertEl.classList.remove('hidden');
+          googleBtn.disabled = false;
+          if (googleBtnText) googleBtnText.innerText = 'Sign up with Google';
+        } else {
+          if (successText) successText.innerText = '✓ Google Sign-in successful! Dashboard khul raha hai...';
+          if (successEl) successEl.classList.remove('hidden');
+          if (googleBtnText) googleBtnText.innerText = '✓ Connected! Opening Dashboard...';
+          window.location.href = redirect;
+        }
+      } catch (err: any) {
+        console.error('Google Sign-In Error:', err);
+        let msg = err?.message || 'Google sign-in was cancelled or failed.';
+        if (err?.code === 'auth/popup-blocked') {
+          if (errorText) {
+            errorText.innerHTML = '⚠️ Pop-up was blocked by your browser. <button type="button" id="retry-google-redirect" class="underline font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 ml-1">Click here to sign in with Google Redirect →</button> or allow pop-ups for localhost in your browser address bar.';
+            setTimeout(() => {
+              document.getElementById('retry-google-redirect')?.addEventListener('click', () => {
+                signInWithGoogleRedirect();
+              });
+            }, 50);
+          }
+          if (alertEl) alertEl.classList.remove('hidden');
+          googleBtn.disabled = false;
+          if (googleBtnText) googleBtnText.innerText = 'Sign up with Google';
+          return;
+        }
+        if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
+          msg = 'Google provider is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
+        }
+        if (errorText) errorText.innerText = msg;
         if (alertEl) alertEl.classList.remove('hidden');
         googleBtn.disabled = false;
         if (googleBtnText) googleBtnText.innerText = 'Sign up with Google';
-        return;
       }
-      if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
-        msg = 'Google provider is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
-      }
-      if (errorText) errorText.innerText = msg;
-      if (alertEl) alertEl.classList.remove('hidden');
-      googleBtn.disabled = false;
-      if (googleBtnText) googleBtnText.innerText = 'Sign up with Google';
-    }
-  });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRegister);
+  } else {
+    initRegister();
+  }
+  document.addEventListener('astro:page-load', initRegister);
 </script>

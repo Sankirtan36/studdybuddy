@@ -56,6 +56,27 @@ export interface University {
   updatedAt: Date;
 }
 
+export type UniversityRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface UniversityRequest {
+  _id?: ObjectId | string;
+  name: string;
+  slug: string;
+  location: string;
+  websiteUrl?: string;
+  description?: string;
+  departments?: string[];
+  requestedBy?: string;
+  requestedByName?: string;
+  requestedByEmail?: string;
+  status: UniversityRequestStatus;
+  rejectionReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Faculty {
   _id?: ObjectId | string;
   universityId: string;

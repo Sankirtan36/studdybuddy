@@ -3,7 +3,36 @@ import { getDb } from '../db/mongo';
 import { randomBytes, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import type { SupportedFileExtension } from '../../types';
+
+export function getLocalUploadsDir(): string {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    (typeof process.cwd === 'function' && process.cwd().startsWith('/var/task'))
+  );
+
+  if (isServerless) {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy', 'uploads');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
+  }
+
+  const p1 = path.resolve(process.cwd(), '.data', 'uploads');
+  try {
+    if (!fs.existsSync(p1)) fs.mkdirSync(p1, { recursive: true });
+    return p1;
+  } catch {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy', 'uploads');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
+  }
+}
 
 const STORAGE_BUDGET_BYTES = parseInt(process.env.STORAGE_BUDGET_BYTES || '21474836480', 10); // 20 GB
 const MAX_UPLOAD_SIZE_BYTES = parseInt(process.env.MAX_UPLOAD_SIZE_BYTES || '3145728', 10); // 3 MB limit
@@ -158,9 +187,9 @@ function hasValidS3Config(): boolean {
  * Upload a file buffer to Cloudflare R2 / S3 object storage, with local disk persistence fallback.
  */
 export async function uploadObjectToStorage(storageKey: string, fileBuffer: Buffer, mimeType: string): Promise<boolean> {
-  // 1. Always persist file locally in .data/uploads/ for reliable local retrieval
+  // 1. Always persist file locally in uploads dir for reliable local retrieval
   try {
-    const uploadsDir = path.resolve(process.cwd(), '.data', 'uploads');
+    const uploadsDir = getLocalUploadsDir();
     const fullPath = path.join(uploadsDir, storageKey);
     const parentDir = path.dirname(fullPath);
     if (!fs.existsSync(parentDir)) {

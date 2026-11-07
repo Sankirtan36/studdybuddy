@@ -170,6 +170,14 @@ export async function searchResources(options: ResourceFilterOptions = {}): Prom
 }
 
 export async function getResourceById(id: string): Promise<Resource | null> {
+  // 1. Fast local cache lookup (sub-millisecond)
+  const localItem = readLocalResources().find((r) => r._id === id || r._id?.toString() === id);
+  if (localItem) return localItem;
+
+  const fallbackItem = FALLBACK_RESOURCES.find((r) => r._id === id || r._id?.toString() === id);
+  if (fallbackItem) return fallbackItem;
+
+  // 2. Query MongoDB if not found in local cache
   try {
     const db = await getDb();
     let query: any = { _id: id };
@@ -182,10 +190,7 @@ export async function getResourceById(id: string): Promise<Resource | null> {
     // fallback
   }
 
-  const localItem = readLocalResources().find((r) => r._id === id || r._id?.toString() === id);
-  if (localItem) return localItem;
-
-  return FALLBACK_RESOURCES.find((r) => r._id === id || r._id?.toString() === id) || null;
+  return null;
 }
 
 export async function incrementResourceView(id: string): Promise<void> {
@@ -357,24 +362,7 @@ export async function recordResourceView(
   if (!userId || !resourceId || !universityId) return;
   const now = new Date();
 
-  // 1. Persist to MongoDB if available
-  try {
-    const db = await getDb();
-    await db.collection('recentlyViewedResources').updateOne(
-      { userId, resourceId },
-      {
-        $set: {
-          universityId,
-          viewedAt: now,
-        },
-      },
-      { upsert: true }
-    );
-  } catch (err: any) {
-    // Non-blocking MongoDB fallback
-  }
-
-  // 2. Always maintain local fallback store in sync
+  // 1. Maintain local fallback store immediately (<1ms)
   try {
     const views = readLocalRecentViews();
     const filtered = views.filter((v) => !(v.userId === userId && v.resourceId === resourceId));
@@ -389,6 +377,23 @@ export async function recordResourceView(
   } catch (err: any) {
     console.warn('[ResourceRepository] Local recent views write error:', err?.message);
   }
+
+  // 2. Persist to MongoDB in background (non-blocking)
+  (async () => {
+    try {
+      const db = await getDb();
+      await db.collection('recentlyViewedResources').updateOne(
+        { userId, resourceId },
+        {
+          $set: {
+            universityId,
+            viewedAt: now,
+          },
+        },
+        { upsert: true }
+      );
+    } catch {}
+  })();
 }
 
 /**
@@ -404,34 +409,36 @@ export async function getRecentlyViewedResources(
 
   let recentEntries: Array<{ resourceId: string; viewedAt: Date }> = [];
 
-  // 1. Try fetching from MongoDB
-  try {
-    const db = await getDb();
-    const docs = await db
-      .collection<RecentlyViewedResource>('recentlyViewedResources')
-      .find({ userId, universityId })
-      .sort({ viewedAt: -1 })
-      .limit(limit * 2)
-      .toArray();
+  // 1. Check local store first (sub-millisecond)
+  const localViews = readLocalRecentViews();
+  const localMatching = localViews
+    .filter((v) => v.userId === userId && v.universityId === universityId)
+    .sort((a, b) => b.viewedAt.getTime() - a.viewedAt.getTime())
+    .slice(0, limit * 2)
+    .map((d) => ({ resourceId: d.resourceId, viewedAt: d.viewedAt }));
 
-    if (docs.length > 0) {
-      recentEntries = docs.map((d) => ({
-        resourceId: d.resourceId,
-        viewedAt: new Date(d.viewedAt),
-      }));
+  if (localMatching.length > 0) {
+    recentEntries = localMatching;
+  } else {
+    // 2. Fallback to MongoDB
+    try {
+      const db = await getDb();
+      const docs = await db
+        .collection<RecentlyViewedResource>('recentlyViewedResources')
+        .find({ userId, universityId })
+        .sort({ viewedAt: -1 })
+        .limit(limit * 2)
+        .toArray();
+
+      if (docs.length > 0) {
+        recentEntries = docs.map((d) => ({
+          resourceId: d.resourceId,
+          viewedAt: new Date(d.viewedAt),
+        }));
+      }
+    } catch (err) {
+      // fallback
     }
-  } catch (err) {
-    // fallback
-  }
-
-  // 2. Fallback to local store if DB was empty or unavailable
-  if (recentEntries.length === 0) {
-    const localViews = readLocalRecentViews();
-    recentEntries = localViews
-      .filter((v) => v.userId === userId && v.universityId === universityId)
-      .sort((a, b) => b.viewedAt.getTime() - a.viewedAt.getTime())
-      .slice(0, limit * 2)
-      .map((d) => ({ resourceId: d.resourceId, viewedAt: d.viewedAt }));
   }
 
   // 3. Resolve exact resources and re-verify access & existence

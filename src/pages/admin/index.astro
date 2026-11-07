@@ -5,7 +5,9 @@ import Footer from '../../components/layout/Footer.astro';
 import { getDb } from '../../server/db/mongo';
 import { readLocalUsers } from '../../server/auth/userStore';
 import { readLocalResources } from '../../server/repositories/resourceRepository';
-import type { Resource, User, CatalogSuggestion, ContentReport, AuditLog } from '../../types';
+import { getAllAnnouncements } from '../../server/repositories/announcementRepository';
+import { getAllUniversityRequests } from '../../server/repositories/universityRequestRepository';
+import type { Resource, User, CatalogSuggestion, ContentReport, AuditLog, Announcement, UniversityRequest } from '../../types';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -20,6 +22,7 @@ if (user.role !== 'admin' && user.role !== 'owner') {
 
 let pendingResources: Resource[] = [];
 let allResources: Resource[] = [];
+let announcementsList: Announcement[] = [];
 let approvedCount = 0;
 let pendingCount = 0;
 let rejectedCount = 0;
@@ -118,6 +121,16 @@ try {
   } catch {}
 }
 
+try {
+  announcementsList = await getAllAnnouncements(50);
+} catch {}
+
+let universityRequestsList: UniversityRequest[] = [];
+try {
+  universityRequestsList = await getAllUniversityRequests();
+} catch {}
+const pendingUniRequestsCount = universityRequestsList.filter((r) => r.status === 'pending').length;
+
 const STORAGE_BUDGET_BYTES = 20 * 1024 * 1024 * 1024; // 20 GB Budget
 const storageUsedMB = (totalStoredBytes / (1024 * 1024)).toFixed(2);
 const storagePercent = ((totalStoredBytes / STORAGE_BUDGET_BYTES) * 100).toFixed(2);
@@ -203,17 +216,25 @@ function formatBytes(bytes: number) {
     </div>
 
     <!-- Metrics Cards Grid -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Users</span>
         <p class="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{totalUsersCount}</p>
-        <span class="text-[11px] text-slate-500 mt-1 block">Registered Students & Admins</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">Registered Students</span>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Campus Requests</span>
+        <p class="text-3xl font-extrabold text-sky-600 dark:text-sky-400 mt-1">
+          {pendingUniRequestsCount} <span class="text-xs text-slate-400 font-normal">({universityRequestsList.length} total)</span>
+        </p>
+        <span class="text-[11px] text-slate-500 mt-1 block">Campuses Pending Review</span>
       </div>
 
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Moderation Queue</span>
         <p class="text-3xl font-extrabold text-amber-500 mt-1">{pendingCount}</p>
-        <span class="text-[11px] text-slate-500 mt-1 block">Awaiting Approval</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">Documents Awaiting Approval</span>
       </div>
 
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
@@ -222,7 +243,7 @@ function formatBytes(bytes: number) {
         <span class="text-[11px] text-slate-500 mt-1 block">Accessible to Students</span>
       </div>
 
-      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm col-span-2 sm:col-span-1">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Storage Used</span>
         <p class="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">{storageUsedMB} <span class="text-lg">MB</span></p>
         <span class="text-[11px] text-slate-500 mt-1 block">Of 20 GB budget</span>
@@ -250,6 +271,328 @@ function formatBytes(bytes: number) {
         ></div>
       </div>
     </div>
+
+    <!-- SECTION: Universal Campus Broadcast & Notification Center -->
+    <section class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+              Live Campus Broadcaster
+            </span>
+          </div>
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Universal Notification & Broadcast Center ({announcementsList.length})
+          </h2>
+          <p class="text-xs text-slate-500">
+            Publish announcements sent instantly to ALL visitors — whether unauthenticated guests or logged-in students.
+          </p>
+        </div>
+      </div>
+
+      <!-- Broadcast Creation Form -->
+      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-5">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span>📢</span>
+            <span>Create New Public Broadcast</span>
+          </h3>
+          <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
+            Audience: Everyone (Guests + Registered Students)
+          </span>
+        </div>
+
+        <form id="broadcast-form" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-2 space-y-1.5">
+              <label for="notif-input-title" class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Notification Headline / Title *
+              </label>
+              <input
+                id="notif-input-title"
+                type="text"
+                required
+                placeholder="e.g. End-Sem 2026 Examination Schedule & Formula Sheets Published"
+                class="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="notif-input-priority" class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Priority Level
+              </label>
+              <select
+                id="notif-input-priority"
+                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              >
+                <option value="normal">Normal (Notice / General)</option>
+                <option value="high">Important (Amber Highlight)</option>
+                <option value="urgent">Urgent (Red Alert Badge)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="notif-input-content" class="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Broadcast Message Content *
+            </label>
+            <textarea
+              id="notif-input-content"
+              rows="3"
+              required
+              placeholder="Enter full details of the announcement that all students and guests should see when clicking the notification bell icon..."
+              class="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-normal leading-relaxed"
+            ></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label for="notif-input-cta-label" class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Action Button Label (Optional)
+              </label>
+              <input
+                id="notif-input-cta-label"
+                type="text"
+                placeholder="e.g. View Study Materials"
+                class="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="notif-input-cta-url" class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Action URL / Destination (Optional)
+              </label>
+              <input
+                id="notif-input-cta-url"
+                type="text"
+                placeholder="e.g. /resources or /university/parul-university"
+                class="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2">
+            <p class="text-[11px] text-slate-400">
+              ⚡ Will instantly trigger the notification bell badge across all student & guest browsers.
+            </p>
+            <button
+              id="notif-submit-btn"
+              type="submit"
+              class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>🚀 Send Broadcast Notification Now</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Active Broadcasts Table -->
+      <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="p-4">Notification Title</th>
+                <th class="p-4">Priority</th>
+                <th class="p-4">Target Audience</th>
+                <th class="p-4">Published At</th>
+                <th class="p-4">Author</th>
+                <th class="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {announcementsList.length > 0 ? (
+                announcementsList.map((ann) => (
+                  <tr id={`announcement-row-${ann._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td class="p-4">
+                      <span class="font-bold text-slate-900 dark:text-white block text-sm">{ann.title}</span>
+                      <span class="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{ann.content}</span>
+                      {ann.callToActionUrl && (
+                        <span class="inline-block text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1">
+                          Link: {ann.callToActionUrl}
+                        </span>
+                      )}
+                    </td>
+                    <td class="p-4">
+                      <span class={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        ann.priority === 'urgent'
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                          : ann.priority === 'high'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                      }`}>
+                        {ann.priority || 'NORMAL'}
+                      </span>
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-400">
+                      <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold text-[11px]">
+                        All (Guests + Users)
+                      </span>
+                    </td>
+                    <td class="p-4 text-slate-400 font-mono text-[11px]">
+                      {ann.createdAt ? new Date(ann.createdAt).toLocaleString() : 'Just now'}
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-400 font-medium">
+                      {ann.createdByName || 'Admin'}
+                    </td>
+                    <td class="p-4 text-right">
+                      <button
+                        onclick={`deleteAnnouncementAdmin('${ann._id}', '${ann.title.replace(/'/g, "\\'")}')`}
+                        class="px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+                        title="Delete announcement"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colspan="6" class="p-8 text-center text-xs text-slate-400">
+                    No broadcasts published yet. Use the form above to broadcast your first campus notification!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: University & College Creation Requests -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse"></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+              Campus Governance
+            </span>
+          </div>
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <span>🏛️ University & College Creation Requests</span>
+            <span class="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+              {pendingUniRequestsCount} Pending
+            </span>
+          </h2>
+          <p class="text-xs text-slate-500">
+            Review student requests to add new campuses. Approving makes the university live site-wide and enables departmental setup.
+          </p>
+        </div>
+
+        <a
+          href="/add-university"
+          target="_self"
+          class="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 self-start sm:self-auto transition-transform hover:scale-105"
+        >
+          <span>+ Add University Directly</span>
+        </a>
+      </div>
+
+      {universityRequestsList.length > 0 ? (
+        <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th class="p-4">University / College</th>
+                  <th class="p-4">Location</th>
+                  <th class="p-4">Proposed Departments</th>
+                  <th class="p-4">Requested By</th>
+                  <th class="p-4">Status</th>
+                  <th class="p-4 text-right">Moderator Decision</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                {universityRequestsList.map((req) => (
+                  <tr id={`uni-req-row-${req._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td class="p-4">
+                      <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                        <span>{req.name}</span>
+                      </div>
+                      <div class="text-[11px] text-slate-400 font-mono mt-0.5">
+                        slug: /{req.slug} {req.websiteUrl && `• ${req.websiteUrl}`}
+                      </div>
+                      {req.description && (
+                        <p class="text-[11px] text-slate-500 mt-1 max-w-sm line-clamp-1">
+                          {req.description}
+                        </p>
+                      )}
+                    </td>
+                    <td class="p-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                      📍 {req.location}
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-300 max-w-xs">
+                      {req.departments && req.departments.length > 0 ? (
+                        <div class="flex flex-wrap gap-1">
+                          {req.departments.map((d) => (
+                            <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-medium">
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span class="text-slate-400 italic">Default standard faculties</span>
+                      )}
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      <span class="font-semibold block text-slate-800 dark:text-slate-200">{req.requestedByName || 'Contributor'}</span>
+                      <span class="text-[11px] text-slate-400 font-mono">{req.requestedByEmail || 'guest'}</span>
+                    </td>
+                    <td class="p-4 whitespace-nowrap">
+                      <span class={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        req.status === 'approved'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : req.status === 'pending'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                      }`}>
+                        {req.status}
+                      </span>
+                    </td>
+                    <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
+                      {req.status === 'pending' ? (
+                        <>
+                          <button
+                            onclick={`moderateUniversityRequest('${req._id}', 'approve', '${req.name.replace(/'/g, "\\'")}')`}
+                            class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105"
+                          >
+                            ✓ Approve Campus
+                          </button>
+                          <button
+                            onclick={`moderateUniversityRequest('${req._id}', 'reject', '${req.name.replace(/'/g, "\\'")}')`}
+                            class="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105"
+                          >
+                            ✕ Reject
+                          </button>
+                        </>
+                      ) : req.status === 'approved' ? (
+                        <a
+                          href={`/university/${req.slug}`}
+                          target="_self"
+                          class="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors inline-block"
+                        >
+                          View Campus Space →
+                        </a>
+                      ) : (
+                        <span class="text-xs text-rose-500 font-medium italic">
+                          Rejected ({req.rejectionReason || 'No reason provided'})
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          ✓ No pending university requests. You can add new universities directly using the button above.
+        </div>
+      )}
+    </section>
 
     <!-- SECTION 1: Pending Resource Moderation Queue -->
     <section class="space-y-4">
@@ -294,8 +637,6 @@ function formatBytes(bytes: number) {
                     <td class="p-4 text-right space-x-2">
                       <a
                         href={`/api/resources/${res._id}/preview`}
-                        target="_blank"
-                        rel="noreferrer"
                         class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100"
                       >
                         Preview
@@ -387,10 +728,8 @@ function formatBytes(bytes: number) {
                     <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
                       <a
                         href={`/api/resources/${res._id}/preview`}
-                        target="_blank"
-                        rel="noreferrer"
                         class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
-                        title="Preview in new tab"
+                        title="Preview resource"
                       >
                         Preview
                       </a>
@@ -666,5 +1005,109 @@ function formatBytes(bytes: number) {
     } catch (err) {
       alert('Network error.');
     }
+  }
+
+  async function broadcastAnnouncement(e) {
+    e.preventDefault();
+    const title = document.getElementById('notif-input-title').value.trim();
+    const content = document.getElementById('notif-input-content').value.trim();
+    const priority = document.getElementById('notif-input-priority').value;
+    const callToActionLabel = document.getElementById('notif-input-cta-label').value.trim();
+    const callToActionUrl = document.getElementById('notif-input-cta-url').value.trim();
+
+    if (!title || !content) {
+      alert('Please provide both headline title and announcement message.');
+      return;
+    }
+
+    const submitBtn = document.getElementById('notif-submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Broadcasting...';
+    }
+
+    try {
+      const res = await fetch('/api/admin/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, priority, callToActionLabel, callToActionUrl }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to broadcast announcement.');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = '🚀 Send Broadcast Notification Now';
+        }
+      } else {
+        alert('Campus announcement successfully broadcasted to ALL visitors (guests & students)!');
+        location.reload();
+      }
+    } catch (err) {
+      alert('Network error while broadcasting announcement.');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerText = '🚀 Send Broadcast Notification Now';
+      }
+    }
+  }
+
+  async function moderateUniversityRequest(requestId, action, uniName) {
+    let reason = '';
+    if (action === 'reject') {
+      reason = prompt(`Enter rejection reason for "${uniName}":`);
+      if (reason === null) return;
+    } else {
+      if (!confirm(`Are you sure you want to approve "${uniName}"? This will make the university live across StuddyBuddy and publish an announcement to all students.`)) {
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch('/api/admin/university-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action, reason }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || `Failed to ${action} university request.`);
+      } else {
+        alert(data.message || `University request ${action}ed successfully!`);
+        location.reload();
+      }
+    } catch (err) {
+      alert('Network error while processing university request.');
+    }
+  }
+
+  async function deleteAnnouncementAdmin(id, title) {
+    if (!confirm(`Are you sure you want to delete the broadcast "${title}"? This will remove it for all users.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/announcements?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete announcement.');
+      } else {
+        const row = document.getElementById(`announcement-row-${id}`);
+        if (row) row.remove();
+        alert(`Announcement "${title}" was permanently removed.`);
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  const broadcastForm = document.getElementById('broadcast-form');
+  if (broadcastForm) {
+    broadcastForm.addEventListener('submit', broadcastAnnouncement);
   }
 </script>

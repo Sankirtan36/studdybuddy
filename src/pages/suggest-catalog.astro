@@ -69,6 +69,17 @@ if (Astro.request.method === 'POST') {
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
           Can't find your subject or semester? Help us expand the academic directory. All suggestions are checked by moderators before becoming public.
         </p>
+
+        <!-- Link to Add University Portal -->
+        <div class="mt-4 p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div>
+            <strong class="text-indigo-900 dark:text-indigo-200 block font-bold">Want to add your entire University or College?</strong>
+            <span class="text-slate-600 dark:text-slate-400">Request your campus with strict duplicate verification and admin approval.</span>
+          </div>
+          <a href="/add-university" target="_self" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold whitespace-nowrap shadow-sm text-center">
+            Add University →
+          </a>
+        </div>
       </div>
 
       <!-- Feedback Alerts -->

@@ -9,6 +9,8 @@ if (Astro.locals.user) {
 }
 
 const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
+const urlError = Astro.url.searchParams.get('error') || '';
+const prefillEmail = Astro.url.searchParams.get('email') || '';
 ---
 
 <Layout
@@ -45,15 +47,15 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
       </div>
 
       <!-- Error Alert Box -->
-      <div id="error-alert" class="hidden p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
+      <div id="error-alert" class={`${urlError ? '' : 'hidden'} p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center gap-2.5 shadow-sm`}>
         <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span id="error-text">Failed to sign in. Please check credentials.</span>
+        <span id="error-text">{urlError || 'Failed to sign in. Please check credentials.'}</span>
       </div>
 
       <!-- Login Form -->
-      <form id="login-form" class="space-y-4 text-xs">
+      <form id="login-form" action="/api/auth/login" method="POST" target="_self" class="space-y-4 text-xs">
         <input type="hidden" name="redirect" value={redirectUrl} />
 
         <div>
@@ -64,6 +66,7 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
             id="email"
             type="email"
             name="email"
+            value={prefillEmail}
             required
             autocomplete="email"
             placeholder="student@paruluniversity.ac.in"
@@ -235,270 +238,296 @@ const redirectUrl = Astro.url.searchParams.get('redirect') || '/dashboard';
 <script>
   import { signInWithGoogle, signInWithGoogleRedirect, checkGoogleRedirectResult, sendPasswordReset } from '../lib/firebase';
 
-  const form = document.getElementById('login-form') as HTMLFormElement;
-  const alertEl = document.getElementById('error-alert') as HTMLDivElement;
-  const errorText = document.getElementById('error-text') as HTMLSpanElement;
-  const successEl = document.getElementById('success-alert') as HTMLDivElement;
-  const successText = document.getElementById('success-text') as HTMLSpanElement;
-  const btn = document.getElementById('submit-btn') as HTMLButtonElement;
-  const googleBtn = document.getElementById('google-btn') as HTMLButtonElement;
-  const googleBtnText = document.getElementById('google-btn-text') as HTMLSpanElement;
+  function initLogin() {
+    const form = document.getElementById('login-form') as HTMLFormElement | null;
+    const alertEl = document.getElementById('error-alert') as HTMLDivElement | null;
+    const errorText = document.getElementById('error-text') as HTMLSpanElement | null;
+    const successEl = document.getElementById('success-alert') as HTMLDivElement | null;
+    const successText = document.getElementById('success-text') as HTMLSpanElement | null;
+    const btn = document.getElementById('submit-btn') as HTMLButtonElement | null;
+    const googleBtn = document.getElementById('google-btn') as HTMLButtonElement | null;
+    const googleBtnText = document.getElementById('google-btn-text') as HTMLSpanElement | null;
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const redirect = urlParams.get('redirect') || '/dashboard';
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirect = urlParams.get('redirect') || '/dashboard';
 
-  // Check if returning from Google Redirect Auth
-  checkGoogleRedirectResult().then(async (result) => {
-    if (result && result.user) {
-      if (googleBtn) googleBtn.disabled = true;
-      if (googleBtnText) googleBtnText.innerText = 'Finishing Google sign-in...';
+    // Prevent re-attaching duplicate listeners
+    if (form && (form as any)._initialized) return;
+    if (form) (form as any)._initialized = true;
+
+    // Check if returning from Google Redirect Auth
+    try {
+      checkGoogleRedirectResult().then(async (result) => {
+        if (result && result.user) {
+          if (googleBtn) googleBtn.disabled = true;
+          if (googleBtnText) googleBtnText.innerText = 'Finishing Google sign-in...';
+          try {
+            const res = await fetch('/api/auth/firebase-login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({
+                email: result.user.email,
+                displayName: result.user.displayName,
+                photoUrl: result.user.photoURL,
+                uid: result.user.uid,
+                idToken: result.idToken,
+              }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+              if (successText) successText.innerText = `✓ Google Sign-in successful! Welcome, ${result.user.displayName || 'Student'}! Opening dashboard...`;
+              if (successEl) successEl.classList.remove('hidden');
+              window.location.href = redirect;
+            } else {
+              if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+              if (alertEl) alertEl.classList.remove('hidden');
+            }
+          } catch (err: any) {
+            if (errorText) errorText.innerText = 'Error finalizing Google sign in.';
+            if (alertEl) alertEl.classList.remove('hidden');
+          }
+        }
+      }).catch(err => {
+        console.warn('Google redirect result check:', err);
+      });
+    } catch (e) {
+      console.warn('Firebase redirect initialization:', e);
+    }
+
+    // Email / Password Form Submit
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const emailInput = document.getElementById('email') as HTMLInputElement | null;
+      const passwordInput = document.getElementById('password') as HTMLInputElement | null;
+      const email = emailInput?.value?.trim();
+      const password = passwordInput?.value;
+
+      if (!email || !password) {
+        if (errorText) errorText.innerText = 'Please enter both your email address and password.';
+        if (alertEl) alertEl.classList.remove('hidden');
+        return;
+      }
+
+      if (alertEl) alertEl.classList.add('hidden');
+      if (successEl) successEl.classList.add('hidden');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Signing In... Please wait...';
+      }
+
       try {
-        const res = await fetch('/api/auth/firebase-login', {
+        const res = await fetch('/api/auth/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: result.user.email,
-            displayName: result.user.displayName,
-            photoUrl: result.user.photoURL,
-            uid: result.user.uid,
-            idToken: result.idToken,
-          }),
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ email, password, redirect }),
         });
-        const data = await res.json();
-        if (res.ok) {
-          if (successText) successText.innerText = `✓ Google Sign-in successful! Welcome, ${result.user.displayName || 'Student'}! Opening dashboard...`;
-          if (successEl) successEl.classList.remove('hidden');
-          setTimeout(() => {
-            window.location.href = redirect;
-          }, 800);
-        } else {
-          if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          if (errorText) errorText.innerText = data.error || 'Invalid email address or password.';
           if (alertEl) alertEl.classList.remove('hidden');
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Sign In';
+          }
+        } else {
+          if (successText) successText.innerText = `✓ Login successful! Welcome back, ${data.user?.displayName || 'Student'}! Opening dashboard...`;
+          if (successEl) successEl.classList.remove('hidden');
+          if (btn) btn.innerText = '✓ Logged In! Redirecting...';
+          window.location.href = redirect;
         }
       } catch (err: any) {
-        if (errorText) errorText.innerText = 'Error finalizing Google sign in.';
+        console.error('Fetch login error:', err);
+        if (errorText) errorText.innerText = 'Network connection error. Retrying fallback...';
         if (alertEl) alertEl.classList.remove('hidden');
-      }
-    }
-  });
-
-  // Email / Password Form Submit
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (alertEl) alertEl.classList.add('hidden');
-    if (successEl) successEl.classList.add('hidden');
-    btn.disabled = true;
-    btn.innerText = 'Signing In... Please wait...';
-
-    const formData = new FormData(form);
-    const email = formData.get('email');
-    const password = formData.get('password');
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        if (errorText) errorText.innerText = data.error || 'Failed to sign in. Please check credentials.';
-        if (alertEl) alertEl.classList.remove('hidden');
-        btn.disabled = false;
-        btn.innerText = 'Sign In';
-      } else {
-        if (successText) successText.innerText = `✓ Login successful! Welcome back, ${data.user?.displayName || 'Student'}! Opening dashboard...`;
-        if (successEl) successEl.classList.remove('hidden');
-        btn.innerText = '✓ Logged In! Redirecting...';
-        setTimeout(() => {
-          window.location.href = redirect;
-        }, 1000);
-      }
-    } catch (err: any) {
-      if (errorText) errorText.innerText = 'Network error during login. Please retry.';
-      if (alertEl) alertEl.classList.remove('hidden');
-      btn.disabled = false;
-      btn.innerText = 'Sign In';
-    }
-  });
-
-  // Google Sign-In with Firebase
-  googleBtn?.addEventListener('click', async () => {
-    if (alertEl) alertEl.classList.add('hidden');
-    if (successEl) successEl.classList.add('hidden');
-    googleBtn.disabled = true;
-    if (googleBtnText) googleBtnText.innerText = 'Connecting with Google...';
-
-    try {
-      const authResult = await signInWithGoogle();
-      if (!authResult) {
-        if (googleBtnText) googleBtnText.innerText = 'Redirecting to Google...';
-        return;
-      }
-
-      const { user, idToken } = authResult;
-
-      const res = await fetch('/api/auth/firebase-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: user.email,
-          displayName: user.displayName,
-          photoUrl: user.photoURL,
-          uid: user.uid,
-          idToken,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
-        if (alertEl) alertEl.classList.remove('hidden');
-        googleBtn.disabled = false;
-        if (googleBtnText) googleBtnText.innerText = 'Sign in with Google';
-      } else {
-        if (successText) successText.innerText = `✓ Google Sign-in successful! Welcome, ${user.displayName || 'Student'}! Opening dashboard...`;
-        if (successEl) successEl.classList.remove('hidden');
-        if (googleBtnText) googleBtnText.innerText = '✓ Connected! Opening Dashboard...';
-        setTimeout(() => {
-          window.location.href = redirect;
-        }, 1000);
-      }
-    } catch (err: any) {
-      console.error('Google Sign-In Error:', err);
-      let msg = err?.message || 'Google sign-in was cancelled or failed.';
-      if (err?.code === 'auth/popup-blocked') {
-        if (errorText) {
-          errorText.innerHTML = '⚠️ Pop-up was blocked by your browser. <button type="button" id="retry-google-redirect" class="underline font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 ml-1">Click here to sign in with Google Redirect →</button> or allow pop-ups for localhost in your browser address bar.';
-          setTimeout(() => {
-            document.getElementById('retry-google-redirect')?.addEventListener('click', () => {
-              signInWithGoogleRedirect();
-            });
-          }, 50);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Sign In';
         }
-        if (alertEl) alertEl.classList.remove('hidden');
-        googleBtn.disabled = false;
-        if (googleBtnText) googleBtnText.innerText = 'Sign in with Google';
-        return;
       }
-      if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
-        msg = 'Google provider is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
-      }
-      if (errorText) errorText.innerText = msg;
-      if (alertEl) alertEl.classList.remove('hidden');
-      googleBtn.disabled = false;
-      if (googleBtnText) googleBtnText.innerText = 'Sign in with Google';
-    }
-  });
+    });
 
-  // Forgot Password Modal Handlers
-  const forgotLink = document.getElementById('forgot-password-link');
-  const forgotModal = document.getElementById('forgot-modal');
-  const forgotModalBox = document.getElementById('forgot-modal-box');
-  const closeForgotBtn = document.getElementById('close-forgot-modal');
-  const cancelForgotBtn = document.getElementById('cancel-forgot-btn');
-  const forgotForm = document.getElementById('forgot-form') as HTMLFormElement;
-  const forgotEmailInput = document.getElementById('forgot-email') as HTMLInputElement;
-  const forgotAlert = document.getElementById('forgot-alert');
-  const forgotErrorText = document.getElementById('forgot-error-text');
-  const forgotSuccess = document.getElementById('forgot-success');
-  const forgotSubmitBtn = document.getElementById('forgot-submit-btn') as HTMLButtonElement;
+    // Google Sign-In with Firebase
+    googleBtn?.addEventListener('click', async () => {
+      if (alertEl) alertEl.classList.add('hidden');
+      if (successEl) successEl.classList.add('hidden');
+      googleBtn.disabled = true;
+      if (googleBtnText) googleBtnText.innerText = 'Connecting with Google...';
 
-  function openForgotModal() {
-    // Pre-fill with login email if typed
-    const loginEmail = (document.getElementById('email') as HTMLInputElement)?.value;
-    if (loginEmail && forgotEmailInput) {
-      forgotEmailInput.value = loginEmail;
-    }
-    if (forgotAlert) forgotAlert.classList.add('hidden');
-    if (forgotSuccess) forgotSuccess.classList.add('hidden');
-    if (forgotSubmitBtn) {
-      forgotSubmitBtn.disabled = false;
-      forgotSubmitBtn.innerText = 'Send Reset Link';
-    }
-    forgotModal?.classList.remove('hidden');
-    setTimeout(() => {
-      forgotModal?.classList.remove('opacity-0');
-      forgotModalBox?.classList.remove('scale-95');
-      forgotModalBox?.classList.add('scale-100');
-      forgotEmailInput?.focus();
-    }, 10);
-  }
-
-  function closeForgotModal() {
-    forgotModal?.classList.add('opacity-0');
-    forgotModalBox?.classList.remove('scale-100');
-    forgotModalBox?.classList.add('scale-95');
-    setTimeout(() => {
-      forgotModal?.classList.add('hidden');
-    }, 200);
-  }
-
-  forgotLink?.addEventListener('click', openForgotModal);
-  closeForgotBtn?.addEventListener('click', closeForgotModal);
-  cancelForgotBtn?.addEventListener('click', closeForgotModal);
-
-  // Close when clicking modal backdrop
-  forgotModal?.addEventListener('click', (e) => {
-    if (e.target === forgotModal) {
-      closeForgotModal();
-    }
-  });
-
-  // Submit password reset
-  forgotForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const targetEmail = forgotEmailInput?.value?.trim();
-    if (!targetEmail) return;
-
-    if (forgotAlert) forgotAlert.classList.add('hidden');
-    if (forgotSuccess) forgotSuccess.classList.add('hidden');
-    if (forgotSubmitBtn) {
-      forgotSubmitBtn.disabled = true;
-      forgotSubmitBtn.innerText = 'Sending Link via Firebase...';
-    }
-
-    try {
-      // 1. Send password reset link via Firebase Auth
-      await sendPasswordReset(targetEmail);
-
-      // 2. Also inform backend API
       try {
-        await fetch('/api/auth/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: targetEmail }),
-        });
-      } catch {}
-
-      if (forgotSuccess) forgotSuccess.classList.remove('hidden');
-      if (forgotSubmitBtn) forgotSubmitBtn.innerText = '✓ Link Sent!';
-      setTimeout(() => {
-        if (forgotSubmitBtn) {
-          forgotSubmitBtn.disabled = false;
-          forgotSubmitBtn.innerText = 'Resend Reset Link';
+        const authResult = await signInWithGoogle();
+        if (!authResult) {
+          if (googleBtnText) googleBtnText.innerText = 'Redirecting to Google...';
+          return;
         }
-      }, 4000);
-    } catch (err: any) {
-      console.warn('Firebase password reset error:', err);
-      let errorMsg = 'Failed to send password reset email. Please verify the email address.';
-      if (err?.code === 'auth/user-not-found') {
-        errorMsg = 'No account found with this email address. Please check your spelling or register.';
-      } else if (err?.code === 'auth/invalid-email') {
-        errorMsg = 'Please enter a valid email address.';
-      } else if (err?.code === 'auth/too-many-requests') {
-        errorMsg = 'Too many requests. Please wait a few moments before trying again.';
-      } else if (err?.message) {
-        errorMsg = err.message;
-      }
 
-      if (forgotErrorText) forgotErrorText.innerText = errorMsg;
-      if (forgotAlert) forgotAlert.classList.remove('hidden');
+        const { user, idToken } = authResult;
+
+        const res = await fetch('/api/auth/firebase-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            displayName: user.displayName,
+            photoUrl: user.photoURL,
+            uid: user.uid,
+            idToken,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+          if (alertEl) alertEl.classList.remove('hidden');
+          googleBtn.disabled = false;
+          if (googleBtnText) googleBtnText.innerText = 'Sign in with Google';
+        } else {
+          if (successText) successText.innerText = `✓ Google Sign-in successful! Welcome, ${user.displayName || 'Student'}! Opening dashboard...`;
+          if (successEl) successEl.classList.remove('hidden');
+          if (googleBtnText) googleBtnText.innerText = '✓ Connected! Opening Dashboard...';
+          window.location.href = redirect;
+        }
+      } catch (err: any) {
+        console.error('Google Sign-In Error:', err);
+        let msg = err?.message || 'Google sign-in was cancelled or failed.';
+        if (err?.code === 'auth/popup-blocked') {
+          if (errorText) {
+            errorText.innerHTML = '⚠️ Pop-up was blocked by your browser. <button type="button" id="retry-google-redirect" class="underline font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 ml-1">Click here to sign in with Google Redirect →</button> or allow pop-ups for localhost in your browser address bar.';
+            setTimeout(() => {
+              document.getElementById('retry-google-redirect')?.addEventListener('click', () => {
+                signInWithGoogleRedirect();
+              });
+            }, 50);
+          }
+          if (alertEl) alertEl.classList.remove('hidden');
+          googleBtn.disabled = false;
+          if (googleBtnText) googleBtnText.innerText = 'Sign in with Google';
+          return;
+        }
+        if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
+          msg = 'Google provider is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
+        }
+        if (errorText) errorText.innerText = msg;
+        if (alertEl) alertEl.classList.remove('hidden');
+        googleBtn.disabled = false;
+        if (googleBtnText) googleBtnText.innerText = 'Sign in with Google';
+      }
+    });
+
+    // Forgot Password Modal Handlers
+    const forgotLink = document.getElementById('forgot-password-link');
+    const forgotModal = document.getElementById('forgot-modal');
+    const forgotModalBox = document.getElementById('forgot-modal-box');
+    const closeForgotBtn = document.getElementById('close-forgot-modal');
+    const cancelForgotBtn = document.getElementById('cancel-forgot-btn');
+    const forgotForm = document.getElementById('forgot-form') as HTMLFormElement;
+    const forgotEmailInput = document.getElementById('forgot-email') as HTMLInputElement;
+    const forgotAlert = document.getElementById('forgot-alert');
+    const forgotErrorText = document.getElementById('forgot-error-text');
+    const forgotSuccess = document.getElementById('forgot-success');
+    const forgotSubmitBtn = document.getElementById('forgot-submit-btn') as HTMLButtonElement;
+
+    function openForgotModal() {
+      const loginEmail = (document.getElementById('email') as HTMLInputElement)?.value;
+      if (loginEmail && forgotEmailInput) {
+        forgotEmailInput.value = loginEmail;
+      }
+      if (forgotAlert) forgotAlert.classList.add('hidden');
+      if (forgotSuccess) forgotSuccess.classList.add('hidden');
       if (forgotSubmitBtn) {
         forgotSubmitBtn.disabled = false;
         forgotSubmitBtn.innerText = 'Send Reset Link';
       }
+      forgotModal?.classList.remove('hidden');
+      setTimeout(() => {
+        forgotModal?.classList.remove('opacity-0');
+        forgotModalBox?.classList.remove('scale-95');
+        forgotModalBox?.classList.add('scale-100');
+        forgotEmailInput?.focus();
+      }, 10);
     }
-  });
+
+    function closeForgotModal() {
+      forgotModal?.classList.add('opacity-0');
+      forgotModalBox?.classList.remove('scale-100');
+      forgotModalBox?.classList.add('scale-95');
+      setTimeout(() => {
+        forgotModal?.classList.add('hidden');
+      }, 200);
+    }
+
+    forgotLink?.addEventListener('click', openForgotModal);
+    closeForgotBtn?.addEventListener('click', closeForgotModal);
+    cancelForgotBtn?.addEventListener('click', closeForgotModal);
+
+    forgotModal?.addEventListener('click', (e) => {
+      if (e.target === forgotModal) {
+        closeForgotModal();
+      }
+    });
+
+    forgotForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const targetEmail = forgotEmailInput?.value?.trim();
+      if (!targetEmail) return;
+
+      if (forgotAlert) forgotAlert.classList.add('hidden');
+      if (forgotSuccess) forgotSuccess.classList.add('hidden');
+      if (forgotSubmitBtn) {
+        forgotSubmitBtn.disabled = true;
+        forgotSubmitBtn.innerText = 'Sending Link via Firebase...';
+      }
+
+      try {
+        await sendPasswordReset(targetEmail);
+        try {
+          await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: targetEmail }),
+          });
+        } catch {}
+
+        if (forgotSuccess) forgotSuccess.classList.remove('hidden');
+        if (forgotSubmitBtn) forgotSubmitBtn.innerText = '✓ Link Sent!';
+        setTimeout(() => {
+          if (forgotSubmitBtn) {
+            forgotSubmitBtn.disabled = false;
+            forgotSubmitBtn.innerText = 'Resend Reset Link';
+          }
+        }, 4000);
+      } catch (err: any) {
+        console.warn('Firebase password reset error:', err);
+        let errorMsg = 'Failed to send password reset email. Please verify the email address.';
+        if (err?.code === 'auth/user-not-found') {
+          errorMsg = 'No account found with this email address. Please check your spelling or register.';
+        } else if (err?.code === 'auth/invalid-email') {
+          errorMsg = 'Please enter a valid email address.';
+        } else if (err?.code === 'auth/too-many-requests') {
+          errorMsg = 'Too many requests. Please wait a few moments before trying again.';
+        } else if (err?.message) {
+          errorMsg = err.message;
+        }
+
+        if (forgotErrorText) forgotErrorText.innerText = errorMsg;
+        if (forgotAlert) forgotAlert.classList.remove('hidden');
+        if (forgotSubmitBtn) {
+          forgotSubmitBtn.disabled = false;
+          forgotSubmitBtn.innerText = 'Send Reset Link';
+        }
+      }
+    });
+  }
+
+  // Run on first load and on client-side navigations
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLogin);
+  } else {
+    initLogin();
+  }
+  document.addEventListener('astro:page-load', initLogin);
+</script>
 </script>

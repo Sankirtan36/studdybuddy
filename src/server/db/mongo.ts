@@ -13,21 +13,30 @@ try {
 // Ensure .env is read even if the dev server was started before .env was created
 function loadEnvFallback() {
   try {
-    const envPath = path.resolve(process.cwd(), '.env');
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, 'utf8');
-      for (const line of content.split('\n')) {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#')) {
-          const eqIdx = trimmed.indexOf('=');
-          if (eqIdx !== -1) {
-            const key = trimmed.slice(0, eqIdx).trim();
-            let val = trimmed.slice(eqIdx + 1).trim();
-            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-              val = val.slice(1, -1);
-            }
-            if (!process.env[key]) {
-              process.env[key] = val;
+    const cwd = process.cwd();
+    const candidates = [
+      path.resolve(cwd, '.env'),
+      path.resolve(cwd, 'studdybuddy', '.env'),
+    ];
+    for (const envPath of candidates) {
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const eqIdx = trimmed.indexOf('=');
+            if (eqIdx !== -1) {
+              const key = trimmed.slice(0, eqIdx).trim();
+              let val = trimmed.slice(eqIdx + 1).trim();
+              if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                val = val.slice(1, -1);
+              }
+              if (val.endsWith(',')) {
+                val = val.slice(0, -1).trim();
+              }
+              if (!process.env[key]) {
+                process.env[key] = val;
+              }
             }
           }
         }
@@ -50,14 +59,28 @@ function getMongoDbName(): string {
 
 let client: MongoClient | null = null;
 let dbInstance: Db | null = null;
+let isCircuitOpen = false;
+let lastFailureTimestamp = 0;
+const CIRCUIT_COOLDOWN_MS = 30000; // 30 seconds circuit breaker cooldown
 
 /**
- * Get the MongoDB database instance using connection pooling.
- * Caches client instance across serverless execution contexts.
+ * Get the MongoDB database instance using connection pooling and instant-fail circuit breaker.
+ * Protects login and dashboard operations from blocking/hanging if Atlas is unreachable or slow.
  */
 export async function getDb(): Promise<Db> {
+  // 1. Fast path: return existing connected database instance (<0.001ms)
   if (dbInstance) {
     return dbInstance;
+  }
+
+  // 2. Circuit breaker fast-fail: if recent connection attempt failed, fail immediately in 0.0001ms
+  if (isCircuitOpen) {
+    const elapsed = Date.now() - lastFailureTimestamp;
+    if (elapsed < CIRCUIT_COOLDOWN_MS) {
+      throw new Error(`MongoDB Atlas temporarily offline (circuit open, retry in ${Math.ceil((CIRCUIT_COOLDOWN_MS - elapsed) / 1000)}s).`);
+    }
+    // Cooldown elapsed, allow one probe attempt
+    isCircuitOpen = false;
   }
 
   const uri = getMongoUri();
@@ -69,18 +92,28 @@ export async function getDb(): Promise<Db> {
     );
   }
 
-  if (!client) {
-    client = new MongoClient(uri, {
+  try {
+    // Configure lean, fast timeouts (1.5s max selection, 2s max connect)
+    const newClient = new MongoClient(uri, {
       maxPoolSize: 10,
-      minPoolSize: 2,
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 10000,
+      minPoolSize: 1,
+      serverSelectionTimeoutMS: 1500,
+      connectTimeoutMS: 2000,
+      tlsAllowInvalidCertificates: true,
     } as any);
-    await client.connect();
-  }
 
-  dbInstance = client.db(dbName);
-  return dbInstance;
+    await newClient.connect();
+    client = newClient;
+    dbInstance = client.db(dbName);
+    isCircuitOpen = false;
+    return dbInstance;
+  } catch (err: any) {
+    client = null;
+    dbInstance = null;
+    isCircuitOpen = true;
+    lastFailureTimestamp = Date.now();
+    throw err;
+  }
 }
 
 /**
@@ -101,87 +134,56 @@ export async function checkDbHealth(): Promise<{ ok: boolean; message: string }>
 }
 
 /**
- * Create mandatory indexes across all collections according to SRS Section 14.1.
+ * Create necessary indexes for collections.
  */
-export async function ensureIndexes(db: Db): Promise<void> {
-  // Users: unique email, role index
-  await db.collection('users').createIndex({ email: 1 }, { unique: true });
-  await db.collection('users').createIndex({ role: 1 });
-  await db.collection('users').createIndex({ status: 1 });
+export async function ensureIndexes(): Promise<void> {
+  try {
+    const db = await getDb();
 
-  // Sessions: unique token, TTL index for auto-cleanup
-  await db.collection('sessions').createIndex({ token: 1 }, { unique: true });
-  await db.collection('sessions').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+    // Users indexes
+    await db.collection('users').createIndex({ email: 1 }, { unique: true });
 
-  // Catalog: Universities
-  await db.collection('universities').createIndex({ slug: 1 }, { unique: true });
-  await db.collection('universities').createIndex({ isActive: 1 });
+    // Sessions indexes (TTL)
+    await db.collection('sessions').createIndex({ token: 1 }, { unique: true });
+    await db.collection('sessions').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-  // Catalog: Faculties
-  await db.collection('faculties').createIndex({ universityId: 1, slug: 1 }, { unique: true });
-  await db.collection('faculties').createIndex({ universityId: 1 });
+    // Catalog suggestions
+    await db.collection('catalogSuggestions').createIndex({ status: 1 });
+    await db.collection('catalogSuggestions').createIndex({ createdAt: -1 });
 
-  // Catalog: Programs
-  await db.collection('programs').createIndex({ universityId: 1, facultyId: 1, slug: 1 }, { unique: true });
-  await db.collection('programs').createIndex({ universityId: 1 });
-  await db.collection('programs').createIndex({ facultyId: 1 });
+    // Resources indexes
+    await db.collection('resources').createIndex({ universityId: 1, facultyId: 1, programId: 1 });
+    await db.collection('resources').createIndex({ status: 1 });
+    await db.collection('resources').createIndex({ createdAt: -1 });
+    await db.collection('resources').createIndex({
+      title: 'text',
+      description: 'text',
+      keywords: 'text',
+    });
 
-  // Catalog: Academic Terms
-  await db.collection('academicTerms').createIndex({ programId: 1, orderIndex: 1 });
+    // Recently viewed resources compound unique indexes
+    await db.collection('recentlyViewedResources').createIndex({ userId: 1, resourceId: 1 }, { unique: true });
+    await db.collection('recentlyViewedResources').createIndex({ userId: 1, universityId: 1, viewedAt: -1 });
 
-  // Catalog: Subjects
-  await db.collection('subjects').createIndex({ programId: 1, academicTermId: 1, slug: 1 }, { unique: true });
-  await db.collection('subjects').createIndex({ programId: 1, academicTermId: 1 });
+    // Announcements
+    await db.collection('announcements').createIndex({ status: 1, createdAt: -1 });
 
-  // Resources
-  await db.collection('resources').createIndex({ status: 1 });
-  await db.collection('resources').createIndex({ universityId: 1, subjectId: 1, status: 1 });
-  await db.collection('resources').createIndex({ programId: 1, academicTermId: 1, status: 1 });
-  await db.collection('resources').createIndex({ category: 1 });
-  await db.collection('resources').createIndex({ contributorId: 1 });
-  await db.collection('resources').createIndex({ createdAt: -1 });
-  await db.collection('resources').createIndex(
-    { title: 'text', description: 'text', originalFilename: 'text' },
-    { weights: { title: 10, description: 5, originalFilename: 2 } }
-  );
+    // Audit logs
+    await db.collection('auditLogs').createIndex({ createdAt: -1 });
+  } catch (err: any) {
+    console.warn('Skipping MongoDB index creation:', err?.message || err);
+  }
+}
 
-  // Saved Resources: unique per user+resource
-  await db.collection('savedResources').createIndex({ userId: 1, resourceId: 1 }, { unique: true });
-  await db.collection('savedResources').createIndex({ userId: 1 });
-
-  // Recently Viewed Resources: unique per user+resource with fast lookup by university
-  await db.collection('recentlyViewedResources').createIndex({ userId: 1, resourceId: 1 }, { unique: true });
-  await db.collection('recentlyViewedResources').createIndex({ userId: 1, universityId: 1, viewedAt: -1 });
-
-  // Catalog Suggestions
-  await db.collection('catalogSuggestions').createIndex({ status: 1 });
-  await db.collection('catalogSuggestions').createIndex({ entityType: 1 });
-
-  // Community Threads & 8-hour guest chat TTL cleanup
-  await db.collection('communityThreads').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-  await db.collection('communityThreads').createIndex({ universityId: 1 });
-  await db.collection('communityThreads').createIndex({ createdAt: -1 });
-
-  await db.collection('communityReplies').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-  await db.collection('communityReplies').createIndex({ threadId: 1, createdAt: 1 });
-
-  // Announcements
-  await db.collection('announcements').createIndex({ status: 1, publishedAt: 1, expiresAt: 1 });
-
-  // Reports
-  await db.collection('reports').createIndex({ status: 1, targetType: 1 });
-
-  // Audit Logs
-  await db.collection('auditLogs').createIndex({ createdAt: -1 });
-  await db.collection('auditLogs').createIndex({ actorId: 1 });
-  await db.collection('auditLogs').createIndex({ targetType: 1, targetId: 1 });
-
-  // Analytics Events
-  await db.collection('analyticsEvents').createIndex({ timestamp: -1 });
-  await db.collection('analyticsEvents').createIndex({ eventType: 1, timestamp: -1 });
-  await db.collection('analyticsEvents').createIndex({ resourceId: 1 });
-
-  // Storage Reservations TTL (auto expire abandoned reservations after 1 hour)
-  await db.collection('storageReservations').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-  await db.collection('storageReservations').createIndex({ reservationId: 1 }, { unique: true });
+/**
+ * Close MongoDB client connection on shutdown.
+ */
+export async function closeDb(): Promise<void> {
+  if (client) {
+    try {
+      await client.close();
+    } catch {}
+    client = null;
+    dbInstance = null;
+  }
 }

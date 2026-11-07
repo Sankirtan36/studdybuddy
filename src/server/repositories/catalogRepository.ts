@@ -1,6 +1,7 @@
 import { getDb } from '../db/mongo';
 import { INITIAL_ACADEMIC_GROUPS } from '../db/seed';
 import type { University, Faculty, Program, AcademicTerm, Subject } from '../../types';
+import { readLocalCustomUniversities, readLocalCustomFaculties } from './universityRequestRepository';
 
 // Fallback static in-memory universities data
 const FALLBACK_UNIVERSITIES: University[] = [
@@ -62,27 +63,50 @@ const FALLBACK_UNIVERSITIES: University[] = [
 ];
 
 export async function getUniversities(): Promise<University[]> {
+  const map = new Map<string, University>();
+
+  // 1. First add custom approved universities from local serverless storage
+  try {
+    const custom = readLocalCustomUniversities();
+    for (const u of custom) {
+      if (u.isActive !== false) {
+        map.set(u.slug, u);
+      }
+    }
+  } catch (err) {}
+
+  // 2. Add from MongoDB
   try {
     const db = await getDb();
     const items = await db.collection<University>('universities').find({ isActive: true }).toArray();
-    if (items.length > 0) {
-      // Merge with fallback to ensure rich catalog discovery
-      const existingSlugs = new Set(items.map((u) => u.slug));
-      const merged: University[] = [...items];
-      for (const fb of FALLBACK_UNIVERSITIES) {
-        if (!existingSlugs.has(fb.slug)) {
-          merged.push(fb);
-        }
+    for (const item of items) {
+      if (!map.has(item.slug)) {
+        map.set(item.slug, item);
       }
-      return merged;
     }
   } catch (err) {
     // Graceful fallback to static seed data
   }
-  return FALLBACK_UNIVERSITIES;
+
+  // 3. Fallback seeds
+  for (const fb of FALLBACK_UNIVERSITIES) {
+    if (!map.has(fb.slug)) {
+      map.set(fb.slug, fb);
+    }
+  }
+
+  return Array.from(map.values());
 }
 
 export async function getUniversityBySlug(slug: string): Promise<University | null> {
+  // 1. Check custom approved universities
+  try {
+    const custom = readLocalCustomUniversities();
+    const foundCustom = custom.find((u) => u.slug === slug && u.isActive !== false);
+    if (foundCustom) return foundCustom;
+  } catch {}
+
+  // 2. Check MongoDB
   try {
     const db = await getDb();
     const item = await db.collection<University>('universities').findOne({ slug, isActive: true });
@@ -90,22 +114,55 @@ export async function getUniversityBySlug(slug: string): Promise<University | nu
   } catch (err) {
     // fallback
   }
+
+  // 3. Check Static Fallback
   return FALLBACK_UNIVERSITIES.find((u) => u.slug === slug) || null;
 }
 
 export async function getFacultiesByUniversity(universityIdOrSlug: string): Promise<Faculty[]> {
+  const uni = await getUniversityBySlug(universityIdOrSlug);
+  const uniId = uni?._id?.toString() || universityIdOrSlug;
+  const uniSlug = uni?.slug || universityIdOrSlug;
+
+  const map = new Map<string, Faculty>();
+
+  // 1. Check custom faculties
+  try {
+    const customFaculties = readLocalCustomFaculties();
+    for (const f of customFaculties) {
+      if (
+        f.isActive !== false &&
+        (f.universityId === uniId || f.universityId === uniSlug || (uni?._id && f.universityId === uni._id.toString()))
+      ) {
+        map.set(f.slug, f);
+      }
+    }
+  } catch {}
+
+  // 2. Check MongoDB
   try {
     const db = await getDb();
-    const uni = await getUniversityBySlug(universityIdOrSlug);
-    const uniId = uni?._id?.toString() || universityIdOrSlug;
-    const items = await db.collection<Faculty>('faculties').find({ universityId: uniId, isActive: true }).toArray();
-    if (items.length > 0) return items;
+    const items = await db.collection<Faculty>('faculties').find({
+      $or: [{ universityId: uniId }, { universityId: uniSlug }],
+      isActive: true,
+    }).toArray();
+    for (const item of items) {
+      if (!map.has(item.slug)) {
+        map.set(item.slug, item);
+      }
+    }
   } catch (err) {
     // fallback
   }
+
+  if (map.size > 0) {
+    return Array.from(map.values());
+  }
+
+  // Fallback default faculties for seeded universities
   return INITIAL_ACADEMIC_GROUPS.map((g) => ({
     _id: `fac-${g.slug}`,
-    universityId: 'parul-university',
+    universityId: uniSlug,
     name: g.name,
     slug: g.slug,
     isActive: true,
