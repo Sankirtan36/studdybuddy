@@ -93,6 +93,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     // Update lastLoginAt
     await updateUser(user._id!.toString(), { lastLoginAt: new Date() });
 
+    // Enforce administrative routing to /admin
+    if (user.role === 'admin' || user.role === 'owner') {
+      if (redirectTarget === '/dashboard' || !redirectTarget) {
+        redirectTarget = '/admin';
+      }
+    }
+
     // Create session
     const token = await createSession(user._id!.toString(), request);
 
@@ -108,6 +115,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       return new Response(
         JSON.stringify({
           ok: true,
+          redirect: redirectTarget,
           user: {
             id: user._id!.toString(),
             email: user.email,

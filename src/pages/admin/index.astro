@@ -240,6 +240,17 @@ function formatBytes(bytes: number) {
   <!-- Empty header slot: eliminates consumer header with Requests/Community on admin pages -->
   <div slot="header"></div>
 
+  <style>
+    /* Sleek no-scrollbar rule for sidebar */
+    .no-scrollbar {
+      -ms-overflow-style: none; /* IE and Edge */
+      scrollbar-width: none; /* Firefox */
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none; /* Chrome, Safari, Opera */
+    }
+  </style>
+
   <!-- Overall Admin Wrapper -->
   <div id="admin-shell" class="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
 
@@ -250,12 +261,12 @@ function formatBytes(bytes: number) {
       id="admin-sidebar"
       class="fixed top-0 bottom-0 left-0 z-40 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between transition-all duration-300 ease-in-out shadow-sm w-64 group"
     >
-      <!-- Pill-Shaped Toggle Arrow Button (Anchored on right edge) -->
+      <!-- Centered Rectangular Pill-Shaped Toggle Arrow Button (Anchored on middle right edge) -->
       <button
         id="sidebar-toggle-btn"
         type="button"
         aria-label="Toggle sidebar expansion"
-        class="absolute -right-3.5 top-16 w-7 h-7 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-110 transition-transform cursor-pointer z-50 focus:outline-none"
+        class="absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-105 transition-all cursor-pointer z-50 focus:outline-none"
         title="Toggle Sidebar (Expand/Collapse)"
       >
         <svg id="sidebar-toggle-icon" class="w-3.5 h-3.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -263,8 +274,8 @@ function formatBytes(bytes: number) {
         </svg>
       </button>
 
-      <!-- Sidebar Top: Brand & Navigation -->
-      <div class="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden p-3.5 space-y-6">
+      <!-- Sidebar Top: Brand & Navigation (Zero Visible Scrollbars) -->
+      <div class="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar p-3.5 space-y-6">
         
         <!-- Brand Header -->
         <div class="flex items-center gap-3 px-2 py-1">
@@ -288,29 +299,33 @@ function formatBytes(bytes: number) {
           Executive Suite
         </div>
 
-        <!-- Navigation Menu (Strictly Admin Items — ZERO Requests/Community!) -->
-        <nav class="space-y-1 text-xs font-semibold">
+        <!-- Navigation Menu (Strictly Admin Items — Tabbed Single-View Switching) -->
+        <nav id="admin-nav" class="space-y-1 text-xs font-semibold">
           
           <!-- 1. Overview & KPIs -->
-          <a
-            href="#overview"
-            class="group/item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          <button
+            type="button"
+            data-admin-tab="overview"
+            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 font-bold border-l-4 border-indigo-600 dark:border-indigo-400 pl-2 transition-all text-left cursor-pointer shadow-sm"
           >
-            <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Overview & KPIs</span>
             </div>
-            <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Overview & KPIs</span>
             <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
               Overview & KPIs
             </span>
-          </a>
+          </button>
 
           <!-- 2. Colleges & Campuses -->
-          <a
-            href="#campuses"
-            class="group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          <button
+            type="button"
+            data-admin-tab="campuses"
+            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
@@ -328,12 +343,13 @@ function formatBytes(bytes: number) {
             <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
               Colleges ({totalCollegesCount})
             </span>
-          </a>
+          </button>
 
           <!-- 3. Document Moderation -->
-          <a
-            href="#documents"
-            class="group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          <button
+            type="button"
+            data-admin-tab="documents"
+            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
@@ -351,11 +367,12 @@ function formatBytes(bytes: number) {
             <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
               Document Moderation ({pendingCount} pending)
             </span>
-          </a>
+          </button>
 
-          <!-- 4. PDF Tools Suite (Executive Quick-Access) -->
+          <!-- 4. PDF Tools Suite (Quick-Access in same tab) -->
           <a
             href="/pdf-tools"
+            target="_self"
             class="group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
           >
             <div class="flex items-center gap-3 min-w-0">
@@ -376,9 +393,10 @@ function formatBytes(bytes: number) {
           </a>
 
           <!-- 5. Campus Broadcasts -->
-          <a
-            href="#broadcasts"
-            class="group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          <button
+            type="button"
+            data-admin-tab="broadcasts"
+            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
@@ -394,12 +412,13 @@ function formatBytes(bytes: number) {
             <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
               Campus Broadcast Center
             </span>
-          </a>
+          </button>
 
           <!-- 6. Revenue & Earnings -->
-          <a
-            href="#earnings"
-            class="group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          <button
+            type="button"
+            data-admin-tab="earnings"
+            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -415,12 +434,13 @@ function formatBytes(bytes: number) {
             <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
               Revenue & Transactions (₹{revenueSummary.totalRevenueAllTime.toLocaleString('en-IN')})
             </span>
-          </a>
+          </button>
 
           <!-- 7. User Management -->
-          <a
-            href="#users"
-            class="group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          <button
+            type="button"
+            data-admin-tab="users"
+            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
@@ -436,11 +456,12 @@ function formatBytes(bytes: number) {
             <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
               User Directory ({totalUsersCount} registered)
             </span>
-          </a>
+          </button>
 
-          <!-- 8. Database Explorer -->
+          <!-- 8. Database Explorer (same tab) -->
           <a
             href="/database"
+            target="_self"
             class="group/item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
@@ -455,9 +476,10 @@ function formatBytes(bytes: number) {
           </a>
 
           <!-- 9. Audit Logs -->
-          <a
-            href="#audit"
-            class="group/item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          <button
+            type="button"
+            data-admin-tab="audit"
+            class="admin-nav-item w-full group/item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
           >
             <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -468,11 +490,11 @@ function formatBytes(bytes: number) {
             <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
               Security Audit Logs
             </span>
-          </a>
+          </button>
         </nav>
       </div>
 
-      <!-- Sidebar Bottom: Admin Identity & Exit -->
+      <!-- Sidebar Bottom: Admin Identity & Sign Out (Strictly No Student Dashboard) -->
       <div class="p-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
         <!-- Logged In Identity -->
         <div class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
@@ -485,15 +507,19 @@ function formatBytes(bytes: number) {
           </div>
         </div>
 
-        <!-- Exit Link to Student View -->
-        <a
-          href="/dashboard"
-          class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          title="Return to Student Dashboard"
-        >
-          <span class="text-base shrink-0">←</span>
-          <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Student Dashboard</span>
-        </a>
+        <!-- Direct Sign Out -->
+        <form action="/api/auth/logout" method="POST" class="w-full">
+          <button
+            type="submit"
+            class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+            title="Sign Out of Admin Control Center"
+          >
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Sign Out</span>
+          </button>
+        </form>
       </div>
     </aside>
 
@@ -520,32 +546,37 @@ function formatBytes(bytes: number) {
         <div class="flex items-center gap-2 sm:gap-3">
           <a
             href="/pdf-tools"
+            target="_self"
             class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white text-xs font-bold shadow-sm transition-transform hover:scale-105 flex items-center gap-1.5"
           >
             <span>🛠️ PDF Tools Suite</span>
           </a>
           <a
             href="/database"
+            target="_self"
             class="hidden sm:inline-flex px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold items-center gap-1.5"
           >
             <span>Database Inspector</span>
           </a>
-          <a
-            href="/dashboard"
-            class="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold"
-          >
-            Exit →
-          </a>
+          <form action="/api/auth/logout" method="POST" class="inline">
+            <button
+              type="submit"
+              class="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
+              title="Sign Out"
+            >
+              Sign Out
+            </button>
+          </form>
         </div>
       </header>
 
-      <!-- Main Body Container -->
-      <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+      <!-- Main Body Container: Tabbed Single-View Layout (Only Active Tab Displayed) -->
+      <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <!-- ==================================================== -->
         <!-- SECTION 1: EXECUTIVE KPI DASHBOARD OVERVIEW          -->
         <!-- ==================================================== -->
-        <section id="overview" class="space-y-6">
+        <section id="view-overview" class="admin-view space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
             <div>
               <div class="flex items-center gap-2 mb-1">
@@ -616,7 +647,7 @@ function formatBytes(bytes: number) {
               </div>
               <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
                 <span class="text-amber-600 dark:text-amber-400 font-bold">{pendingUniRequestsCount} pending review</span>
-                <a href="#campuses" class="text-sky-600 dark:text-sky-400 hover:underline">Moderate →</a>
+                <button type="button" data-view-target="campuses" class="text-sky-600 dark:text-sky-400 hover:underline cursor-pointer font-bold">Moderate →</button>
               </div>
             </div>
 
@@ -676,7 +707,7 @@ function formatBytes(bytes: number) {
               </div>
               <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
                 <span class="text-emerald-600 dark:text-emerald-400 font-bold">{revenueSummary.totalTransactionsCount} transactions</span>
-                <a href="#earnings" class="text-amber-600 dark:text-amber-400 hover:underline">Ledger →</a>
+                <button type="button" data-view-target="earnings" class="text-amber-600 dark:text-amber-400 hover:underline cursor-pointer font-bold">Ledger →</button>
               </div>
             </div>
           </div>
@@ -752,7 +783,7 @@ function formatBytes(bytes: number) {
         <!-- ==================================================== -->
         <!-- SECTION 2: UNIVERSITY & COLLEGE CREATION REQUESTS    -->
         <!-- ==================================================== -->
-        <section id="campuses" class="space-y-4 pt-6">
+        <section id="view-campuses" class="admin-view hidden space-y-4 pt-2">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div class="flex items-center gap-2 mb-1">
@@ -888,7 +919,7 @@ function formatBytes(bytes: number) {
         <!-- ==================================================== -->
         <!-- SECTION 3: DOCUMENT MODERATION QUEUE                 -->
         <!-- ==================================================== -->
-        <section id="documents" class="space-y-4 pt-6">
+        <section id="view-documents" class="admin-view hidden space-y-4 pt-2">
           <div class="flex items-center justify-between">
             <div>
               <div class="flex items-center gap-2 mb-1">
@@ -976,7 +1007,7 @@ function formatBytes(bytes: number) {
         <!-- ==================================================== -->
         <!-- SECTION 4: CAMPUS BROADCAST NOTIFICATION CENTER      -->
         <!-- ==================================================== -->
-        <section id="broadcasts" class="space-y-6 pt-6">
+        <section id="view-broadcasts" class="admin-view hidden space-y-6 pt-2">
           <div>
             <div class="flex items-center gap-2 mb-1">
               <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
@@ -1125,7 +1156,7 @@ function formatBytes(bytes: number) {
         <!-- ==================================================== -->
         <!-- SECTION 5: REVENUE & PAYMENT TRANSACTION LEDGER      -->
         <!-- ==================================================== -->
-        <section id="earnings" class="space-y-4 pt-6">
+        <section id="view-earnings" class="admin-view hidden space-y-4 pt-2">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div class="flex items-center gap-2 mb-1">
@@ -1211,7 +1242,7 @@ function formatBytes(bytes: number) {
         <!-- ==================================================== -->
         <!-- SECTION 6: USER MANAGEMENT                           -->
         <!-- ==================================================== -->
-        <section id="users" class="space-y-4 pt-6">
+        <section id="view-users" class="admin-view hidden space-y-4 pt-2">
           <div class="flex items-center justify-between">
             <div>
               <div class="flex items-center gap-2 mb-1">
@@ -1307,7 +1338,7 @@ function formatBytes(bytes: number) {
         <!-- ==================================================== -->
         <!-- SECTION 7: AUDIT LOG TRAIL                           -->
         <!-- ==================================================== -->
-        <section id="audit" class="space-y-4 pt-6">
+        <section id="view-audit" class="admin-view hidden space-y-4 pt-2">
           <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
             System Audit Trail ({auditLogs.length})
           </h2>
@@ -1424,6 +1455,86 @@ function formatBytes(bytes: number) {
     applySidebarState(newState);
     localStorage.setItem(STORAGE_KEY, String(newState));
   });
+
+  // ==========================================
+  // 1.5 TABBED SINGLE-VIEW WORKSPACE SWITCHER
+  // ==========================================
+  const VIEW_STORAGE_KEY = 'studdybuddy_admin_active_view';
+  const navTabs = document.querySelectorAll('[data-admin-tab]');
+  const allViews = document.querySelectorAll('.admin-view');
+  const viewSwitchButtons = document.querySelectorAll('[data-view-target]');
+
+  function switchAdminView(targetViewId) {
+    if (!targetViewId) targetViewId = 'overview';
+    // Normalize aliases
+    if (targetViewId === 'colleges') targetViewId = 'campuses';
+    if (targetViewId === 'moderation') targetViewId = 'documents';
+
+    let matched = false;
+    allViews.forEach((view) => {
+      if (view.id === `view-${targetViewId}`) {
+        view.classList.remove('hidden');
+        matched = true;
+      } else {
+        view.classList.add('hidden');
+      }
+    });
+
+    if (!matched) {
+      targetViewId = 'overview';
+      const overviewEl = document.getElementById('view-overview');
+      if (overviewEl) overviewEl.classList.remove('hidden');
+    }
+
+    // Update active nav styling
+    navTabs.forEach((tab) => {
+      const tabId = tab.getAttribute('data-admin-tab');
+      if (tabId === targetViewId) {
+        tab.classList.add('bg-indigo-50', 'dark:bg-indigo-950/70', 'text-indigo-600', 'dark:text-indigo-400', 'font-bold', 'border-l-4', 'border-indigo-600', 'dark:border-indigo-400', 'pl-2', 'shadow-sm');
+        tab.classList.remove('text-slate-700', 'dark:text-slate-200', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
+      } else {
+        tab.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/70', 'text-indigo-600', 'dark:text-indigo-400', 'font-bold', 'border-l-4', 'border-indigo-600', 'dark:border-indigo-400', 'pl-2', 'shadow-sm');
+        tab.classList.add('text-slate-700', 'dark:text-slate-200', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
+      }
+    });
+
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, targetViewId);
+      const url = new URL(window.location.href);
+      url.searchParams.set('view', targetViewId);
+      url.hash = '';
+      window.history.replaceState({ view: targetViewId }, '', url.toString());
+    } catch {}
+
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  navTabs.forEach((tab) => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tabId = tab.getAttribute('data-admin-tab');
+      if (tabId) switchAdminView(tabId);
+    });
+  });
+
+  viewSwitchButtons.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tabId = btn.getAttribute('data-view-target');
+      if (tabId) switchAdminView(tabId);
+    });
+  });
+
+  // Activate view on initial load
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash.replace('#', '');
+    const stored = localStorage.getItem(VIEW_STORAGE_KEY);
+    const initialView = urlParams.get('view') || hash || stored || 'overview';
+    switchAdminView(initialView);
+  } catch {
+    switchAdminView('overview');
+  }
 
   // ==========================================
   // 2. RESOURCE MODERATION

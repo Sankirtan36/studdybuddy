@@ -9,7 +9,7 @@ interface Props {
 
 const { user = null } = Astro.props;
 const currentPath = Astro.url.pathname;
-const isAdminPage = currentPath.startsWith('/admin');
+const isStaff = Boolean(user && (user.role === 'admin' || user.role === 'owner'));
 
 const studentNavLinks = [
   { label: 'Home', href: '/' },
@@ -19,17 +19,12 @@ const studentNavLinks = [
   { label: 'PDF Tools', href: '/pdf-tools' },
 ];
 
-const adminNavLinks = [
-  { label: '🛠️ PDF Tools', href: '/pdf-tools' },
-  { label: 'Document Moderation', href: '/admin#documents' },
-  { label: 'Campus Approvals', href: '/admin#campuses' },
-  { label: 'Broadcast Center', href: '/admin#broadcasts' },
-  { label: 'User Accounts', href: '/admin#users' },
-  { label: 'System Analytics', href: '/admin/analytics' },
-  { label: 'Database Explorer', href: '/database' },
+const staffNavLinks = [
+  { label: '🛠️ PDF Tools Suite', href: '/pdf-tools' },
+  { label: '⚙️ Admin Control Center', href: '/admin' },
 ];
 
-const navLinks = isAdminPage ? adminNavLinks : studentNavLinks;
+const navLinks = isStaff ? staffNavLinks : studentNavLinks;
 ---
 
 <header class="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md transition-colors duration-200">
@@ -83,97 +78,112 @@ const navLinks = isAdminPage ? adminNavLinks : studentNavLinks;
         </svg>
       </button>
 
-      <!-- Universal Campus Notifications Bell (Visible to ALL users: Guests & Logged-In) -->
-      <div class="relative" id="notif-wrapper">
-        <button
-          id="notif-bell-btn"
-          type="button"
-          aria-label="Campus announcements and notifications"
-          class="relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-          title="Announcements & Notifications"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          <!-- Unread Badge -->
-          <span
-            id="notif-badge"
-            class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-rose-500 rounded-full items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse"
+      <!-- Universal Campus Notifications Bell (Visible to Students & Guests - HIDDEN FOR ADMIN) -->
+      {!isStaff && (
+        <div class="relative" id="notif-wrapper">
+          <button
+            id="notif-bell-btn"
+            type="button"
+            aria-label="Campus announcements and notifications"
+            class="relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            title="Announcements & Notifications"
           >
-            0
-          </span>
-        </button>
-
-        <!-- Notification Dropdown Panel -->
-        <div
-          id="notif-dropdown"
-          class="hidden absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 z-50 overflow-hidden text-left"
-        >
-          <!-- Header -->
-          <div class="p-3.5 px-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/80 dark:bg-slate-800/50">
-            <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                Announcements
-              </h3>
-              <span id="notif-unread-count-pill" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                0 new
-              </span>
-            </div>
-            <button
-              id="notif-mark-all-read"
-              type="button"
-              class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <!-- Unread Badge -->
+            <span
+              id="notif-badge"
+              class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-rose-500 rounded-full items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse"
             >
-              Mark all as read
-            </button>
-          </div>
+              0
+            </span>
+          </button>
 
-          <!-- Notification Items Container -->
-          <div id="notif-items-container" class="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/80">
-            <div class="p-8 text-center text-xs text-slate-400">
-              Loading platform notifications...
+          <!-- Notification Dropdown Panel -->
+          <div
+            id="notif-dropdown"
+            class="hidden absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 z-50 overflow-hidden text-left"
+          >
+            <!-- Header -->
+            <div class="p-3.5 px-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/80 dark:bg-slate-800/50">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  Announcements
+                </h3>
+                <span id="notif-unread-count-pill" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                  0 new
+                </span>
+              </div>
+              <button
+                id="notif-mark-all-read"
+                type="button"
+                class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                Mark all as read
+              </button>
             </div>
-          </div>
 
-          <!-- Footer Banner -->
-          <div class="px-4 py-2 bg-slate-50/60 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/80 text-center text-[10px] text-slate-400 font-medium">
-            <span>📢 Official broadcasts delivered to all users & guests</span>
+            <!-- Notification Items Container -->
+            <div id="notif-items-container" class="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/80">
+              <div class="p-8 text-center text-xs text-slate-400">
+                Loading platform notifications...
+              </div>
+            </div>
+
+            <!-- Footer Banner -->
+            <div class="px-4 py-2 bg-slate-50/60 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/80 text-center text-[10px] text-slate-400 font-medium">
+              <span>📢 Official broadcasts delivered to all users & guests</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <!-- Upload Button -->
-      <a
-        href="/upload"
-        class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-600/20 transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-        </svg>
-        <span>Upload</span>
-      </a>
+      <!-- Upload Button (For Students Only) -->
+      {!isStaff && (
+        <a
+          href="/upload"
+          class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-600/20 transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          <span>Upload</span>
+        </a>
+      )}
 
       <!-- Auth State / Account Buttons -->
       {user ? (
         <div class="flex items-center gap-2">
-          {(user.role === 'admin' || user.role === 'owner') && (
+          {isStaff ? (
+            <div class="flex items-center gap-2">
+              <a
+                href="/admin"
+                class="px-3 py-1.5 text-xs font-bold rounded-xl bg-gradient-to-r from-amber-600 to-indigo-600 text-white shadow-sm flex items-center gap-1.5 hover:scale-105 transition-transform"
+              >
+                <span>⚙️ Admin Panel</span>
+              </a>
+              <form action="/api/auth/logout" method="POST" class="inline">
+                <button
+                  type="submit"
+                  class="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Logout
+                </button>
+              </form>
+            </div>
+          ) : (
             <a
-              href="/admin"
-              class="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+              href="/dashboard"
+              class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
-              Admin Panel
+              <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+                {user.displayName?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <span class="hidden md:inline text-sm font-medium text-slate-700 dark:text-slate-200">{user.displayName}</span>
             </a>
           )}
-          <a
-            href="/dashboard"
-            class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
-              {user.displayName?.charAt(0).toUpperCase() || 'U'}
-            </div>
-            <span class="hidden md:inline text-sm font-medium text-slate-700 dark:text-slate-200">{user.displayName}</span>
-          </a>
         </div>
       ) : (
         <div class="flex items-center gap-1.5">
@@ -216,20 +226,23 @@ const navLinks = isAdminPage ? adminNavLinks : studentNavLinks;
         {item.label}
       </a>
     ))}
-    {isAdminPage ? (
-      <a
-        href="/pdf-tools"
-        class="block px-3 py-2 rounded-lg text-base font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50"
-      >
-        🛠️ PDF Tools Suite
-      </a>
-    ) : (
+    {!isStaff && (
       <a
         href="/upload"
         class="block px-3 py-2 rounded-lg text-base font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50"
       >
         Upload Resource
       </a>
+    )}
+    {isStaff && (
+      <form action="/api/auth/logout" method="POST" class="pt-2">
+        <button
+          type="submit"
+          class="w-full text-left px-3 py-2 rounded-lg text-base font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50"
+        >
+          Sign Out of Admin
+        </button>
+      </form>
     )}
   </div>
 </header>

@@ -3,8 +3,11 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/layout/Header.astro';
 import Footer from '../components/layout/Footer.astro';
 
-// If already logged in, redirect to dashboard
+// If already logged in, redirect to dashboard or admin
 if (Astro.locals.user) {
+  if (Astro.locals.user.role === 'admin' || Astro.locals.user.role === 'owner') {
+    return Astro.redirect('/admin');
+  }
   return Astro.redirect('/dashboard');
 }
 
@@ -275,9 +278,11 @@ const prefillEmail = Astro.url.searchParams.get('email') || '';
             });
             const data = await res.json().catch(() => ({}));
             if (res.ok) {
-              if (successText) successText.innerText = `✓ Google Sign-in successful! Welcome, ${result.user.displayName || 'Student'}! Opening dashboard...`;
+              const isStaff = data.user?.role === 'admin' || data.user?.role === 'owner';
+              const destination = isStaff ? '/admin' : (data.redirect || redirect);
+              if (successText) successText.innerText = `✓ Google Sign-in successful! Welcome, ${result.user.displayName || (isStaff ? 'Administrator' : 'Student')}! Opening ${isStaff ? 'Admin Control Center' : 'dashboard'}...`;
               if (successEl) successEl.classList.remove('hidden');
-              window.location.href = redirect;
+              window.location.href = destination;
             } else {
               if (errorText) errorText.innerText = data.error || 'Authentication failed. Please verify your credentials.';
               if (alertEl) alertEl.classList.remove('hidden');
@@ -334,10 +339,12 @@ const prefillEmail = Astro.url.searchParams.get('email') || '';
             btn.innerText = 'Sign In';
           }
         } else {
-          if (successText) successText.innerText = `✓ Login successful! Welcome back, ${data.user?.displayName || 'Student'}! Opening dashboard...`;
+          const isStaff = data.user?.role === 'admin' || data.user?.role === 'owner';
+          const destination = isStaff ? '/admin' : (data.redirect || redirect);
+          if (successText) successText.innerText = `✓ Login successful! Welcome back, ${data.user?.displayName || (isStaff ? 'Administrator' : 'Student')}! Opening ${isStaff ? 'Admin Control Center' : 'dashboard'}...`;
           if (successEl) successEl.classList.remove('hidden');
           if (btn) btn.innerText = '✓ Logged In! Redirecting...';
-          window.location.href = redirect;
+          window.location.href = destination;
         }
       } catch (err: any) {
         console.error('Fetch login error:', err);

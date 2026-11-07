@@ -14,6 +14,9 @@ const user = Astro.locals.user;
 if (!user) {
   return Astro.redirect('/login?redirect=/dashboard');
 }
+if (user.role === 'admin' || user.role === 'owner') {
+  return Astro.redirect('/admin');
+}
 
 // Fetch full user profile for reputation & academic details
 const fullUser = await findUserById(user.id);
