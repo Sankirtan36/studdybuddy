@@ -24,8 +24,7 @@ const s3Bucket = process.env.OBJECT_STORAGE_BUCKET;
 const s3AccessKey = process.env.OBJECT_STORAGE_ACCESS_KEY_ID;
 const s3SecretKey = process.env.OBJECT_STORAGE_SECRET_ACCESS_KEY;
 
-<<<<<<< HEAD
-export const GET: APIRoute = async ({ params, request }) => {
+export const GET: APIRoute = async ({ params, request, locals }) => {
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('cf-connecting-ip') || '127.0.0.1';
   const rateLimit = isDownloadRateLimited(clientIp);
   if (!rateLimit.allowed) {
@@ -34,10 +33,6 @@ export const GET: APIRoute = async ({ params, request }) => {
       { status: 429, headers: { 'Content-Type': 'application/json' } }
     );
   }
-
-=======
-export const GET: APIRoute = async ({ params, request, locals }) => {
->>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
   const { id } = params;
 
   if (!id) {

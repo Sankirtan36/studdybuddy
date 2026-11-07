@@ -2,27 +2,20 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/layout/Header.astro';
 import Footer from '../components/layout/Footer.astro';
-<<<<<<< HEAD
-import { getFacultiesByUniversity } from '../server/repositories/catalogRepository';
-import { findUserById } from '../server/auth/userStore';
-=======
 import { getUniversities, getFacultiesByUniversity } from '../server/repositories/catalogRepository';
->>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
+import { findUserById } from '../server/auth/userStore';
 
 const user = Astro.locals.user;
 if (!user) {
   return Astro.redirect('/login?redirect=/upload');
 }
 
-<<<<<<< HEAD
-const fullUser = await findUserById(user.id);
-const faculties = await getFacultiesByUniversity('parul-university');
-=======
+const fullUser = user?.id ? await findUserById(user.id) : null;
 const universities = await getUniversities();
-const prefillUni = Astro.url.searchParams.get('university') || 'parul-university';
+const prefillUni = Astro.url.searchParams.get('university') || (fullUser?.universityId) || 'parul-university';
 const prefillFaculty = Astro.url.searchParams.get('faculty') || '';
-const prefillProgram = Astro.url.searchParams.get('program') || '';
-const prefillTerm = Astro.url.searchParams.get('term') || '';
+const prefillProgram = Astro.url.searchParams.get('program') || (fullUser?.programId) || '';
+const prefillTerm = Astro.url.searchParams.get('term') || (fullUser?.currentSemester ? `term-${fullUser.currentSemester.replace(/\D/g, '')}` : '');
 const prefillSubjectSlug = Astro.url.searchParams.get('subject') || '';
 const prefillCategory = Astro.url.searchParams.get('category') || '';
 
@@ -36,7 +29,6 @@ function formatSlugToTitle(slug: string) {
 
 const prefillSubjectTitle = prefillSubjectSlug ? formatSlugToTitle(prefillSubjectSlug) : '';
 const faculties = await getFacultiesByUniversity(prefillUni);
->>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
 
 const quickSubjects = [
   'AI (Artificial Intelligence)',
@@ -344,11 +336,7 @@ const categories = [
           <input type="hidden" id="exam-session-input" name="examSession" />
 
           <!-- 4. Collapsible Advanced Settings (Optional - Clean defaults) -->
-<<<<<<< HEAD
-          <details id="advanced-details" class="group p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 transition-all">
-=======
-          <details class="group p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 transition-all" open={Boolean(prefillUni || prefillProgram)}>
->>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
+          <details id="advanced-details" class="group p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 transition-all" open={Boolean(prefillUni || prefillProgram)}>
             <summary class="cursor-pointer font-bold text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-between select-none">
               <span>⚙️ Academic Catalog Options (University, Branch & Semester)</span>
               <span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
@@ -396,17 +384,10 @@ const categories = [
                   name="programId"
                   class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                 >
-<<<<<<< HEAD
-                  <option value="prog-btech-cse" selected={fullUser?.programId === 'prog-btech-cse'}>B.Tech Computer Science & Engineering</option>
-                  <option value="prog-bca" selected={fullUser?.programId === 'prog-bca'}>Bachelor of Computer Applications (BCA)</option>
-                  <option value="prog-mca" selected={fullUser?.programId === 'prog-mca'}>Master of Computer Applications (MCA)</option>
-                  <option value="prog-general" selected={fullUser?.programId === 'prog-general'}>Other Academic Program</option>
-=======
-                  <option value="prog-btech-cse" selected={prefillProgram === 'prog-btech-cse' || prefillProgram === 'btech-cse'}>B.Tech Computer Science & Engineering</option>
-                  <option value="prog-bca" selected={prefillProgram === 'prog-bca' || prefillProgram === 'bca'}>Bachelor of Computer Applications (BCA)</option>
-                  <option value="prog-mca" selected={prefillProgram === 'prog-mca' || prefillProgram === 'mca'}>Master of Computer Applications (MCA)</option>
-                  <option value="prog-general" selected={prefillProgram === 'prog-general'}>Other Academic Program</option>
->>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
+                  <option value="prog-btech-cse" selected={prefillProgram === 'prog-btech-cse' || prefillProgram === 'btech-cse' || fullUser?.programId === 'prog-btech-cse'}>B.Tech Computer Science & Engineering</option>
+                  <option value="prog-bca" selected={prefillProgram === 'prog-bca' || prefillProgram === 'bca' || fullUser?.programId === 'prog-bca'}>Bachelor of Computer Applications (BCA)</option>
+                  <option value="prog-mca" selected={prefillProgram === 'prog-mca' || prefillProgram === 'mca' || fullUser?.programId === 'prog-mca'}>Master of Computer Applications (MCA)</option>
+                  <option value="prog-general" selected={prefillProgram === 'prog-general' || fullUser?.programId === 'prog-general'}>Other Academic Program</option>
                 </select>
               </div>
 
@@ -419,25 +400,14 @@ const categories = [
                   name="academicTermId"
                   class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                 >
-<<<<<<< HEAD
-                  <option value="term-1" selected={fullUser?.currentSemester === 'Semester 1'}>Semester 1</option>
-                  <option value="term-2" selected={fullUser?.currentSemester === 'Semester 2'}>Semester 2</option>
-                  <option value="term-3" selected={fullUser?.currentSemester === 'Semester 3'}>Semester 3</option>
-                  <option value="term-4" selected={fullUser?.currentSemester === 'Semester 4'}>Semester 4</option>
-                  <option value="term-5" selected={fullUser?.currentSemester === 'Semester 5'}>Semester 5</option>
-                  <option value="term-6" selected={fullUser?.currentSemester === 'Semester 6'}>Semester 6</option>
-                  <option value="term-7" selected={fullUser?.currentSemester === 'Semester 7'}>Semester 7</option>
-                  <option value="term-8" selected={fullUser?.currentSemester === 'Semester 8'}>Semester 8</option>
-=======
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((t) => (
                     <option
                       value={`term-${t}`}
-                      selected={prefillTerm === `term-${t}` || prefillTerm === `semester-${t}`}
+                      selected={prefillTerm === `term-${t}` || prefillTerm === `semester-${t}` || fullUser?.currentSemester === `Semester ${t}`}
                     >
                       Semester {t}
                     </option>
                   ))}
->>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
                 </select>
               </div>
 
