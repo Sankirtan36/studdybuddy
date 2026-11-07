@@ -204,7 +204,7 @@ export async function recordPayment(data: {
   // MongoDB write
   try {
     const db = await getDb();
-    await db.collection('payments').insertOne({ ...transaction });
+    await db.collection('payments').insertOne({ ...transaction } as any);
   } catch {}
 
   return transaction;

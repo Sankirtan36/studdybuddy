@@ -1,0 +1,174 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import {
+  getRevenueSummary,
+  getAllTransactions,
+  type PaymentTransaction,
+  type RevenueSummary,
+} from '../../server/repositories/revenueRepository';
+
+let revenueSummary: RevenueSummary = {
+  totalRevenueAllTime: 0,
+  revenueThisMonth: 0,
+  revenueThisWeek: 0,
+  revenueToday: 0,
+  totalTransactionsCount: 0,
+  averageOrderValue: 0,
+  activeSubscribersCount: 0,
+};
+let allTransactions: PaymentTransaction[] = [];
+
+try {
+  revenueSummary = await getRevenueSummary();
+  allTransactions = await getAllTransactions();
+} catch {}
+---
+
+<AdminLayout
+  title="Platform Revenue & Financial Ledger | Admin Control Center"
+  activeNav="revenue"
+>
+  <div class="space-y-8">
+    
+    <!-- Top Action Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            Financial Telemetry & Accounts
+          </span>
+        </div>
+        <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <span>💰 Payments Received & Platform Revenue</span>
+        </h1>
+        <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+          Comprehensive ledger of subscription revenues, institution sponsorships, student study packs, and peer guidance payouts. All financial figures rendered in official ₹ INR currency.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs">
+          Gross: ₹{revenueSummary.totalRevenueAllTime.toLocaleString('en-IN')}
+        </span>
+      </div>
+    </div>
+
+    <!-- Revenue KPI Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- Card 1: All-Time Gross -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">All-Time Revenue</span>
+          <p class="text-3xl font-black text-slate-900 dark:text-white mt-2">
+            ₹{revenueSummary.totalRevenueAllTime.toLocaleString('en-IN')}
+          </p>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 text-[11px] text-emerald-600 font-bold">
+          {revenueSummary.totalTransactionsCount} Total Payments
+        </div>
+      </div>
+
+      <!-- Card 2: This Month -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">This Month</span>
+          <p class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
+            ₹{revenueSummary.revenueThisMonth.toLocaleString('en-IN')}
+          </p>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 text-[11px] text-slate-500">
+          Current Billing Cycle
+        </div>
+      </div>
+
+      <!-- Card 3: This Week -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">This Week</span>
+          <p class="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2">
+            ₹{revenueSummary.revenueThisWeek.toLocaleString('en-IN')}
+          </p>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 text-[11px] text-indigo-600 font-semibold">
+          Last 7 Days
+        </div>
+      </div>
+
+      <!-- Card 4: Average Order Value -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Average Order Value</span>
+          <p class="text-3xl font-black text-amber-600 dark:text-amber-400 mt-2">
+            ₹{revenueSummary.averageOrderValue}
+          </p>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 text-[11px] text-slate-500">
+          Per Verified Transaction
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Full Transaction Ledger Table -->
+    <div class="space-y-4 pt-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <span>📜 Transaction Ledger ({allTransactions.length} Records)</span>
+      </h2>
+
+      <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="p-3.5">Transaction ID</th>
+                <th class="p-3.5">Student / Contributor</th>
+                <th class="p-3.5">Plan / Package</th>
+                <th class="p-3.5">Amount</th>
+                <th class="p-3.5">Method</th>
+                <th class="p-3.5">Status</th>
+                <th class="p-3.5 text-right">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {allTransactions.map((tx) => (
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <td class="p-3.5 font-mono text-[11px] text-slate-500">
+                    {tx.id}
+                  </td>
+                  <td class="p-3.5">
+                    <span class="font-bold text-slate-900 dark:text-white block">{tx.userName}</span>
+                    <span class="text-slate-400 font-mono text-[11px]">{tx.userEmail}</span>
+                  </td>
+                  <td class="p-3.5">
+                    <span class="font-semibold text-slate-800 dark:text-slate-200 block">{tx.planName}</span>
+                    <span class="text-slate-400 text-[10px]">{tx.description}</span>
+                  </td>
+                  <td class="p-3.5 font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                    ₹{tx.amount.toLocaleString('en-IN')}
+                  </td>
+                  <td class="p-3.5">
+                    <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                      {tx.paymentMethod}
+                    </span>
+                  </td>
+                  <td class="p-3.5">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      {tx.status}
+                    </span>
+                  </td>
+                  <td class="p-3.5 text-right text-slate-400">
+                    {new Date(tx.createdAt).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</AdminLayout>
+

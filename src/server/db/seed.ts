@@ -482,7 +482,7 @@ export async function seedAcademicCatalog(): Promise<{
   subjectsCreated: number;
 }> {
   const db = await getDb();
-  await ensureIndexes(db);
+  await ensureIndexes();
 
   let counts = {
     universitiesCreated: 0,

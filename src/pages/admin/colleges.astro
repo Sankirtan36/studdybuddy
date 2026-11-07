@@ -1,0 +1,237 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getAllUniversityRequests } from '../../server/repositories/universityRequestRepository';
+import { getUniversities } from '../../server/repositories/catalogRepository';
+import type { UniversityRequest } from '../../types';
+
+let universityRequestsList: UniversityRequest[] = [];
+let pendingUniRequestsCount = 0;
+let approvedUniversities: any[] = [];
+
+try {
+  universityRequestsList = await getAllUniversityRequests();
+  pendingUniRequestsCount = universityRequestsList.filter((r) => r.status === 'pending').length;
+} catch {}
+
+try {
+  approvedUniversities = await getUniversities();
+} catch {}
+---
+
+<AdminLayout
+  title="University & College Approvals | Admin Control Center"
+  activeNav="colleges"
+  pendingUniCount={pendingUniRequestsCount}
+>
+  <div class="space-y-8">
+    
+    <!-- Top Action Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+            Campus Directory Governance
+          </span>
+        </div>
+        <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <span>🏛️ College & University Registration Requests</span>
+          <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+            {pendingUniRequestsCount} Pending Review
+          </span>
+        </h1>
+        <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+          Review student and faculty requests to register new campuses. When approved, the university becomes instantly accessible across StuddyBuddy, allowing students to contribute and organize semester materials.
+        </p>
+      </div>
+
+      <a
+        href="/add-university"
+        target="_self"
+        class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md shadow-sky-600/20 flex items-center gap-1.5 self-start sm:self-auto transition-transform hover:scale-105 cursor-pointer"
+      >
+        <span>+ Register College Directly</span>
+      </a>
+    </div>
+
+    <!-- PENDING UNIVERSITY REQUESTS QUEUE -->
+    <div class="space-y-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <span>🕒 Awaiting Administrative Verification ({pendingUniRequestsCount})</span>
+      </h2>
+
+      {universityRequestsList.length > 0 ? (
+        <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th class="p-4">University / College</th>
+                  <th class="p-4">Location</th>
+                  <th class="p-4">Requested Branches</th>
+                  <th class="p-4">Submitted By</th>
+                  <th class="p-4">Status</th>
+                  <th class="p-4 text-right">Administrative Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                {universityRequestsList.map((req) => (
+                  <tr id={`uni-req-row-${req._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td class="p-4">
+                      <div class="font-bold text-slate-900 dark:text-white text-sm">
+                        {req.name}
+                      </div>
+                      <div class="text-[11px] text-slate-400 font-mono mt-0.5">
+                        slug: /{req.slug} {req.websiteUrl && `• ${req.websiteUrl}`}
+                      </div>
+                      {req.description && (
+                        <p class="text-[11px] text-slate-500 mt-1 max-w-sm line-clamp-1">
+                          {req.description}
+                        </p>
+                      )}
+                    </td>
+                    <td class="p-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                      📍 {req.location}
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-300 max-w-xs">
+                      {req.departments && req.departments.length > 0 ? (
+                        <div class="flex flex-wrap gap-1">
+                          {req.departments.map((d) => (
+                            <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-medium">
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span class="text-slate-400 italic">Core Faculties</span>
+                      )}
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      <span class="font-semibold block text-slate-800 dark:text-slate-200">{req.requestedByName || 'Contributor'}</span>
+                      <span class="text-[11px] text-slate-400 font-mono">{req.requestedByEmail || 'guest'}</span>
+                    </td>
+                    <td class="p-4 whitespace-nowrap">
+                      <span class={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        req.status === 'approved'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : req.status === 'pending'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                      }`}>
+                        {req.status}
+                      </span>
+                    </td>
+                    <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
+                      {req.status === 'pending' ? (
+                        <>
+                          <button
+                            onclick={`moderateUniversityRequest('${req._id}', 'approve', '${req.name.replace(/'/g, "\\'")}')`}
+                            class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105 cursor-pointer"
+                          >
+                            ✓ Approve Campus
+                          </button>
+                          <button
+                            onclick={`moderateUniversityRequest('${req._id}', 'reject', '${req.name.replace(/'/g, "\\'")}')`}
+                            class="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105 cursor-pointer"
+                          >
+                            ✕ Reject
+                          </button>
+                        </>
+                      ) : req.status === 'approved' ? (
+                        <a
+                          href={`/university/${req.slug}`}
+                          target="_self"
+                          class="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors inline-block"
+                        >
+                          View Campus Space →
+                        </a>
+                      ) : (
+                        <span class="text-xs text-rose-500 font-medium italic">
+                          Rejected ({req.rejectionReason || 'Platform guidelines'})
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          ✓ No pending university registration requests awaiting review.
+        </div>
+      )}
+    </div>
+
+    <!-- LIVE INSTITUTIONS IN CATALOG -->
+    <div class="space-y-4 pt-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <span>🏛️ Accredited Universities Currently Active in Directory ({approvedUniversities.length})</span>
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {approvedUniversities.map((uni) => (
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Active Campus
+                </span>
+                <span class="text-[10px] text-slate-400 font-mono">/{uni.slug}</span>
+              </div>
+              <h3 class="text-base font-bold text-slate-900 dark:text-white mt-2">
+                {uni.name}
+              </h3>
+              <p class="text-xs text-slate-500 mt-1">📍 {uni.location}</p>
+            </div>
+            <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-4 flex items-center justify-between text-xs">
+              <span class="text-slate-400 text-[11px]">{uni.faculties?.length || 0} Faculties</span>
+              <a
+                href={`/university/${uni.slug}`}
+                target="_self"
+                class="text-indigo-600 dark:text-indigo-400 hover:underline font-bold"
+              >
+                Inspect Space →
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+  </div>
+</AdminLayout>
+
+<script is:inline>
+  async function moderateUniversityRequest(requestId, action, uniName) {
+    let reason = '';
+    if (action === 'reject') {
+      reason = prompt(`Enter rejection reason for "${uniName}":`);
+      if (reason === null) return;
+    } else {
+      if (!confirm(`Are you sure you want to approve "${uniName}"? This will make the university live across StuddyBuddy and publish an announcement to all students.`)) {
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch('/api/admin/university-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action, reason }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || `Failed to ${action} university request.`);
+      } else {
+        alert(data.message || `University request ${action}ed successfully!`);
+        location.reload();
+      }
+    } catch (err) {
+      alert('Network error while processing university request.');
+    }
+  }
+</script>
+

@@ -1,0 +1,367 @@
+---
+import '../styles/global.css';
+import Footer from '../components/layout/Footer.astro';
+
+interface Props {
+  title?: string;
+  activeNav?: 'overview' | 'colleges' | 'moderation' | 'pdf-tools' | 'broadcasts' | 'revenue' | 'users' | 'database' | 'audit';
+  pendingUniCount?: number;
+  pendingDocCount?: number;
+}
+
+const {
+  title = 'Administrator Control Center | StuddyBuddy',
+  activeNav = 'overview',
+  pendingUniCount = 0,
+  pendingDocCount = 0,
+} = Astro.props;
+
+const user = Astro.locals.user;
+if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+  return Astro.redirect('/admin/login');
+}
+
+const navLinks = [
+  {
+    id: 'overview',
+    label: 'Overview & KPIs',
+    href: '/admin',
+    iconColor: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+    icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+    badge: null,
+  },
+  {
+    id: 'colleges',
+    label: 'Colleges & Approvals',
+    href: '/admin/colleges',
+    iconColor: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400',
+    icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+    badge: pendingUniCount > 0 ? { text: String(pendingUniCount), color: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300' } : null,
+  },
+  {
+    id: 'moderation',
+    label: 'Document Moderation',
+    href: '/admin/moderation',
+    iconColor: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    badge: pendingDocCount > 0 ? { text: String(pendingDocCount), color: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 animate-pulse' } : null,
+  },
+  {
+    id: 'pdf-tools',
+    label: 'PDF Tools Suite',
+    href: '/admin/pdf-tools',
+    iconColor: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
+    icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
+    badge: { text: 'Workbench', color: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' },
+  },
+  {
+    id: 'broadcasts',
+    label: 'Campus Broadcasts',
+    href: '/admin/broadcasts',
+    iconColor: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400',
+    icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z',
+    badge: { text: 'Live', color: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' },
+  },
+  {
+    id: 'revenue',
+    label: 'Revenue & Earnings',
+    href: '/admin/revenue',
+    iconColor: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+    icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    badge: { text: '₹ INR', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' },
+  },
+  {
+    id: 'users',
+    label: 'User Management',
+    href: '/admin/users',
+    iconColor: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400',
+    icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+    badge: null,
+  },
+  {
+    id: 'database',
+    label: 'Database Explorer',
+    href: '/database',
+    iconColor: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+    icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4',
+    badge: null,
+  },
+  {
+    id: 'audit',
+    label: 'Audit Trail',
+    href: '/admin/audit',
+    iconColor: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+    badge: null,
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- Theme initialization -->
+    <script is:inline>
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
+
+    <!-- Global Cross-Browser Scrollbar Elimination -->
+    <style is:global>
+      .no-scrollbar {
+        -ms-overflow-style: none !important; /* IE and Edge */
+        scrollbar-width: none !important;    /* Firefox */
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none !important;            /* Chrome, Safari, Opera */
+        width: 0 !important;
+        height: 0 !important;
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200">
+    <div id="admin-shell" class="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
+
+      <!-- ======================================================== -->
+      <!-- COLLAPSIBLE ADMIN SIDEBAR                                -->
+      <!-- ======================================================== -->
+      <aside
+        id="admin-sidebar"
+        class="fixed top-0 bottom-0 left-0 z-40 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between transition-all duration-300 ease-in-out shadow-sm w-64 group"
+      >
+        <!-- Centered Rectangular Pill-Shaped Toggle Arrow Button (Anchored on middle right edge) -->
+        <button
+          id="sidebar-toggle-btn"
+          type="button"
+          aria-label="Toggle sidebar expansion"
+          class="absolute -right-3.5 top-1/2 -translate-y-1/2 w-5 h-14 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 hover:scale-105 transition-all cursor-pointer z-50 focus:outline-none"
+          title="Toggle Sidebar (Expand/Collapse)"
+        >
+          <svg id="sidebar-toggle-icon" class="w-3.5 h-3.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <!-- Sidebar Top: Brand & Navigation (Zero Visible Scrollbars) -->
+        <div class="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar p-3.5 space-y-6" style="-ms-overflow-style: none; scrollbar-width: none;">
+          
+          <!-- Brand Header -->
+          <a href="/admin" target="_self" class="flex items-center gap-3 px-2 py-1 group/brand focus:outline-none">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0 group-hover/brand:scale-105 transition-transform">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div class="sidebar-text flex flex-col min-w-0 transition-opacity duration-200">
+              <span class="text-sm font-black tracking-tight bg-gradient-to-r from-indigo-600 to-sky-600 dark:from-indigo-400 dark:to-sky-400 bg-clip-text text-transparent truncate">
+                StuddyBuddy
+              </span>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Admin Control
+              </span>
+            </div>
+          </a>
+
+          <!-- Section Label -->
+          <div class="sidebar-text px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-opacity duration-200">
+            Executive Suite
+          </div>
+
+          <!-- Navigation Links (All Same-Tab, Dedicated Page Navigation) -->
+          <nav class="space-y-1 text-xs font-semibold">
+            {navLinks.map((item) => {
+              const isActive = activeNav === item.id;
+              return (
+                <a
+                  href={item.href}
+                  target="_self"
+                  class={`group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                    isActive
+                      ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 font-bold border-l-4 border-indigo-600 dark:border-indigo-400 pl-2 shadow-sm'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class={`w-8 h-8 rounded-lg ${item.iconColor} flex items-center justify-center shrink-0`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.icon} />
+                      </svg>
+                    </div>
+                    <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">{item.label}</span>
+                  </div>
+
+                  {item.badge && (
+                    <span class={`sidebar-badge px-2 py-0.5 rounded-full text-[10px] font-bold ${item.badge.color}`}>
+                      {item.badge.text}
+                    </span>
+                  )}
+
+                  <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
+                    {item.label}
+                  </span>
+                </a>
+              );
+            })}
+          </nav>
+        </div>
+
+        <!-- Sidebar Bottom: Admin Identity & Exit -->
+        <div class="p-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
+          <!-- Logged In Identity -->
+          <div class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase">
+              {user.email.charAt(0)}
+            </div>
+            <div class="sidebar-text flex-1 min-w-0 transition-opacity duration-200">
+              <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">{user.email}</span>
+              <span class="text-[9px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 block">{user.role}</span>
+            </div>
+          </div>
+
+          <!-- Direct Sign Out -->
+          <form action="/api/auth/logout" method="POST" class="w-full">
+            <button
+              type="submit"
+              class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+              title="Sign Out of Admin Control Center"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Sign Out</span>
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      <!-- ======================================================== -->
+      <!-- MAIN ADMIN CONTENT WORKSPACE (Right Beside Sidebar)      -->
+      <!-- ======================================================== -->
+      <div id="admin-main-wrapper" class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out lg:pl-64">
+        
+        <!-- Top Sticky Action Bar -->
+        <header class="sticky top-0 z-30 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                System Live
+              </span>
+            </div>
+            <span class="text-slate-300 dark:text-slate-700">|</span>
+            <h1 class="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+              {title}
+            </h1>
+          </div>
+
+          <div class="flex items-center gap-2 sm:gap-3">
+            <a
+              href="/admin/pdf-tools"
+              target="_self"
+              class={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-transform hover:scale-105 flex items-center gap-1.5 ${
+                activeNav === 'pdf-tools'
+                  ? 'bg-rose-600 text-white'
+                  : 'bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white'
+              }`}
+            >
+              <span>🛠️ PDF Workbench</span>
+            </a>
+            <a
+              href="/database"
+              target="_self"
+              class="hidden sm:inline-flex px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold items-center gap-1.5"
+            >
+              <span>Database</span>
+            </a>
+            <form action="/api/auth/logout" method="POST" class="inline">
+              <button
+                type="submit"
+                class="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
+                title="Sign Out"
+              >
+                Sign Out
+              </button>
+            </form>
+          </div>
+        </header>
+
+        <!-- Main Body: Right beside the sidebar -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <slot />
+        </main>
+
+        <Footer />
+      </div>
+    </div>
+
+    <!-- Client-Side Script: Sidebar Toggle & State -->
+    <script is:inline>
+      const sidebar = document.getElementById('admin-sidebar');
+      const mainWrapper = document.getElementById('admin-main-wrapper');
+      const toggleBtn = document.getElementById('sidebar-toggle-btn');
+      const toggleIcon = document.getElementById('sidebar-toggle-icon');
+
+      const STORAGE_KEY = 'studdybuddy_admin_sidebar_collapsed';
+
+      function applySidebarState(collapsed) {
+        if (!sidebar || !mainWrapper) return;
+
+        const sidebarTexts = sidebar.querySelectorAll('.sidebar-text');
+        const sidebarBadges = sidebar.querySelectorAll('.sidebar-badge');
+
+        if (collapsed) {
+          sidebar.classList.remove('w-64');
+          sidebar.classList.add('w-20');
+          mainWrapper.classList.remove('lg:pl-64');
+          mainWrapper.classList.add('lg:pl-20');
+
+          if (toggleIcon) toggleIcon.classList.add('rotate-180');
+
+          sidebarTexts.forEach((el) => {
+            el.classList.add('hidden', 'opacity-0');
+          });
+          sidebarBadges.forEach((el) => {
+            el.classList.add('hidden');
+          });
+        } else {
+          sidebar.classList.remove('w-20');
+          sidebar.classList.add('w-64');
+          mainWrapper.classList.remove('lg:pl-20');
+          mainWrapper.classList.add('lg:pl-64');
+
+          if (toggleIcon) toggleIcon.classList.remove('rotate-180');
+
+          sidebarTexts.forEach((el) => {
+            el.classList.remove('hidden', 'opacity-0');
+          });
+          sidebarBadges.forEach((el) => {
+            el.classList.remove('hidden');
+          });
+        }
+      }
+
+      // Read initial state
+      const isCollapsedInitial = localStorage.getItem(STORAGE_KEY) === 'true';
+      applySidebarState(isCollapsedInitial);
+
+      toggleBtn?.addEventListener('click', () => {
+        const currentlyCollapsed = sidebar?.classList.contains('w-20') || false;
+        const newState = !currentlyCollapsed;
+        applySidebarState(newState);
+        localStorage.setItem(STORAGE_KEY, String(newState));
+      });
+    </script>
+  </body>
+</html>
+

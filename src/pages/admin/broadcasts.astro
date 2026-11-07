@@ -1,0 +1,254 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getAllAnnouncements } from '../../server/repositories/announcementRepository';
+import type { Announcement } from '../../types';
+
+let announcementsList: Announcement[] = [];
+try {
+  announcementsList = await getAllAnnouncements(50);
+} catch {}
+---
+
+<AdminLayout
+  title="Campus Broadcast Alerts | Admin Control Center"
+  activeNav="broadcasts"
+>
+  <div class="space-y-8">
+    
+    <!-- Top Action Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+            Universal Campus Broadcaster
+          </span>
+        </div>
+        <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <span>📢 Campus Broadcast Alerts & Notices</span>
+          <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+            {announcementsList.length} Active
+          </span>
+        </h1>
+        <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+          Push official campus notifications delivered instantly to ALL visitors — whether unauthenticated guests or logged-in students. Use urgent priority for examination schedules or campus holidays.
+        </p>
+      </div>
+    </div>
+
+    <!-- Broadcast Creation Form -->
+    <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-5">
+      <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <span>🚀 Create & Dispatch New Announcement</span>
+      </h2>
+
+      <form id="broadcast-form" class="space-y-4 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
+            <label for="notif-input-title" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Headline Title <span class="text-rose-500">*</span>
+            </label>
+            <input
+              id="notif-input-title"
+              type="text"
+              required
+              placeholder="e.g. End-Semester Examination Schedule Announced"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label for="notif-input-priority" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Alert Urgency
+            </label>
+            <select
+              id="notif-input-priority"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            >
+              <option value="normal">Standard Announcement</option>
+              <option value="high">Urgent Exam Alert</option>
+              <option value="low">General Notice</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="notif-input-content" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Announcement Message <span class="text-rose-500">*</span>
+          </label>
+          <textarea
+            id="notif-input-content"
+            rows="3"
+            required
+            placeholder="Official notice details visible to all students across the platform..."
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="notif-input-cta-label" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Action Button Label (Optional)
+            </label>
+            <input
+              id="notif-input-cta-label"
+              type="text"
+              placeholder="e.g. View Date Sheet"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label for="notif-input-cta-url" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Action Button URL (Optional)
+            </label>
+            <input
+              id="notif-input-cta-url"
+              type="text"
+              placeholder="e.g. /resources or https://..."
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end">
+          <button
+            id="notif-submit-btn"
+            type="submit"
+            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white font-bold shadow-md shadow-rose-600/20 transition-transform hover:scale-105 cursor-pointer"
+          >
+            🚀 Broadcast Notification Now
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Active Announcements List -->
+    <div class="space-y-4 pt-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <span>📡 Currently Active Campus Broadcasts ({announcementsList.length})</span>
+      </h2>
+
+      <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="p-3.5">Announcement</th>
+                <th class="p-3.5">Priority</th>
+                <th class="p-3.5">Published By</th>
+                <th class="p-3.5">Date</th>
+                <th class="p-3.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {announcementsList.map((item) => {
+                const itemId = String(item._id || (item as any).id || '');
+                return (
+                  <tr id={`announcement-row-${itemId}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <td class="p-3.5 max-w-md">
+                      <span class="font-bold text-slate-900 dark:text-white block">{item.title}</span>
+                      <p class="text-slate-500 text-[11px] line-clamp-1 mt-0.5">{item.content}</p>
+                    </td>
+                    <td class="p-3.5 uppercase font-bold text-[10px]">
+                      <span class={`px-2 py-0.5 rounded ${item.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
+                        {item.priority}
+                      </span>
+                    </td>
+                    <td class="p-3.5 text-slate-500">{(item as any).authorName || (item as any).authorEmail || 'Administrator'}</td>
+                    <td class="p-3.5 text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</td>
+                    <td class="p-3.5 text-right">
+                      <button
+                        onclick={`deleteAnnouncementAdmin('${itemId}', '${item.title.replace(/'/g, "\\'")}')`}
+                        class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 font-semibold text-[11px] cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</AdminLayout>
+
+<script is:inline>
+  async function broadcastAnnouncement(e) {
+    e.preventDefault();
+    const title = document.getElementById('notif-input-title').value.trim();
+    const content = document.getElementById('notif-input-content').value.trim();
+    const priority = document.getElementById('notif-input-priority').value;
+    const callToActionLabel = document.getElementById('notif-input-cta-label').value.trim();
+    const callToActionUrl = document.getElementById('notif-input-cta-url').value.trim();
+
+    if (!title || !content) {
+      alert('Please provide both headline title and announcement message.');
+      return;
+    }
+
+    const submitBtn = document.getElementById('notif-submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Broadcasting...';
+    }
+
+    try {
+      const res = await fetch('/api/admin/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, priority, callToActionLabel, callToActionUrl }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to broadcast announcement.');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = '🚀 Broadcast Notification Now';
+        }
+      } else {
+        alert('Campus announcement successfully broadcasted to ALL visitors (guests & students)!');
+        location.reload();
+      }
+    } catch (err) {
+      alert('Network error while broadcasting announcement.');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerText = '🚀 Broadcast Notification Now';
+      }
+    }
+  }
+
+  async function deleteAnnouncementAdmin(id, title) {
+    if (!confirm(`Are you sure you want to delete the broadcast "${title}"? This will remove it for all users.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/announcements?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete announcement.');
+      } else {
+        const row = document.getElementById(`announcement-row-${id}`);
+        if (row) row.remove();
+        alert(`Announcement "${title}" was permanently removed.`);
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  const broadcastForm = document.getElementById('broadcast-form');
+  if (broadcastForm) {
+    broadcastForm.addEventListener('submit', broadcastAnnouncement);
+  }
+</script>

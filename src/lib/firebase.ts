@@ -293,3 +293,17 @@ export async function addFirestoreDocument(collectionName: string, data: any): P
     return '';
   }
 }
+
+/**
+ * Delete a document from Firestore
+ */
+export async function deleteFirestoreDocument(collectionName: string, docId: string): Promise<void> {
+  if (!firestore) return;
+  try {
+    const { deleteDoc } = await import('firebase/firestore');
+    const docRef = doc(firestore, collectionName, docId);
+    await deleteDoc(docRef);
+  } catch (err: any) {
+    console.warn('deleteFirestoreDocument skipped/failed:', err?.message || err);
+  }
+}

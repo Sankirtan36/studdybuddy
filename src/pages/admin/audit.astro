@@ -1,0 +1,105 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../server/db/mongo';
+import type { AuditLog } from '../../types';
+import fs from 'node:fs';
+import path from 'node:path';
+
+let auditLogs: AuditLog[] = [];
+
+try {
+  const db = await getDb();
+  auditLogs = await db
+    .collection<AuditLog>('auditLogs')
+    .find({})
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .toArray();
+} catch {
+  try {
+    const auditFile = path.resolve(process.cwd(), '.data', 'auditLogs.json');
+    if (fs.existsSync(auditFile)) {
+      auditLogs = JSON.parse(fs.readFileSync(auditFile, 'utf8'));
+    }
+  } catch {}
+}
+---
+
+<AdminLayout
+  title="Platform Security Audit Trail | Admin Control Center"
+  activeNav="audit"
+>
+  <div class="space-y-8">
+    
+    <!-- Top Action Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="w-2.5 h-2.5 rounded-full bg-slate-500 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            Immutable Audit Trail
+          </span>
+        </div>
+        <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <span>🛡️ Security & Administrative Audit Trail</span>
+          <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+            {auditLogs.length} Events Logged
+          </span>
+        </h1>
+        <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+          Traceable history of all administrative actions, document approvals, user suspensions, college registrations, and security policy modifications.
+        </p>
+      </div>
+    </div>
+
+    <!-- Audit Log Table -->
+    <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+            <tr>
+              <th class="p-3.5">Timestamp</th>
+              <th class="p-3.5">Actor</th>
+              <th class="p-3.5">Action</th>
+              <th class="p-3.5">Target</th>
+              <th class="p-3.5">Details</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            {auditLogs.length > 0 ? (
+              auditLogs.map((log) => (
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <td class="p-3.5 text-slate-400">
+                    {new Date(log.createdAt).toLocaleString()}
+                  </td>
+                  <td class="p-3.5 font-semibold text-slate-800 dark:text-slate-200">
+                    {log.actorEmail}
+                  </td>
+                  <td class="p-3.5">
+                    <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      {log.action}
+                    </span>
+                  </td>
+                  <td class="p-3.5 text-slate-500 font-mono">
+                    {log.targetType}:{log.targetId}
+                  </td>
+                  <td class="p-3.5 text-slate-600 dark:text-slate-400">
+                    {log.reason || (log as any).details ? JSON.stringify((log as any).details) : '-'}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colspan="5" class="p-6 text-center text-slate-400 text-xs">
+                  No audit trail records logged yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</AdminLayout>
+

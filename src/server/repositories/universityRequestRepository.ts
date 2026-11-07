@@ -326,7 +326,7 @@ export async function submitUniversityRequest(payload: {
   (async () => {
     try {
       const db = await getDb();
-      await db.collection('universityRequests').insertOne({ ...newRequest });
+      await db.collection('universityRequests').insertOne({ ...newRequest } as any);
     } catch {}
   })();
 
@@ -434,7 +434,7 @@ export async function approveUniversityRequest(
     try {
       const db = await getDb();
       await db.collection('universityRequests').updateOne(
-        { _id: targetReq._id },
+        { _id: targetReq._id as any },
         { $set: { status: 'approved', reviewedBy: adminUser.email, reviewedAt: now, updatedAt: now } }
       );
       await db.collection('universities').updateOne(
@@ -444,7 +444,7 @@ export async function approveUniversityRequest(
       );
       for (const f of createdFaculties) {
         await db.collection('faculties').updateOne(
-          { _id: f._id },
+          { _id: f._id as any },
           { $set: f },
           { upsert: true }
         );
@@ -507,7 +507,7 @@ export async function rejectUniversityRequest(
     try {
       const db = await getDb();
       await db.collection('universityRequests').updateOne(
-        { _id: targetReq._id },
+        { _id: targetReq._id as any },
         { $set: { status: 'rejected', rejectionReason: targetReq.rejectionReason, reviewedBy: adminUser.email, reviewedAt: now, updatedAt: now } }
       );
       await db.collection('auditLogs').insertOne({
@@ -567,7 +567,7 @@ export async function addFacultyToUniversity(
     try {
       const db = await getDb();
       await db.collection('faculties').updateOne(
-        { _id: newFaculty._id },
+        { _id: newFaculty._id as any },
         { $set: newFaculty },
         { upsert: true }
       );

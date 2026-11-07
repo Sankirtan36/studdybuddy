@@ -1,0 +1,276 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getDb } from '../../server/db/mongo';
+import { readLocalResources } from '../../server/repositories/resourceRepository';
+import type { Resource } from '../../types';
+
+let pendingResources: Resource[] = [];
+let allResources: Resource[] = [];
+let pendingCount = 0;
+let approvedCount = 0;
+
+try {
+  const db = await getDb();
+  pendingResources = await db
+    .collection<Resource>('resources')
+    .find({ status: 'pending' })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .toArray();
+  pendingCount = pendingResources.length;
+
+  allResources = await db
+    .collection<Resource>('resources')
+    .find({ status: { $ne: 'removed' } })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .toArray();
+  approvedCount = await db.collection('resources').countDocuments({ status: { $in: ['approved', 'published'] } });
+} catch {
+  const local = readLocalResources();
+  pendingResources = local.filter((r) => r.status === 'pending');
+  pendingCount = pendingResources.length;
+  allResources = local.filter((r) => (r.status as string) !== 'removed');
+  approvedCount = local.filter((r) => r.status === 'approved' || (r.status as string) === 'published').length;
+}
+
+function formatBytes(bytes: number) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+---
+
+<AdminLayout
+  title="Document Moderation Queue | Admin Control Center"
+  activeNav="moderation"
+  pendingDocCount={pendingCount}
+>
+  <div class="space-y-8">
+    
+    <!-- Top Action Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            Academic Quality Assurance
+          </span>
+        </div>
+        <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <span>📑 Academic Document Moderation Queue</span>
+          <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+            {pendingCount} Pending Verification
+          </span>
+        </h1>
+        <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+          Review newly contributed lecture notes, question papers, and syllabus guides before publishing them across campus directory. Verify file legibility, subject codes, and academic integrity.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
+          Total Live Documents: {approvedCount}
+        </span>
+      </div>
+    </div>
+
+    <!-- PENDING SUBMISSIONS QUEUE -->
+    <div class="space-y-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <span>🕒 Awaiting Verification ({pendingCount})</span>
+      </h2>
+
+      {pendingResources.length > 0 ? (
+        <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th class="p-4">Submission</th>
+                  <th class="p-4">Category</th>
+                  <th class="p-4">University & Branch</th>
+                  <th class="p-4">Contributor</th>
+                  <th class="p-4">File Size</th>
+                  <th class="p-4 text-right">Moderation Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                {pendingResources.map((res) => (
+                  <tr id={`res-row-${res._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td class="p-4">
+                      <span class="font-bold text-slate-900 dark:text-white block text-sm">{res.title}</span>
+                      <span class="text-[11px] text-slate-400 font-mono">{(res as any).subjectName || res.subjectId}</span>
+                    </td>
+                    <td class="p-4">
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                        {res.category}
+                      </span>
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-300">
+                      <span class="font-semibold block">{res.universityId}</span>
+                      <span class="text-[11px] text-slate-400">{res.programId}</span>
+                    </td>
+                    <td class="p-4 text-slate-600 dark:text-slate-400">
+                      {res.contributorName || 'Student'}
+                    </td>
+                    <td class="p-4 text-slate-500">
+                      {formatBytes(res.fileSizeBytes)}
+                    </td>
+                    <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
+                      <a
+                        href={`/api/resources/${res._id}/preview`}
+                        target="_self"
+                        class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
+                      >
+                        Preview
+                      </a>
+                      <button
+                        onclick={`moderateResource('${res._id}', 'approve')`}
+                        class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm cursor-pointer"
+                      >
+                        ✓ Approve
+                      </button>
+                      <button
+                        onclick={`moderateResource('${res._id}', 'reject')`}
+                        class="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-sm cursor-pointer"
+                      >
+                        ✕ Reject
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          ✓ Document queue is completely clear! No submissions awaiting verification.
+        </div>
+      )}
+    </div>
+
+    <!-- RECENTLY PUBLISHED MATERIALS -->
+    <div class="space-y-4 pt-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <span>📚 Recent Platform Materials ({allResources.length})</span>
+      </h2>
+
+      <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="p-3.5">Material</th>
+                <th class="p-3.5">Category</th>
+                <th class="p-3.5">University</th>
+                <th class="p-3.5">Status</th>
+                <th class="p-3.5">Downloads</th>
+                <th class="p-3.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              {allResources.slice(0, 25).map((r) => (
+                <tr id={`live-res-row-${r._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <td class="p-3.5">
+                    <span class="font-bold text-slate-900 dark:text-white block">{r.title}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">{(r as any).subjectName || r.subjectId}</span>
+                  </td>
+                  <td class="p-3.5 uppercase text-[10px] font-bold text-slate-500">
+                    {r.category}
+                  </td>
+                  <td class="p-3.5 text-slate-600 dark:text-slate-300">
+                    {r.universityId}
+                  </td>
+                  <td class="p-3.5">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase">
+                      {r.status}
+                    </span>
+                  </td>
+                  <td class="p-3.5 font-bold text-slate-700 dark:text-slate-300">
+                    {r.downloadCount || 0}
+                  </td>
+                  <td class="p-3.5 text-right space-x-1.5">
+                    <a
+                      href={`/api/resources/${r._id}/preview`}
+                      target="_self"
+                      class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 font-semibold text-[11px]"
+                    >
+                      View
+                    </a>
+                    <button
+                      onclick={`deleteResourceAdmin('${r._id}', '${r.title.replace(/'/g, "\\'")}')`}
+                      class="px-2 py-1 rounded bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 font-semibold text-[11px] cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</AdminLayout>
+
+<script is:inline>
+  async function moderateResource(resourceId, action) {
+    let reason = '';
+    if (action === 'reject') {
+      reason = prompt('Enter rejection reason for contributor:');
+      if (reason === null) return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/moderation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId, action, reason }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Moderation action failed.');
+      } else {
+        const row = document.getElementById(`res-row-${resourceId}`);
+        if (row) row.remove();
+        alert(`Resource successfully ${action}ed!`);
+        location.reload();
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function deleteResourceAdmin(resourceId, title) {
+    if (!confirm(`Are you sure you want to permanently delete "${title}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/moderation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId, action: 'delete' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Delete action failed.');
+      } else {
+        const row = document.getElementById(`live-res-row-${resourceId}`);
+        if (row) row.remove();
+        alert(`Resource "${title}" was permanently removed.`);
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+</script>
+

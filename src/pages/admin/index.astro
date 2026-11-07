@@ -1,48 +1,28 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import Footer from '../../components/layout/Footer.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getDb } from '../../server/db/mongo';
 import { readLocalUsers } from '../../server/auth/userStore';
 import { readLocalResources } from '../../server/repositories/resourceRepository';
-import { getAllAnnouncements } from '../../server/repositories/announcementRepository';
 import { getAllUniversityRequests } from '../../server/repositories/universityRequestRepository';
 import { getUniversities } from '../../server/repositories/catalogRepository';
-import {
-  getRevenueSummary,
-  getAllTransactions,
-  type PaymentTransaction,
-  type RevenueSummary,
-} from '../../server/repositories/revenueRepository';
-import type { Resource, User, ContentReport, AuditLog, Announcement, UniversityRequest } from '../../types';
-import fs from 'node:fs';
-import path from 'node:path';
-
-// Strict RBAC Authentication Enforcement
-const user = Astro.locals.user;
-if (!user) {
-  return Astro.redirect('/admin/login');
-}
-if (user.role !== 'admin' && user.role !== 'owner') {
-  return Astro.redirect('/dashboard?error=unauthorized_admin');
-}
+import { getRevenueSummary, type RevenueSummary } from '../../server/repositories/revenueRepository';
 
 // Data State Holders
-let pendingResources: Resource[] = [];
-let allResources: Resource[] = [];
-let announcementsList: Announcement[] = [];
-let approvedCount = 0;
-let pendingCount = 0;
-let rejectedCount = 0;
 let totalUsersCount = 0;
-let usersList: User[] = [];
-let auditLogs: AuditLog[] = [];
-let totalStoredBytes = 0;
-let mongoConnected = false;
-
-// Platform KPI Metrics State
+let newUsersThisWeek = 0;
 let totalCollegesCount = 0;
 let pendingUniRequestsCount = 0;
-let universityRequestsList: UniversityRequest[] = [];
+let pendingDocCount = 0;
+let approvedCount = 0;
+let totalStoredBytes = 0;
+let downloadsToday = 0;
+let downloadsLast7Days = 0;
+let totalDownloadsAllTime = 0;
+let weeklyActiveUsers = 0;
+let monthlyActiveUsers = 0;
+let dailyActiveUsers = 0;
+let mongoConnected = false;
+
 let revenueSummary: RevenueSummary = {
   totalRevenueAllTime: 0,
   revenueThisMonth: 0,
@@ -52,72 +32,27 @@ let revenueSummary: RevenueSummary = {
   averageOrderValue: 0,
   activeSubscribersCount: 0,
 };
-let recentTransactions: PaymentTransaction[] = [];
 
-// Activity & Engagement Metrics
 const now = new Date();
 const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 const startOfMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-let downloadsToday = 0;
-let downloadsLast7Days = 0;
-let totalDownloadsAllTime = 0;
-let weeklyActiveUsers = 0;
-let monthlyActiveUsers = 0;
-let dailyActiveUsers = 0;
-let newUsersThisWeek = 0;
-
 try {
   const db = await getDb();
   mongoConnected = true;
 
-  // Basic collection counts
   totalUsersCount = await db.collection('users').countDocuments({});
+  newUsersThisWeek = await db.collection('users').countDocuments({ createdAt: { $gte: startOfWeek } });
   approvedCount = await db.collection('resources').countDocuments({ status: { $in: ['approved', 'published'] } });
-  pendingCount = await db.collection('resources').countDocuments({ status: 'pending' });
-  rejectedCount = await db.collection('resources').countDocuments({ status: 'rejected' });
+  pendingDocCount = await db.collection('resources').countDocuments({ status: 'pending' });
 
-  // Storage aggregation
   const storageAgg = await db.collection('resources').aggregate([
     { $match: { status: { $ne: 'removed' } } },
     { $group: { _id: null, totalBytes: { $sum: '$fileSizeBytes' } } },
   ]).toArray();
   totalStoredBytes = storageAgg[0]?.totalBytes || 0;
 
-  // Queues
-  pendingResources = await db
-    .collection<Resource>('resources')
-    .find({ status: 'pending' })
-    .sort({ createdAt: -1 })
-    .limit(25)
-    .toArray();
-
-  allResources = await db
-    .collection<Resource>('resources')
-    .find({ status: { $ne: 'removed' } })
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .toArray();
-
-  usersList = await db
-    .collection<User>('users')
-    .find({})
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .toArray();
-
-  auditLogs = await db
-    .collection<AuditLog>('auditLogs')
-    .find({})
-    .sort({ createdAt: -1 })
-    .limit(25)
-    .toArray();
-
-  // New registrations this week
-  newUsersThisWeek = await db.collection('users').countDocuments({ createdAt: { $gte: startOfWeek } });
-
-  // Downloads metrics
   downloadsToday = await db.collection('analyticsEvents').countDocuments({
     eventType: 'download_completed',
     timestamp: { $gte: startOfDay },
@@ -140,7 +75,6 @@ try {
     totalDownloadsAllTime = aggDownloads[0]?.total || 0;
   }
 
-  // Active Users (WAU / MAU / DAU)
   const wauAgg = await db.collection('analyticsEvents').aggregate([
     { $match: { timestamp: { $gte: startOfWeek } } },
     { $group: { _id: { $ifNull: ['$userId', '$anonymousVisitorId'] } } },
@@ -158,41 +92,27 @@ try {
     { $group: { _id: { $ifNull: ['$userId', '$anonymousVisitorId'] } } },
   ]).toArray();
   dailyActiveUsers = Math.max(dauAgg.length, downloadsToday > 0 ? downloadsToday : 3);
-
-} catch (err) {
-  // Local file-based fallback
+} catch {
   mongoConnected = false;
-  usersList = readLocalUsers();
-  totalUsersCount = usersList.length;
+  const localUsers = readLocalUsers();
+  totalUsersCount = localUsers.length;
+  newUsersThisWeek = localUsers.filter((u) => new Date(u.createdAt) >= startOfWeek).length;
 
   const localRes = readLocalResources();
-  allResources = localRes.filter((r) => (r.status as string) !== 'removed');
-  pendingResources = localRes.filter((r) => r.status === 'pending');
-  pendingCount = pendingResources.length;
+  pendingDocCount = localRes.filter((r) => r.status === 'pending').length;
   approvedCount = localRes.filter((r) => r.status === 'approved' || (r.status as string) === 'published').length;
-  rejectedCount = localRes.filter((r) => r.status === 'rejected').length;
   totalStoredBytes = localRes.reduce((acc, r) => acc + (r.fileSizeBytes || 0), 0);
-  totalDownloadsAllTime = allResources.reduce((acc, r) => acc + (r.downloadCount || 0), 0);
+  totalDownloadsAllTime = localRes.reduce((acc, r) => acc + (r.downloadCount || 0), 0);
 
-  newUsersThisWeek = usersList.filter((u) => new Date(u.createdAt) >= startOfWeek).length;
   downloadsLast7Days = Math.max(Math.round(totalDownloadsAllTime * 0.3), 14);
   downloadsToday = Math.max(Math.round(downloadsLast7Days / 7), 2);
   weeklyActiveUsers = Math.max(Math.round(totalUsersCount * 0.8), newUsersThisWeek, 6);
   monthlyActiveUsers = Math.max(totalUsersCount, 15);
   dailyActiveUsers = Math.max(Math.round(weeklyActiveUsers / 3), 2);
-
-  try {
-    const auditFile = path.resolve(process.cwd(), '.data', 'auditLogs.json');
-    if (fs.existsSync(auditFile)) {
-      auditLogs = JSON.parse(fs.readFileSync(auditFile, 'utf8'));
-    }
-  } catch {}
 }
 
-// Compute per-day average
 const downloadsPerDayAvg = (downloadsLast7Days / 7).toFixed(1);
 
-// Universities & Catalogs
 try {
   const allColleges = await getUniversities();
   totalCollegesCount = allColleges.length;
@@ -201,1532 +121,261 @@ try {
 }
 
 try {
-  universityRequestsList = await getAllUniversityRequests();
-  pendingUniRequestsCount = universityRequestsList.filter((r) => r.status === 'pending').length;
+  const uniReqs = await getAllUniversityRequests();
+  pendingUniRequestsCount = uniReqs.filter((r) => r.status === 'pending').length;
 } catch {}
 
-// Broadcast announcements
-try {
-  announcementsList = await getAllAnnouncements(50);
-} catch {}
-
-// Revenue & Earnings
 try {
   revenueSummary = await getRevenueSummary();
-  const allTx = await getAllTransactions();
-  recentTransactions = allTx.slice(0, 10);
 } catch {}
 
-// Storage Quota
-const STORAGE_BUDGET_BYTES = 20 * 1024 * 1024 * 1024; // 20 GB Budget
+const STORAGE_BUDGET_BYTES = 20 * 1024 * 1024 * 1024; // 20 GB
 const storageUsedMB = (totalStoredBytes / (1024 * 1024)).toFixed(2);
 const storagePercent = ((totalStoredBytes / STORAGE_BUDGET_BYTES) * 100).toFixed(2);
 const isStorageWarning = parseFloat(storagePercent) >= 80;
-
-function formatBytes(bytes: number) {
-  if (!bytes) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
 ---
 
-<Layout
-  title="Administrator Control Center | StuddyBuddy"
-  description="Executive SaaS control center for StuddyBuddy. Monitor users, colleges, revenue, document moderation, and system security."
-  noindex={true}
+<AdminLayout
+  title="Executive KPI Overview | Admin Control Center"
+  activeNav="overview"
+  pendingUniCount={pendingUniRequestsCount}
+  pendingDocCount={pendingDocCount}
 >
-  <!-- Empty header slot: eliminates consumer header with Requests/Community on admin pages -->
-  <div slot="header"></div>
+  <div class="space-y-8">
 
-  <style is:global>
-    /* Sleek no-scrollbar rule for sidebar */
-    .no-scrollbar {
-      -ms-overflow-style: none !important; /* IE and Edge */
-      scrollbar-width: none !important; /* Firefox */
-    }
-    .no-scrollbar::-webkit-scrollbar {
-      display: none !important; /* Chrome, Safari, Opera */
-      width: 0 !important;
-      height: 0 !important;
-    }
-  </style>
-
-  <!-- Overall Admin Wrapper -->
-  <div id="admin-shell" class="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
-
-    <!-- ======================================================== -->
-    <!-- 1. COLLAPSIBLE ADMIN SIDEBAR                             -->
-    <!-- ======================================================== -->
-    <aside
-      id="admin-sidebar"
-      class="fixed top-0 bottom-0 left-0 z-40 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between transition-all duration-300 ease-in-out shadow-sm w-64 group"
-    >
-      <!-- Centered Rectangular Pill-Shaped Toggle Arrow Button (Anchored on middle right edge) -->
-      <button
-        id="sidebar-toggle-btn"
-        type="button"
-        aria-label="Toggle sidebar expansion"
-        class="absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-14 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 hover:scale-105 transition-all cursor-pointer z-50 focus:outline-none"
-        title="Toggle Sidebar (Expand/Collapse)"
-      >
-        <svg id="sidebar-toggle-icon" class="w-3.5 h-3.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-
-      <!-- Sidebar Top: Brand & Navigation (Zero Visible Scrollbars) -->
-      <div class="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar p-3.5 space-y-6" style="-ms-overflow-style: none; scrollbar-width: none;">
-        
-        <!-- Brand Header -->
-        <div class="flex items-center gap-3 px-2 py-1">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          </div>
-          <div class="sidebar-text flex flex-col min-w-0 transition-opacity duration-200">
-            <span class="text-sm font-black tracking-tight bg-gradient-to-r from-indigo-600 to-sky-600 dark:from-indigo-400 dark:to-sky-400 bg-clip-text text-transparent truncate">
-              StuddyBuddy
-            </span>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-              Admin Control
-            </span>
-          </div>
+    <!-- Top Telemetry Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            Platform Analytics & Live Telemetry
+          </span>
+          <span class="text-xs text-slate-400">•</span>
+          <span class="text-xs text-slate-500">Live Database Operations</span>
         </div>
-
-        <!-- Section Label -->
-        <div class="sidebar-text px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-opacity duration-200">
-          Executive Suite
-        </div>
-
-        <!-- Navigation Menu (Strictly Admin Items — Tabbed Single-View Switching) -->
-        <nav id="admin-nav" class="space-y-1 text-xs font-semibold">
-          
-          <!-- 1. Overview & KPIs -->
-          <button
-            type="button"
-            data-admin-tab="overview"
-            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 font-bold border-l-4 border-indigo-600 dark:border-indigo-400 pl-2 transition-all text-left cursor-pointer shadow-sm"
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Overview & KPIs</span>
-            </div>
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              Overview & KPIs
-            </span>
-          </button>
-
-          <!-- 2. Colleges & Campuses -->
-          <button
-            type="button"
-            data-admin-tab="campuses"
-            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Colleges & Approvals</span>
-            </div>
-            {pendingUniRequestsCount > 0 && (
-              <span class="sidebar-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
-                {pendingUniRequestsCount}
-              </span>
-            )}
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              Colleges ({totalCollegesCount})
-            </span>
-          </button>
-
-          <!-- 3. Document Moderation -->
-          <button
-            type="button"
-            data-admin-tab="documents"
-            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Document Moderation</span>
-            </div>
-            {pendingCount > 0 && (
-              <span class="sidebar-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 animate-pulse">
-                {pendingCount}
-              </span>
-            )}
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              Document Moderation ({pendingCount} pending)
-            </span>
-          </button>
-
-          <!-- 4. PDF Tools Suite (Quick-Access in same tab) -->
-          <a
-            href="/pdf-tools"
-            target="_self"
-            class="group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">PDF Tools Suite</span>
-            </div>
-            <span class="sidebar-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-              Tools
-            </span>
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              PDF Workbench (Merge, Compress, Split, Convert)
-            </span>
-          </a>
-
-          <!-- 5. Campus Broadcasts -->
-          <button
-            type="button"
-            data-admin-tab="broadcasts"
-            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                </svg>
-              </div>
-              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Campus Broadcasts</span>
-            </div>
-            <span class="sidebar-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-              Live
-            </span>
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              Campus Broadcast Center
-            </span>
-          </button>
-
-          <!-- 6. Revenue & Earnings -->
-          <button
-            type="button"
-            data-admin-tab="earnings"
-            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Revenue & Earnings</span>
-            </div>
-            <span class="sidebar-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-              ₹
-            </span>
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              Revenue & Transactions (₹{revenueSummary.totalRevenueAllTime.toLocaleString('en-IN')})
-            </span>
-          </button>
-
-          <!-- 7. User Management -->
-          <button
-            type="button"
-            data-admin-tab="users"
-            class="admin-nav-item w-full group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">User Management</span>
-            </div>
-            <span class="sidebar-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              {totalUsersCount}
-            </span>
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              User Directory ({totalUsersCount} registered)
-            </span>
-          </button>
-
-          <!-- 8. Database Explorer (same tab) -->
-          <a
-            href="/database"
-            target="_self"
-            class="group/item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-              </svg>
-            </div>
-            <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Database Explorer</span>
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              Cloud Database Explorer
-            </span>
-          </a>
-
-          <!-- 9. Audit Logs -->
-          <button
-            type="button"
-            data-admin-tab="audit"
-            class="admin-nav-item w-full group/item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
-          >
-            <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Audit Trail</span>
-            <span class="sidebar-tooltip hidden group-hover/item:flex absolute left-full ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-xl z-50 whitespace-nowrap pointer-events-none items-center">
-              Security Audit Logs
-            </span>
-          </button>
-        </nav>
+        <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          Executive Overview & Platform Metrics
+        </h1>
       </div>
-
-      <!-- Sidebar Bottom: Admin Identity & Sign Out (Strictly No Student Dashboard) -->
-      <div class="p-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
-        <!-- Logged In Identity -->
-        <div class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-          <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase">
-            {user.email.charAt(0)}
-          </div>
-          <div class="sidebar-text flex-1 min-w-0 transition-opacity duration-200">
-            <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">{user.email}</span>
-            <span class="text-[9px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 block">{user.role}</span>
-          </div>
-        </div>
-
-        <!-- Direct Sign Out -->
-        <form action="/api/auth/logout" method="POST" class="w-full">
-          <button
-            type="submit"
-            class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
-            title="Sign Out of Admin Control Center"
-          >
-            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span class="sidebar-text whitespace-nowrap transition-opacity duration-200">Sign Out</span>
-          </button>
-        </form>
-      </div>
-    </aside>
-
-    <!-- ======================================================== -->
-    <!-- 2. MAIN ADMIN CONTENT WORKSPACE                          -->
-    <!-- ======================================================== -->
-    <div id="admin-main-wrapper" class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out lg:pl-64">
       
-      <!-- Top Sticky Action Bar -->
-      <header class="sticky top-0 z-30 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              System Live
-            </span>
-          </div>
-          <span class="text-slate-300 dark:text-slate-700">|</span>
-          <h1 class="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Administrator Control Center
-          </h1>
-        </div>
-
-        <div class="flex items-center gap-2 sm:gap-3">
-          <a
-            href="/pdf-tools"
-            target="_self"
-            class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white text-xs font-bold shadow-sm transition-transform hover:scale-105 flex items-center gap-1.5"
-          >
-            <span>🛠️ PDF Tools Suite</span>
-          </a>
-          <a
-            href="/database"
-            target="_self"
-            class="hidden sm:inline-flex px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold items-center gap-1.5"
-          >
-            <span>Database Inspector</span>
-          </a>
-          <form action="/api/auth/logout" method="POST" class="inline">
-            <button
-              type="submit"
-              class="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
-              title="Sign Out"
-            >
-              Sign Out
-            </button>
-          </form>
-        </div>
-      </header>
-
-      <!-- Main Body Container: Tabbed Single-View Layout (Only Active Tab Displayed) -->
-      <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        <!-- ==================================================== -->
-        <!-- SECTION 1: EXECUTIVE KPI DASHBOARD OVERVIEW          -->
-        <!-- ==================================================== -->
-        <section id="view-overview" class="admin-view space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                  Platform Analytics & Live Telemetry
-                </span>
-                <span class="text-xs text-slate-400">•</span>
-                <span class="text-xs text-slate-500">Real Database Records Only</span>
-              </div>
-              <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                Executive Overview & Platform Metrics
-              </h2>
-            </div>
-            
-            <!-- Live Engine Badges -->
-            <div class="flex flex-wrap items-center gap-2 text-xs">
-              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Auth Engine: Operational
-              </span>
-              <span class={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border font-semibold ${
-                mongoConnected
-                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
-              }`}>
-                <span class={`w-2 h-2 rounded-full ${mongoConnected ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`}></span>
-                {mongoConnected ? 'MongoDB Cluster: Connected' : 'Local Fallback Store: Active'}
-              </span>
-            </div>
-          </div>
-
-          <!-- Enterprise KPI Cards Grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            
-            <!-- KPI 1: Total Users Till Now -->
-            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-              <div>
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Users</span>
-                  <div class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
-                    👥
-                  </div>
-                </div>
-                <p class="text-3xl font-black text-slate-900 dark:text-white mt-2">
-                  {totalUsersCount}
-                </p>
-                <span class="text-[11px] text-slate-500 mt-1 block">All-Time Registered Students</span>
-              </div>
-              <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
-                <span class="text-emerald-600 dark:text-emerald-400 font-bold">+{newUsersThisWeek} this week</span>
-                <span class="text-slate-400">100% Verified</span>
-              </div>
-            </div>
-
-            <!-- KPI 2: Total Colleges & Campuses -->
-            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-              <div>
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Colleges</span>
-                  <div class="w-7 h-7 rounded-lg bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs">
-                    🏛️
-                  </div>
-                </div>
-                <p class="text-3xl font-black text-sky-600 dark:text-sky-400 mt-2">
-                  {totalCollegesCount}
-                </p>
-                <span class="text-[11px] text-slate-500 mt-1 block">Accredited Institutions in Directory</span>
-              </div>
-              <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
-                <span class="text-amber-600 dark:text-amber-400 font-bold">{pendingUniRequestsCount} pending review</span>
-                <button type="button" data-view-target="campuses" class="text-sky-600 dark:text-sky-400 hover:underline cursor-pointer font-bold">Moderate →</button>
-              </div>
-            </div>
-
-            <!-- KPI 3: Daily Downloads & Trend -->
-            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-              <div>
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Downloads / Day</span>
-                  <div class="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
-                    📥
-                  </div>
-                </div>
-                <p class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
-                  {downloadsToday} <span class="text-xs text-slate-400 font-semibold">today</span>
-                </p>
-                <span class="text-[11px] text-slate-500 mt-1 block">Avg: ~{downloadsPerDayAvg} downloads / day</span>
-              </div>
-              <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
-                <span class="text-slate-500 font-medium">{totalDownloadsAllTime} total all-time</span>
-                <span class="text-emerald-600 font-bold">Fast CDN</span>
-              </div>
-            </div>
-
-            <!-- KPI 4: Monthly & Weekly Active Users -->
-            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-              <div>
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Students</span>
-                  <div class="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs">
-                    📈
-                  </div>
-                </div>
-                <p class="text-2xl font-black text-purple-600 dark:text-purple-400 mt-2">
-                  {weeklyActiveUsers} <span class="text-xs text-slate-400 font-normal">WAU</span>
-                </p>
-                <span class="text-[11px] text-slate-500 mt-1 block">{monthlyActiveUsers} Monthly Active Users (MAU)</span>
-              </div>
-              <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
-                <span class="text-slate-600 dark:text-slate-400 font-bold">{dailyActiveUsers} active today</span>
-                <span class="text-purple-600 dark:text-purple-400 font-semibold">Active</span>
-              </div>
-            </div>
-
-            <!-- KPI 5: Payment Received & Earnings -->
-            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-              <div>
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Earnings Received</span>
-                  <div class="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs">
-                    💰
-                  </div>
-                </div>
-                <p class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">
-                  ₹{revenueSummary.totalRevenueAllTime.toLocaleString('en-IN')}
-                </p>
-                <span class="text-[11px] text-slate-500 mt-1 block">₹{revenueSummary.revenueThisMonth.toLocaleString('en-IN')} earned this month</span>
-              </div>
-              <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
-                <span class="text-emerald-600 dark:text-emerald-400 font-bold">{revenueSummary.totalTransactionsCount} transactions</span>
-                <button type="button" data-view-target="earnings" class="text-amber-600 dark:text-amber-400 hover:underline cursor-pointer font-bold">Ledger →</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Storage Budget Quota Bar -->
-          <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-bold text-slate-900 dark:text-white">Object Storage Capacity & Storage Health</h3>
-                <p class="text-xs text-slate-500">20 GB Configurable Target Budget (Cloudflare R2 / S3 Storage)</p>
-              </div>
-              <span class={`text-xs font-bold px-3 py-1 rounded-full ${
-                isStorageWarning ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-              }`}>
-                {storageUsedMB} MB / 20,480 MB ({storagePercent}%)
-              </span>
-            </div>
-
-            <div class="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-              <div
-                class={`h-full rounded-full transition-all duration-500 ${isStorageWarning ? 'bg-rose-500' : 'bg-indigo-600'}`}
-                style={`width: ${Math.min(100, Math.max(1, parseFloat(storagePercent)))}%`}
-              ></div>
-            </div>
-          </div>
-
-          <!-- Executive PDF Workbench Quick Access -->
-          <div class="p-6 rounded-3xl bg-gradient-to-r from-rose-900 via-indigo-900 to-slate-900 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div class="space-y-1.5 text-center md:text-left">
-              <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold">
-                🛠️ Production PDF Suite
-              </div>
-              <h3 class="text-xl font-black">Executive PDF Management & Storage Optimizer</h3>
-              <p class="text-xs text-indigo-200 max-w-2xl leading-relaxed">
-                Direct access to high-performance PDF manipulation utilities. Merge scattered question papers into complete semester packages, compress large files to conserve storage quota, split documents by exam unit, and convert image scans into clean PDFs.
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2.5 shrink-0">
-              <a
-                href="/pdf-tools#merge"
-                class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-sm border border-white/10 transition-colors"
-              >
-                Merge PDFs
-              </a>
-              <a
-                href="/pdf-tools#compress"
-                class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-sm border border-white/10 transition-colors"
-              >
-                Compress
-              </a>
-              <a
-                href="/pdf-tools#split"
-                class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-sm border border-white/10 transition-colors"
-              >
-                Split
-              </a>
-              <a
-                href="/pdf-tools#img2pdf"
-                class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-sm border border-white/10 transition-colors"
-              >
-                Img to PDF
-              </a>
-              <a
-                href="/pdf-tools"
-                class="px-4 py-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-extrabold text-xs shadow-md transition-transform hover:scale-105"
-              >
-                Open Full Suite →
-              </a>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================================================== -->
-        <!-- SECTION 2: UNIVERSITY & COLLEGE CREATION REQUESTS    -->
-        <!-- ==================================================== -->
-        <section id="view-campuses" class="admin-view hidden space-y-4 pt-2">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse"></span>
-                <span class="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                  Campus Directory Governance
-                </span>
-              </div>
-              <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-                <span>🏛️ University & College Registration Moderation</span>
-                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">
-                  {pendingUniRequestsCount} Pending
-                </span>
-              </h2>
-              <p class="text-xs text-slate-500">
-                Review student submissions to add new universities or colleges. Approving activates the university publicly and unlocks department setup.
-              </p>
-            </div>
-
-            <a
-              href="/add-university"
-              target="_self"
-              class="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 self-start sm:self-auto transition-transform hover:scale-105"
-            >
-              <span>+ Register College Directly</span>
-            </a>
-          </div>
-
-          {universityRequestsList.length > 0 ? (
-            <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                  <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                    <tr>
-                      <th class="p-4">University / College</th>
-                      <th class="p-4">Location</th>
-                      <th class="p-4">Requested Branches</th>
-                      <th class="p-4">Submitted By</th>
-                      <th class="p-4">Status</th>
-                      <th class="p-4 text-right">Administrative Action</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    {universityRequestsList.map((req) => (
-                      <tr id={`uni-req-row-${req._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="p-4">
-                          <div class="font-bold text-slate-900 dark:text-white text-sm">
-                            {req.name}
-                          </div>
-                          <div class="text-[11px] text-slate-400 font-mono mt-0.5">
-                            slug: /{req.slug} {req.websiteUrl && `• ${req.websiteUrl}`}
-                          </div>
-                          {req.description && (
-                            <p class="text-[11px] text-slate-500 mt-1 max-w-sm line-clamp-1">
-                              {req.description}
-                            </p>
-                          )}
-                        </td>
-                        <td class="p-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                          📍 {req.location}
-                        </td>
-                        <td class="p-4 text-slate-600 dark:text-slate-300 max-w-xs">
-                          {req.departments && req.departments.length > 0 ? (
-                            <div class="flex flex-wrap gap-1">
-                              {req.departments.map((d) => (
-                                <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-medium">
-                                  {d}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span class="text-slate-400 italic">Standard Core Faculties</span>
-                          )}
-                        </td>
-                        <td class="p-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                          <span class="font-semibold block text-slate-800 dark:text-slate-200">{req.requestedByName || 'Contributor'}</span>
-                          <span class="text-[11px] text-slate-400 font-mono">{req.requestedByEmail || 'guest'}</span>
-                        </td>
-                        <td class="p-4 whitespace-nowrap">
-                          <span class={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            req.status === 'approved'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : req.status === 'pending'
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
-                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                          }`}>
-                            {req.status}
-                          </span>
-                        </td>
-                        <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
-                          {req.status === 'pending' ? (
-                            <>
-                              <button
-                                onclick={`moderateUniversityRequest('${req._id}', 'approve', '${req.name.replace(/'/g, "\\'")}')`}
-                                class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105"
-                              >
-                                ✓ Approve Campus
-                              </button>
-                              <button
-                                onclick={`moderateUniversityRequest('${req._id}', 'reject', '${req.name.replace(/'/g, "\\'")}')`}
-                                class="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition-transform hover:scale-105"
-                              >
-                                ✕ Reject
-                              </button>
-                            </>
-                          ) : req.status === 'approved' ? (
-                            <a
-                              href={`/university/${req.slug}`}
-                              target="_self"
-                              class="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors inline-block"
-                            >
-                              View Campus Space →
-                            </a>
-                          ) : (
-                            <span class="text-xs text-rose-500 font-medium italic">
-                              Rejected ({req.rejectionReason || 'Platform guidelines'})
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
-              No pending college registration requests.
-            </div>
-          )}
-        </section>
-
-        <!-- ==================================================== -->
-        <!-- SECTION 3: DOCUMENT MODERATION QUEUE                 -->
-        <!-- ==================================================== -->
-        <section id="view-documents" class="admin-view hidden space-y-4 pt-2">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  Academic Quality Assurance
-                </span>
-              </div>
-              <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Pending Submissions Queue ({pendingResources.length})
-              </h2>
-              <p class="text-xs text-slate-500">Review newly submitted study materials awaiting administrative review</p>
-            </div>
-          </div>
-
-          {pendingResources.length > 0 ? (
-            <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                  <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                    <tr>
-                      <th class="p-4">Submission</th>
-                      <th class="p-4">Category</th>
-                      <th class="p-4">University & Branch</th>
-                      <th class="p-4">Contributor</th>
-                      <th class="p-4">File Size</th>
-                      <th class="p-4 text-right">Moderation Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    {pendingResources.map((res) => (
-                      <tr id={`res-row-${res._id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="p-4">
-                          <span class="font-bold text-slate-900 dark:text-white block text-sm">{res.title}</span>
-                          <span class="text-[11px] text-slate-400 font-mono">{res.subjectName || res.subjectId}</span>
-                        </td>
-                        <td class="p-4">
-                          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                            {res.category}
-                          </span>
-                        </td>
-                        <td class="p-4 text-slate-600 dark:text-slate-300">
-                          <span class="font-semibold block">{res.universityId}</span>
-                          <span class="text-[11px] text-slate-400">{res.programId}</span>
-                        </td>
-                        <td class="p-4 text-slate-600 dark:text-slate-400">
-                          {res.contributorName || 'Student'}
-                        </td>
-                        <td class="p-4 text-slate-500">
-                          {formatBytes(res.fileSizeBytes)}
-                        </td>
-                        <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
-                          <a
-                            href={`/api/resources/${res._id}/preview`}
-                            target="_self"
-                            class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
-                          >
-                            Preview
-                          </a>
-                          <button
-                            onclick={`moderateResource('${res._id}', 'approve')`}
-                            class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
-                          >
-                            ✓ Approve
-                          </button>
-                          <button
-                            onclick={`moderateResource('${res._id}', 'reject')`}
-                            class="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-sm"
-                          >
-                            ✕ Reject
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
-              ✓ Moderation queue clear! No pending documents awaiting review.
-            </div>
-          )}
-        </section>
-
-        <!-- ==================================================== -->
-        <!-- SECTION 4: CAMPUS BROADCAST NOTIFICATION CENTER      -->
-        <!-- ==================================================== -->
-        <section id="view-broadcasts" class="admin-view hidden space-y-6 pt-2">
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-              <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                Universal Campus Broadcaster
-              </span>
-            </div>
-            <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Campus Broadcast Alerts ({announcementsList.length})
-            </h2>
-            <p class="text-xs text-slate-500">
-              Push official notifications delivered instantly to ALL visitors — whether unauthenticated guests or logged-in students.
-            </p>
-          </div>
-
-          <!-- Broadcast Creation Form -->
-          <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-5">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <span>📢 Create New Public Broadcast</span>
-            </h3>
-
-            <form id="broadcast-form" class="space-y-4 text-xs">
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="sm:col-span-2">
-                  <label for="notif-input-title" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Headline Title <span class="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="notif-input-title"
-                    type="text"
-                    required
-                    placeholder="e.g. End-Semester Examination Schedule Announced"
-                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label for="notif-input-priority" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Alert Urgency
-                  </label>
-                  <select
-                    id="notif-input-priority"
-                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                  >
-                    <option value="normal">Standard Announcement</option>
-                    <option value="high">Urgent Exam Alert</option>
-                    <option value="low">General Notice</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label for="notif-input-content" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Announcement Message <span class="text-rose-500">*</span>
-                </label>
-                <textarea
-                  id="notif-input-content"
-                  rows="3"
-                  required
-                  placeholder="Official notice details visible to all students..."
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                ></textarea>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label for="notif-input-cta-label" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Action Button Label (Optional)
-                  </label>
-                  <input
-                    id="notif-input-cta-label"
-                    type="text"
-                    placeholder="e.g. View Date Sheet"
-                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label for="notif-input-cta-url" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Action Button URL (Optional)
-                  </label>
-                  <input
-                    id="notif-input-cta-url"
-                    type="text"
-                    placeholder="e.g. /resources or https://..."
-                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div class="pt-2 flex justify-end">
-                <button
-                  id="notif-submit-btn"
-                  type="submit"
-                  class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white font-bold shadow-md shadow-rose-600/20 transition-transform hover:scale-105 cursor-pointer"
-                >
-                  🚀 Broadcast Notification Now
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <!-- Active Announcements List -->
-          <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th class="p-3.5">Announcement</th>
-                    <th class="p-3.5">Priority</th>
-                    <th class="p-3.5">Published By</th>
-                    <th class="p-3.5">Date</th>
-                    <th class="p-3.5 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                  {announcementsList.map((item) => (
-                    <tr id={`announcement-row-${item.id}`} class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <td class="p-3.5 max-w-md">
-                        <span class="font-bold text-slate-900 dark:text-white block">{item.title}</span>
-                        <p class="text-slate-500 text-[11px] line-clamp-1 mt-0.5">{item.content}</p>
-                      </td>
-                      <td class="p-3.5 uppercase font-bold text-[10px]">
-                        <span class={`px-2 py-0.5 rounded ${item.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
-                          {item.priority}
-                        </span>
-                      </td>
-                      <td class="p-3.5 text-slate-500">{item.authorName}</td>
-                      <td class="p-3.5 text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</td>
-                      <td class="p-3.5 text-right">
-                        <button
-                          onclick={`deleteAnnouncementAdmin('${item.id}', '${item.title.replace(/'/g, "\\'")}')`}
-                          class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 font-semibold text-[11px]"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================================================== -->
-        <!-- SECTION 5: REVENUE & PAYMENT TRANSACTION LEDGER      -->
-        <!-- ==================================================== -->
-        <section id="view-earnings" class="admin-view hidden space-y-4 pt-2">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  Financial Analytics & Ledger
-                </span>
-              </div>
-              <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-                <span>💰 Payments Received & Platform Earnings</span>
-                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  ₹{revenueSummary.totalRevenueAllTime.toLocaleString('en-IN')} Gross
-                </span>
-              </h2>
-              <p class="text-xs text-slate-500">
-                Track subscription revenues, institutional licensing payments, student study packs, and peer contributions.
-              </p>
-            </div>
-
-            <!-- Revenue Summary Pills -->
-            <div class="flex flex-wrap items-center gap-2 text-xs">
-              <span class="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold">
-                This Month: ₹{revenueSummary.revenueThisMonth.toLocaleString('en-IN')}
-              </span>
-              <span class="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-bold">
-                Avg Value: ₹{revenueSummary.averageOrderValue}
-              </span>
-            </div>
-          </div>
-
-          <!-- Transaction Table -->
-          <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th class="p-3.5">Transaction ID</th>
-                    <th class="p-3.5">Student / Partner</th>
-                    <th class="p-3.5">Plan / Package</th>
-                    <th class="p-3.5">Amount</th>
-                    <th class="p-3.5">Method</th>
-                    <th class="p-3.5">Status</th>
-                    <th class="p-3.5 text-right">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                  {recentTransactions.map((tx) => (
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <td class="p-3.5 font-mono text-[11px] text-slate-500">
-                        {tx.id}
-                      </td>
-                      <td class="p-3.5">
-                        <span class="font-bold text-slate-900 dark:text-white block">{tx.userName}</span>
-                        <span class="text-slate-400 font-mono text-[11px]">{tx.userEmail}</span>
-                      </td>
-                      <td class="p-3.5">
-                        <span class="font-semibold text-slate-800 dark:text-slate-200 block">{tx.planName}</span>
-                        <span class="text-slate-400 text-[10px]">{tx.description}</span>
-                      </td>
-                      <td class="p-3.5 font-bold text-sm text-emerald-600 dark:text-emerald-400">
-                        ₹{tx.amount.toLocaleString('en-IN')}
-                      </td>
-                      <td class="p-3.5">
-                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
-                          {tx.paymentMethod}
-                        </span>
-                      </td>
-                      <td class="p-3.5">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          {tx.status}
-                        </span>
-                      </td>
-                      <td class="p-3.5 text-right text-slate-400">
-                        {new Date(tx.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================================================== -->
-        <!-- SECTION 6: USER MANAGEMENT                           -->
-        <!-- ==================================================== -->
-        <section id="view-users" class="admin-view hidden space-y-4 pt-2">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                  User Accounts Directory
-                </span>
-              </div>
-              <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                User Management ({usersList.length})
-              </h2>
-              <p class="text-xs text-slate-500">Manage user accounts, administrative roles, and platform permissions</p>
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th class="p-4">User</th>
-                    <th class="p-4">Role</th>
-                    <th class="p-4">Status</th>
-                    <th class="p-4">Registered</th>
-                    <th class="p-4 text-right">Administrative Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                  {usersList.map((u) => (
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td class="p-4">
-                        <span class="font-bold text-slate-900 dark:text-white block text-sm">{u.displayName}</span>
-                        <span class="text-slate-400 font-mono text-[11px]">{u.email}</span>
-                      </td>
-                      <td class="p-4 font-semibold uppercase text-[10px]">
-                        <span class={`px-2 py-0.5 rounded ${u.role === 'owner' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold' : u.role === 'admin' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-bold' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td class="p-4">
-                        <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${u.status === 'suspended' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                          {u.status?.toUpperCase() || 'ACTIVE'}
-                        </span>
-                      </td>
-                      <td class="p-4 text-slate-400">
-                        {new Date(u.createdAt).toLocaleDateString()}
-                      </td>
-                      <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
-                        {u.role !== 'owner' ? (
-                          <>
-                            {u.status === 'suspended' ? (
-                              <button
-                                onclick={`manageUser('${u._id}', 'restore')`}
-                                class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-semibold text-[11px]"
-                              >
-                                Restore Account
-                              </button>
-                            ) : (
-                              <button
-                                onclick={`manageUser('${u._id}', 'suspend')`}
-                                class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 font-semibold text-[11px]"
-                              >
-                                Suspend
-                              </button>
-                            )}
-                            {u.restrictions?.uploadsBlocked ? (
-                              <button
-                                onclick={`manageUser('${u._id}', 'unrestrict_uploads')`}
-                                class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-[11px]"
-                              >
-                                Unblock Uploads
-                              </button>
-                            ) : (
-                              <button
-                                onclick={`manageUser('${u._id}', 'restrict_uploads')`}
-                                class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 font-semibold text-[11px]"
-                              >
-                                Block Uploads
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <span class="text-[11px] text-slate-400 italic">Protected (Owner)</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================================================== -->
-        <!-- SECTION 7: AUDIT LOG TRAIL                           -->
-        <!-- ==================================================== -->
-        <section id="view-audit" class="admin-view hidden space-y-4 pt-2">
-          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            System Audit Trail ({auditLogs.length})
-          </h2>
-          <div class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th class="p-3.5">Timestamp</th>
-                    <th class="p-3.5">Actor</th>
-                    <th class="p-3.5">Action</th>
-                    <th class="p-3.5">Target</th>
-                    <th class="p-3.5">Details</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                  {auditLogs.length > 0 ? (
-                    auditLogs.map((log) => (
-                      <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                        <td class="p-3.5 text-slate-400">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </td>
-                        <td class="p-3.5 font-semibold text-slate-800 dark:text-slate-200">
-                          {log.actorEmail}
-                        </td>
-                        <td class="p-3.5">
-                          <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                            {log.action}
-                          </span>
-                        </td>
-                        <td class="p-3.5 text-slate-500">
-                          {log.targetType}:{log.targetId}
-                        </td>
-                        <td class="p-3.5 text-slate-600 dark:text-slate-400">
-                          {log.reason || '-'}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colspan="5" class="p-6 text-center text-slate-400 text-xs">
-                        No audit records logged yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-      </main>
-
-      <Footer slot="footer" />
+      <!-- Live Status Badges -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          RBAC Security: Armed
+        </span>
+        <span class={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border font-semibold ${
+          mongoConnected
+            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+            : 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+        }`}>
+          <span class={`w-2 h-2 rounded-full ${mongoConnected ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`}></span>
+          {mongoConnected ? 'MongoDB Cluster: Connected' : 'Local Fallback Store: Active'}
+        </span>
+      </div>
     </div>
+
+    <!-- Enterprise KPI Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      
+      <!-- KPI 1: Total Users Till Now -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Users</span>
+            <div class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+              👥
+            </div>
+          </div>
+          <p class="text-3xl font-black text-slate-900 dark:text-white mt-2">
+            {totalUsersCount}
+          </p>
+          <span class="text-[11px] text-slate-500 mt-1 block">All-Time Registered Students</span>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
+          <span class="text-emerald-600 dark:text-emerald-400 font-bold">+{newUsersThisWeek} this week</span>
+          <a href="/admin/users" class="text-indigo-600 dark:text-indigo-400 hover:underline font-bold">Users →</a>
+        </div>
+      </div>
+
+      <!-- KPI 2: Total Colleges & Campuses -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Colleges</span>
+            <div class="w-7 h-7 rounded-lg bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs">
+              🏛️
+            </div>
+          </div>
+          <p class="text-3xl font-black text-sky-600 dark:text-sky-400 mt-2">
+            {totalCollegesCount}
+          </p>
+          <span class="text-[11px] text-slate-500 mt-1 block">Accredited Institutions in Directory</span>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
+          <span class="text-amber-600 dark:text-amber-400 font-bold">{pendingUniRequestsCount} pending review</span>
+          <a href="/admin/colleges" class="text-sky-600 dark:text-sky-400 hover:underline font-bold">Moderate →</a>
+        </div>
+      </div>
+
+      <!-- KPI 3: Daily Downloads & Trend -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Downloads / Day</span>
+            <div class="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+              📥
+            </div>
+          </div>
+          <p class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
+            {downloadsToday} <span class="text-xs text-slate-400 font-semibold">today</span>
+          </p>
+          <span class="text-[11px] text-slate-500 mt-1 block">Avg: ~{downloadsPerDayAvg} downloads / day</span>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
+          <span class="text-slate-500 font-medium">{totalDownloadsAllTime} total all-time</span>
+          <a href="/admin/moderation" class="text-emerald-600 hover:underline font-bold">Queue ({pendingDocCount}) →</a>
+        </div>
+      </div>
+
+      <!-- KPI 4: Monthly & Weekly Active Users -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Students</span>
+            <div class="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs">
+              📈
+            </div>
+          </div>
+          <p class="text-2xl font-black text-purple-600 dark:text-purple-400 mt-2">
+            {weeklyActiveUsers} <span class="text-xs text-slate-400 font-normal">WAU</span>
+          </p>
+          <span class="text-[11px] text-slate-500 mt-1 block">{monthlyActiveUsers} Monthly Active (MAU)</span>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
+          <span class="text-slate-600 dark:text-slate-400 font-bold">{dailyActiveUsers} active today</span>
+          <a href="/admin/broadcasts" class="text-purple-600 hover:underline font-bold">Broadcast →</a>
+        </div>
+      </div>
+
+      <!-- KPI 5: Payment Received & Earnings -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Earnings Received</span>
+            <div class="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs">
+              💰
+            </div>
+          </div>
+          <p class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">
+            ₹{revenueSummary.totalRevenueAllTime.toLocaleString('en-IN')}
+          </p>
+          <span class="text-[11px] text-slate-500 mt-1 block">₹{revenueSummary.revenueThisMonth.toLocaleString('en-IN')} this month</span>
+        </div>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between text-[11px]">
+          <span class="text-emerald-600 dark:text-emerald-400 font-bold">{revenueSummary.totalTransactionsCount} txns</span>
+          <a href="/admin/revenue" class="text-amber-600 dark:text-amber-400 hover:underline font-bold">Ledger →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Storage Capacity Quota Bar -->
+    <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900 dark:text-white">Object Storage Capacity & Quota Health</h2>
+          <p class="text-xs text-slate-500">20 GB Configurable Target Budget (Cloudflare R2 / S3 Storage)</p>
+        </div>
+        <span class={`text-xs font-bold px-3 py-1 rounded-full ${
+          isStorageWarning ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+        }`}>
+          {storageUsedMB} MB / 20,480 MB ({storagePercent}%)
+        </span>
+      </div>
+
+      <div class="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+        <div
+          class={`h-full rounded-full transition-all duration-500 ${isStorageWarning ? 'bg-rose-500' : 'bg-indigo-600'}`}
+          style={`width: ${Math.min(100, Math.max(1, parseFloat(storagePercent)))}%`}
+        ></div>
+      </div>
+    </div>
+
+    <!-- Executive PDF Workbench Banner (Direct Link inside Admin Panel!) -->
+    <div class="p-6 rounded-3xl bg-gradient-to-r from-rose-900 via-indigo-900 to-slate-900 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="space-y-1.5 text-center md:text-left">
+        <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold">
+          🛠️ Internal Admin PDF Workbench
+        </div>
+        <h2 class="text-xl font-black">Executive PDF Management & Storage Suite</h2>
+        <p class="text-xs text-indigo-200 max-w-2xl leading-relaxed">
+          Access high-performance PDF manipulation utilities right inside your admin panel. Merge scattered semester papers, compress heavy files, split units, and convert note images to clean PDFs.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+        <a
+          href="/admin/pdf-tools"
+          target="_self"
+          class="px-5 py-2.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-extrabold text-xs shadow-md transition-transform hover:scale-105"
+        >
+          Open Admin PDF Suite →
+        </a>
+      </div>
+    </div>
+
+    <!-- Quick Navigation Hub -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+      <a
+        href="/admin/colleges"
+        target="_self"
+        class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-sky-500 shadow-sm transition-all hover:scale-[1.01] flex items-center justify-between group"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold">
+            🏛️
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm group-hover:text-sky-600">College Approvals</h3>
+            <p class="text-xs text-slate-400">{pendingUniRequestsCount} pending requests</p>
+          </div>
+        </div>
+        <span class="text-slate-400 group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+
+      <a
+        href="/admin/moderation"
+        target="_self"
+        class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-amber-500 shadow-sm transition-all hover:scale-[1.01] flex items-center justify-between group"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+            📑
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm group-hover:text-amber-600">Document Moderation</h3>
+            <p class="text-xs text-slate-400">{pendingDocCount} awaiting review</p>
+          </div>
+        </div>
+        <span class="text-slate-400 group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+
+      <a
+        href="/admin/revenue"
+        target="_self"
+        class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500 shadow-sm transition-all hover:scale-[1.01] flex items-center justify-between group"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+            💰
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm group-hover:text-emerald-600">Financial Ledger</h3>
+            <p class="text-xs text-slate-400">₹{revenueSummary.totalRevenueAllTime.toLocaleString('en-IN')} total gross</p>
+          </div>
+        </div>
+        <span class="text-slate-400 group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+    </div>
+
   </div>
-</Layout>
-
-<script is:inline>
-  // ==========================================
-  // 1. COLLAPSIBLE SIDEBAR WITH LOCALSTORAGE
-  // ==========================================
-  const sidebar = document.getElementById('admin-sidebar');
-  const mainWrapper = document.getElementById('admin-main-wrapper');
-  const toggleBtn = document.getElementById('sidebar-toggle-btn');
-  const toggleIcon = document.getElementById('sidebar-toggle-icon');
-
-  const STORAGE_KEY = 'studdybuddy_admin_sidebar_collapsed';
-
-  function applySidebarState(collapsed) {
-    if (!sidebar || !mainWrapper) return;
-
-    const sidebarTexts = sidebar.querySelectorAll('.sidebar-text');
-    const sidebarBadges = sidebar.querySelectorAll('.sidebar-badge');
-
-    if (collapsed) {
-      sidebar.classList.remove('w-64');
-      sidebar.classList.add('w-20');
-      mainWrapper.classList.remove('lg:pl-64');
-      mainWrapper.classList.add('lg:pl-20');
-
-      if (toggleIcon) toggleIcon.classList.add('rotate-180');
-
-      sidebarTexts.forEach((el) => {
-        el.classList.add('hidden', 'opacity-0');
-      });
-      sidebarBadges.forEach((el) => {
-        el.classList.add('hidden');
-      });
-    } else {
-      sidebar.classList.remove('w-20');
-      sidebar.classList.add('w-64');
-      mainWrapper.classList.remove('lg:pl-20');
-      mainWrapper.classList.add('lg:pl-64');
-
-      if (toggleIcon) toggleIcon.classList.remove('rotate-180');
-
-      sidebarTexts.forEach((el) => {
-        el.classList.remove('hidden', 'opacity-0');
-      });
-      sidebarBadges.forEach((el) => {
-        el.classList.remove('hidden');
-      });
-    }
-  }
-
-  // Read initial state
-  const isCollapsedInitial = localStorage.getItem(STORAGE_KEY) === 'true';
-  applySidebarState(isCollapsedInitial);
-
-  toggleBtn?.addEventListener('click', () => {
-    const currentlyCollapsed = sidebar?.classList.contains('w-20') || false;
-    const newState = !currentlyCollapsed;
-    applySidebarState(newState);
-    localStorage.setItem(STORAGE_KEY, String(newState));
-  });
-
-  // ==========================================
-  // 1.5 TABBED SINGLE-VIEW WORKSPACE SWITCHER
-  // ==========================================
-  const VIEW_STORAGE_KEY = 'studdybuddy_admin_active_view';
-  const navTabs = document.querySelectorAll('[data-admin-tab]');
-  const allViews = document.querySelectorAll('.admin-view');
-  const viewSwitchButtons = document.querySelectorAll('[data-view-target]');
-
-  function switchAdminView(targetViewId) {
-    if (!targetViewId) targetViewId = 'overview';
-    // Normalize aliases
-    if (targetViewId === 'colleges') targetViewId = 'campuses';
-    if (targetViewId === 'moderation') targetViewId = 'documents';
-
-    let matched = false;
-    allViews.forEach((view) => {
-      if (view.id === `view-${targetViewId}`) {
-        view.classList.remove('hidden');
-        matched = true;
-      } else {
-        view.classList.add('hidden');
-      }
-    });
-
-    if (!matched) {
-      targetViewId = 'overview';
-      const overviewEl = document.getElementById('view-overview');
-      if (overviewEl) overviewEl.classList.remove('hidden');
-    }
-
-    // Update active nav styling
-    navTabs.forEach((tab) => {
-      const tabId = tab.getAttribute('data-admin-tab');
-      if (tabId === targetViewId) {
-        tab.classList.add('bg-indigo-50', 'dark:bg-indigo-950/70', 'text-indigo-600', 'dark:text-indigo-400', 'font-bold', 'border-l-4', 'border-indigo-600', 'dark:border-indigo-400', 'pl-2', 'shadow-sm');
-        tab.classList.remove('text-slate-700', 'dark:text-slate-200', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
-      } else {
-        tab.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/70', 'text-indigo-600', 'dark:text-indigo-400', 'font-bold', 'border-l-4', 'border-indigo-600', 'dark:border-indigo-400', 'pl-2', 'shadow-sm');
-        tab.classList.add('text-slate-700', 'dark:text-slate-200', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
-      }
-    });
-
-    try {
-      localStorage.setItem(VIEW_STORAGE_KEY, targetViewId);
-      const url = new URL(window.location.href);
-      url.searchParams.set('view', targetViewId);
-      url.hash = '';
-      window.history.replaceState({ view: targetViewId }, '', url.toString());
-    } catch {}
-
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }
-
-  navTabs.forEach((tab) => {
-    tab.addEventListener('click', (e) => {
-      e.preventDefault();
-      const tabId = tab.getAttribute('data-admin-tab');
-      if (tabId) switchAdminView(tabId);
-    });
-  });
-
-  viewSwitchButtons.forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const tabId = btn.getAttribute('data-view-target');
-      if (tabId) switchAdminView(tabId);
-    });
-  });
-
-  // Activate view on initial load
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hash = window.location.hash.replace('#', '');
-    const stored = localStorage.getItem(VIEW_STORAGE_KEY);
-    const initialView = urlParams.get('view') || hash || stored || 'overview';
-    switchAdminView(initialView);
-  } catch {
-    switchAdminView('overview');
-  }
-
-  // ==========================================
-  // 2. RESOURCE MODERATION
-  // ==========================================
-  async function moderateResource(resourceId, action) {
-    let reason = '';
-    if (action === 'reject') {
-      reason = prompt('Enter rejection reason for contributor:');
-      if (reason === null) return;
-    }
-
-    try {
-      const res = await fetch('/api/admin/moderation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resourceId, action, reason }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Moderation action failed.');
-      } else {
-        const row = document.getElementById(`res-row-${resourceId}`);
-        if (row) row.remove();
-        alert(`Resource successfully ${action}ed!`);
-        location.reload();
-      }
-    } catch (err) {
-      alert('Network error.');
-    }
-  }
-
-  async function deleteResourceAdmin(resourceId, title) {
-    if (!confirm(`Are you sure you want to permanently delete "${title}"? This cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/admin/moderation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resourceId, action: 'delete' }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Delete action failed.');
-      } else {
-        const row = document.getElementById(`live-res-row-${resourceId}`);
-        if (row) row.remove();
-        alert(`Resource "${title}" was permanently removed.`);
-      }
-    } catch (err) {
-      alert('Network error.');
-    }
-  }
-
-  async function manageUser(userId, action) {
-    let reason = '';
-    if (action === 'suspend' || action === 'restrict_uploads') {
-      reason = prompt(`Enter reason for ${action}:`);
-      if (reason === null) return;
-    }
-
-    try {
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action, reason }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'User management action failed.');
-      } else {
-        alert(`User updated successfully!`);
-        location.reload();
-      }
-    } catch (err) {
-      alert('Network error.');
-    }
-  }
-
-  // ==========================================
-  // 3. BROADCAST ANNOUNCEMENTS
-  // ==========================================
-  async function broadcastAnnouncement(e) {
-    e.preventDefault();
-    const title = document.getElementById('notif-input-title').value.trim();
-    const content = document.getElementById('notif-input-content').value.trim();
-    const priority = document.getElementById('notif-input-priority').value;
-    const callToActionLabel = document.getElementById('notif-input-cta-label').value.trim();
-    const callToActionUrl = document.getElementById('notif-input-cta-url').value.trim();
-
-    if (!title || !content) {
-      alert('Please provide both headline title and announcement message.');
-      return;
-    }
-
-    const submitBtn = document.getElementById('notif-submit-btn');
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.innerText = 'Broadcasting...';
-    }
-
-    try {
-      const res = await fetch('/api/admin/announcements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, priority, callToActionLabel, callToActionUrl }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Failed to broadcast announcement.');
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerText = '🚀 Broadcast Notification Now';
-        }
-      } else {
-        alert('Campus announcement successfully broadcasted to ALL visitors (guests & students)!');
-        location.reload();
-      }
-    } catch (err) {
-      alert('Network error while broadcasting announcement.');
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerText = '🚀 Broadcast Notification Now';
-      }
-    }
-  }
-
-  // ==========================================
-  // 4. UNIVERSITY REQUEST MODERATION
-  // ==========================================
-  async function moderateUniversityRequest(requestId, action, uniName) {
-    let reason = '';
-    if (action === 'reject') {
-      reason = prompt(`Enter rejection reason for "${uniName}":`);
-      if (reason === null) return;
-    } else {
-      if (!confirm(`Are you sure you want to approve "${uniName}"? This will make the university live across StuddyBuddy and publish an announcement to all students.`)) {
-        return;
-      }
-    }
-
-    try {
-      const res = await fetch('/api/admin/university-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId, action, reason }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || `Failed to ${action} university request.`);
-      } else {
-        alert(data.message || `University request ${action}ed successfully!`);
-        location.reload();
-      }
-    } catch (err) {
-      alert('Network error while processing university request.');
-    }
-  }
-
-  async function deleteAnnouncementAdmin(id, title) {
-    if (!confirm(`Are you sure you want to delete the broadcast "${title}"? This will remove it for all users.`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/admin/announcements?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Failed to delete announcement.');
-      } else {
-        const row = document.getElementById(`announcement-row-${id}`);
-        if (row) row.remove();
-        alert(`Announcement "${title}" was permanently removed.`);
-      }
-    } catch (err) {
-      alert('Network error.');
-    }
-  }
-
-  const broadcastForm = document.getElementById('broadcast-form');
-  if (broadcastForm) {
-    broadcastForm.addEventListener('submit', broadcastAnnouncement);
-  }
-</script>
+</AdminLayout>
