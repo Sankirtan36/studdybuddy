@@ -20,9 +20,12 @@ function getDataDir(): string {
     return tmp;
   }
 
+  // Check studdybuddy/.data first if it has real data
+  const p2 = path.resolve(process.cwd(), 'studdybuddy', '.data');
+  if (fs.existsSync(path.join(p2, 'users.json'))) return p2;
+
   const p1 = path.resolve(process.cwd(), '.data');
   if (fs.existsSync(p1)) return p1;
-  const p2 = path.resolve(process.cwd(), 'studdybuddy', '.data');
   if (fs.existsSync(p2)) return p2;
 
   try {
@@ -45,6 +48,50 @@ function getSessionsFile(): string {
   return path.join(getDataDir(), 'sessions.json');
 }
 
+// Built-in production fallback seed accounts (guaranteed to exist even in fresh serverless containers)
+export const BUNDLED_DEFAULT_USERS: User[] = [
+  {
+    _id: 'usr-1792582359652-xip8c',
+    email: 'admin2820@gmail.com',
+    displayName: 'Admin',
+    passwordHash: 'b53adfe34b3819d9e6fdb5a4847f6c5b:2a678111d7fa764d91a046bb97ef0d19373621a4ed4d3fcd581377b1b3bad81d70b6b14781a5dc4f3065e0397eca2d2c3af5887aed2ae89307c7594d3f21b749',
+    role: 'owner',
+    status: 'active',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    _id: 'usr-1792433244591-qlfsj',
+    email: 'aryan@gmail.com',
+    displayName: 'Aryan Tripathi',
+    passwordHash: '71580ec6d7aeebb46fe2d6b86750ea4e:99e050225893a606251bc7655125de6e3fb386d978bea49c6442473f1d11bf614e9075cf03479626379af078a07d82cd9af64c0fb306df2b9dcfe1e0c37fb931',
+    role: 'owner',
+    status: 'active',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    _id: 'usr-admin-sys-default',
+    email: 'admin@studdybuddy.in',
+    displayName: 'System Admin',
+    passwordHash: 'b53adfe34b3819d9e6fdb5a4847f6c5b:2a678111d7fa764d91a046bb97ef0d19373621a4ed4d3fcd581377b1b3bad81d70b6b14781a5dc4f3065e0397eca2d2c3af5887aed2ae89307c7594d3f21b749',
+    role: 'admin',
+    status: 'active',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+  {
+    _id: 'usr-demo-student-1',
+    email: 'student@studdybuddy.in',
+    displayName: 'Student Contributor',
+    passwordHash: 'c54e914a053c8255dc276e3b3fe9ce76:224f354e2122c27e98fd53345d88fe1d4d515531134f5e8da1f071ae2ff391bf84017873b0de4b8f9e44c5eae3fa7cd5c4fd41308336914dc1a2d526be6cbff8',
+    role: 'user',
+    status: 'active',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
+];
+
 // High-speed in-memory session and user caches for instant sub-millisecond response times
 const sessionCache = new Map<string, Session>();
 const userCache = new Map<string, User>();
@@ -61,31 +108,53 @@ function ensureDataDir() {
 export function readLocalUsers(): User[] {
   ensureDataDir();
   const file = getUsersFile();
+  let users: User[] = [];
 
-  if (!fs.existsSync(file)) {
-    // If running in serverless /tmp, seed from bundled repository .data/users.json
+  if (fs.existsSync(file)) {
+    try {
+      const raw = fs.readFileSync(file, 'utf8');
+      users = JSON.parse(raw);
+    } catch {
+      users = [];
+    }
+  } else {
+    // If running in serverless /tmp, attempt seed from bundled repository .data/users.json
     const bundledCandidates = [
-      path.resolve(process.cwd(), '.data', 'users.json'),
       path.resolve(process.cwd(), 'studdybuddy', '.data', 'users.json'),
+      path.resolve(process.cwd(), '.data', 'users.json'),
     ];
     for (const b of bundledCandidates) {
       if (fs.existsSync(b)) {
         try {
           const raw = fs.readFileSync(b, 'utf8');
-          fs.writeFileSync(file, raw, 'utf8');
-          return JSON.parse(raw);
+          users = JSON.parse(raw);
+          break;
         } catch {}
       }
     }
-    return [];
   }
 
-  try {
-    const raw = fs.readFileSync(file, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
+  // Merge bundled default seeds to guarantee admin and default users ALWAYS exist
+  const existingMap = new Map<string, User>();
+  for (const u of users) {
+    if (u.email) existingMap.set(u.email.toLowerCase().trim(), u);
   }
+
+  for (const def of BUNDLED_DEFAULT_USERS) {
+    const key = def.email.toLowerCase().trim();
+    if (!existingMap.has(key)) {
+      users.push(def);
+      existingMap.set(key, def);
+    } else {
+      // Ensure owner/admin role integrity
+      const existing = existingMap.get(key)!;
+      if (def.role === 'owner' && existing.role !== 'owner') {
+        existing.role = 'owner';
+      }
+    }
+  }
+
+  return users;
 }
 
 function writeLocalUsers(users: User[]) {

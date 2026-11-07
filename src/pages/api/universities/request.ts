@@ -28,7 +28,7 @@ export const GET: APIRoute = async ({ request }) => {
           ok: true,
           available: false,
           reason: 'exists',
-          message: `"${existing.name}" pehle se StuddyBuddy par registered hai.`,
+          message: `"${existing.name}" is already registered on StuddyBuddy.`,
           existingUrl: `/university/${existing.slug}`,
           university: existing,
         }),
@@ -46,7 +46,7 @@ export const GET: APIRoute = async ({ request }) => {
           ok: true,
           available: false,
           reason: 'pending',
-          message: `"${pending.name}" ki request pehle se Admin ke review mein pending hai.`,
+          message: `A registration request for "${pending.name}" is currently under administrative review.`,
           pendingRequest: pending,
         }),
         {
@@ -112,7 +112,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'Kripya university ya college ka sahi naam likhein (minimum 3 characters).',
+          error: 'Please enter a valid institution name (minimum 3 characters).',
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
@@ -122,7 +122,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'Kripya campus ki location (City, State) likhein.',
+          error: 'Please provide the campus location (City, State / Region).',
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
@@ -147,7 +147,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(
       JSON.stringify({
         ok: true,
-        message: 'Aapki university/college add karne ki request admin ko bhej di gayi hai. Admin ki approval ke baad uske andar aap apne departments etc chize bana sakte hai aur kaam chalu kar sakte hai.',
+        message: 'Your campus registration request has been submitted to the moderation team. Once approved by the administrator, the campus will be published and you will be able to configure academic departments and upload course materials.',
         request: newRequest,
       }),
       {

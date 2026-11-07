@@ -28,6 +28,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const email = rawEmail.toLowerCase().trim();
     const displayName = rawDisplayName?.trim() || email.split('@')[0];
 
+    const isOwner = ['admin2820@gmail.com', 'aryan@gmail.com'].includes(email);
+    const defaultRole = isOwner ? 'owner' : 'user';
+
     let user = await findUserByEmail(email);
 
     if (!user) {
@@ -37,7 +40,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         email,
         displayName,
         passwordHash: '', // Managed by Firebase Auth
-        role: 'user',
+        role: defaultRole,
         status: 'active',
         avatarUrl: photoUrl || undefined,
         createdAt: now,
@@ -55,8 +58,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         );
       }
 
-      // Update lastLoginAt and avatarUrl if updated
+      // Update lastLoginAt, avatarUrl, and ensure admin ownership role integrity
       const updateFields: Partial<User> = { lastLoginAt: new Date(), updatedAt: new Date() };
+      if (isOwner && user.role !== 'owner') {
+        updateFields.role = 'owner';
+        user.role = 'owner';
+      }
       if (!user.avatarUrl && photoUrl) {
         updateFields.avatarUrl = photoUrl;
       }

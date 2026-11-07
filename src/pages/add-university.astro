@@ -29,19 +29,35 @@ const initialName = Astro.url.searchParams.get('name') || '';
 
       <div class="space-y-2">
         <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-          Request Submitted to Admin
+          Request Successfully Submitted
         </span>
         <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          University Request Received!
+          Campus Addition Request Received
         </h1>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+          Thank you for expanding the StuddyBuddy academic repository. Your submission has been securely routed to the moderation queue.
+        </p>
       </div>
 
-      <!-- Exact user-specified message -->
-      <div class="p-5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-sm font-medium leading-relaxed">
-        <p class="font-bold text-base mb-1">📢 Agla Kadam (Next Steps):</p>
-        <p id="success-display-message">
-          Aapki university/college add karne ki request admin ko bhej di gayi hai. Admin ki approval ke baad uske andar aap apne departments etc chize bana sakte hai aur kaam chalu kar sakte hai.
-        </p>
+      <!-- Professional Status & Next Steps -->
+      <div class="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-left space-y-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          What Happens Next:
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 space-y-1">
+            <span class="font-bold text-slate-900 dark:text-white block">1. Administrative Review</span>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Campus details and accreditation are verified by our team within 24–48 hours.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 space-y-1">
+            <span class="font-bold text-slate-900 dark:text-white block">2. Public Activation</span>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Once approved, the institution is indexed across search bars, upload menus, and campus hubs.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 space-y-1">
+            <span class="font-bold text-slate-900 dark:text-white block">3. Department Setup</span>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">You can create academic departments, configure degree programs, and start uploading notes immediately.</p>
+          </div>
+        </div>
       </div>
 
       <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -50,14 +66,14 @@ const initialName = Astro.url.searchParams.get('name') || '';
           target="_self"
           class="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all hover:scale-105"
         >
-          Explore Live Campuses
+          Return to Campus Directory
         </a>
         <button
           type="button"
           id="btn-submit-another"
-          class="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 font-semibold text-xs"
+          class="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 font-semibold text-xs transition-colors"
         >
-          Submit Another Request
+          Submit Another Institution
         </button>
       </div>
     </div>
@@ -74,10 +90,10 @@ const initialName = Astro.url.searchParams.get('name') || '';
           </span>
         </div>
         <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Add Your University / College
+          Add Your University or College
         </h1>
         <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-          Can't find your institution? Submit this form to have it verified by the admin team. Once approved, you and your classmates can create departments, upload syllabus, and share question papers.
+          Cannot find your institution in our directory? Submit this registration request. Once approved by our administration, you and your classmates will be able to create departments, configure semesters, and upload study materials.
         </p>
       </div>
 
@@ -85,10 +101,10 @@ const initialName = Astro.url.searchParams.get('name') || '';
       <div id="duplicate-warning" class="hidden p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-medium space-y-2">
         <div class="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
           <span>⚠️</span>
-          <span id="duplicate-warning-title">Yeh University Pehle Se Register Hai</span>
+          <span id="duplicate-warning-title">Institution Already Registered</span>
         </div>
         <p id="duplicate-warning-desc">
-          Ek baar jo university ban gayi hai, koi aur duplicate create nahi kar sakta.
+          To maintain catalog integrity, duplicate university registrations are strictly prevented.
         </p>
         <div id="duplicate-link-container" class="pt-1">
           <a
@@ -97,7 +113,7 @@ const initialName = Astro.url.searchParams.get('name') || '';
             target="_self"
             class="inline-block px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-all"
           >
-            Go to Existing University Page →
+            Access Existing Campus Space →
           </a>
         </div>
       </div>
@@ -172,7 +188,7 @@ const initialName = Astro.url.searchParams.get('name') || '';
             class="w-full px-4 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono leading-relaxed"
           ></textarea>
           <p class="text-[11px] text-slate-400">
-            Admin approval ke baad aap is university ke andar aur bhi naye departments add kar sakenge.
+            Once approved by administration, you will have access to create additional departments, degree branches, and course syllabi.
           </p>
         </div>
 
@@ -281,20 +297,20 @@ const initialName = Astro.url.searchParams.get('name') || '';
         warningBox.classList.remove('hidden');
 
         if (data.reason === 'exists') {
-          nameStatus.innerHTML = '<span class="text-rose-500 font-bold">✕ Already exists</span>';
-          warningTitle.innerText = 'Yeh University Pehle Se Register Hai!';
-          warningDesc.innerText = data.message || `"${name}" pehle se StuddyBuddy par registered hai. Ek university ek hi baar ban sakti hai.`;
+          nameStatus.innerHTML = '<span class="text-rose-500 font-bold">✕ Already registered</span>';
+          warningTitle.innerText = 'Institution Already Active on StuddyBuddy';
+          warningDesc.innerText = data.message || `"${name}" is already registered on StuddyBuddy. To prevent duplicate listings, additional registration requests are disabled.`;
           if (data.existingUrl) {
             warningLinkContainer.classList.remove('hidden');
             warningLinkBtn.href = data.existingUrl;
-            warningLinkBtn.innerText = `View ${data.university?.name || 'University'} Resources →`;
+            warningLinkBtn.innerText = `Explore ${data.university?.name || 'Campus'} Space →`;
           } else {
             warningLinkContainer.classList.add('hidden');
           }
         } else if (data.reason === 'pending') {
-          nameStatus.innerHTML = '<span class="text-amber-500 font-bold">⏳ Pending review</span>';
-          warningTitle.innerText = 'Request Pehle Se Pending Hai!';
-          warningDesc.innerText = data.message || `"${name}" ki request pehle se Admin ke approval queue mein pending hai. Admin approval ke baad ye live ho jayegi.`;
+          nameStatus.innerHTML = '<span class="text-amber-500 font-bold">⏳ Under review</span>';
+          warningTitle.innerText = 'Registration Request Currently Under Review';
+          warningDesc.innerText = data.message || `An identical request for "${name}" is currently awaiting administrator review. Once verified, it will be published automatically.`;
           warningLinkContainer.classList.add('hidden');
         }
       } else {
@@ -324,7 +340,7 @@ const initialName = Astro.url.searchParams.get('name') || '';
     submitError.classList.add('hidden');
 
     if (isBlocked) {
-      submitError.innerText = 'Yeh university pehle se register ya pending hai. Duplicate submission allowed nahi hai.';
+      submitError.innerText = 'This institution is already registered or pending review. Duplicate requests are prohibited.';
       submitError.classList.remove('hidden');
       return;
     }
@@ -341,7 +357,7 @@ const initialName = Astro.url.searchParams.get('name') || '';
     };
 
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>Submitting to Admin...</span>';
+    submitBtn.innerHTML = '<span>Submitting for verification...</span>';
 
     try {
       const res = await fetch('/api/universities/request', {
@@ -353,21 +369,18 @@ const initialName = Astro.url.searchParams.get('name') || '';
       const data = await res.json();
 
       if (!res.ok) {
-        submitError.innerText = data.error || 'Request submit karne mein error aaya.';
+        submitError.innerText = data.error || 'Failed to submit registration request. Please review your entries.';
         submitError.classList.remove('hidden');
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span>🚀 Submit Request for Admin Approval</span>';
       } else {
         // Success!
-        if (data.message) {
-          successMsg.innerText = data.message;
-        }
         formBox.classList.add('hidden');
         successBox.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err: any) {
-      submitError.innerText = 'Network error. Kripya dobara try karein.';
+      submitError.innerText = 'A network error occurred while communicating with the server. Please try again.';
       submitError.classList.remove('hidden');
       submitBtn.disabled = false;
       submitBtn.innerHTML = '<span>🚀 Submit Request for Admin Approval</span>';

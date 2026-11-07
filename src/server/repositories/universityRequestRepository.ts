@@ -282,7 +282,7 @@ export async function submitUniversityRequest(payload: {
   // 1. Strict Duplicate Check: Has it already been created?
   const existing = await findExistingUniversity(name);
   if (existing) {
-    const err: any = new Error(`"${existing.name}" pehle se StuddyBuddy par registered hai! Aap iske andar directly notes aur question papers browse ya upload kar sakte hain.`);
+    const err: any = new Error(`"${existing.name}" is already registered on StuddyBuddy. You can directly browse, share, and access academic documents in its campus hub.`);
     err.isDuplicate = true;
     err.existingUniversity = existing;
     throw err;
@@ -291,7 +291,7 @@ export async function submitUniversityRequest(payload: {
   // 2. Pending Check: Is it already submitted and waiting for admin approval?
   const pending = findPendingUniversityRequest(name);
   if (pending) {
-    const err: any = new Error(`"${pending.name}" ki request pehle se Admin ke review mein pending hai! Admin ke approval ke baad ye live ho jayegi.`);
+    const err: any = new Error(`A registration request for "${pending.name}" is already under administrative review. Once verified by our moderation team, it will be published automatically.`);
     err.isPending = true;
     err.pendingRequest = pending;
     throw err;
@@ -545,7 +545,7 @@ export async function addFacultyToUniversity(
   const existingFaculties = readLocalCustomFaculties();
   const found = existingFaculties.find((f) => f.universityId === uni.slug && f.slug === fSlug);
   if (found) {
-    throw new Error(`Department "${facultyName}" pehle se is university ke andar exist karta hai.`);
+    throw new Error(`Department "${facultyName}" already exists within this university.`);
   }
 
   const newFaculty: Faculty = {

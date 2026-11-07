@@ -50,7 +50,7 @@ describe('University Request & Moderation System', () => {
 
     expect(errorCaught).not.toBeNull();
     expect(errorCaught.isDuplicate).toBe(true);
-    expect(errorCaught.message).toContain('pehle se StuddyBuddy par registered hai');
+    expect(errorCaught.message).toContain('is already registered on StuddyBuddy');
   });
 
   it('allows submitting a new university request and sets status to pending', async () => {
@@ -85,7 +85,7 @@ describe('University Request & Moderation System', () => {
     }
     expect(pendingErr).not.toBeNull();
     expect(pendingErr.isPending).toBe(true);
-    expect(pendingErr.message).toContain('pehle se Admin ke review mein pending hai');
+    expect(pendingErr.message).toContain('is already under administrative review');
   });
 
   it('Admin approval activates university into catalog and adds departments', async () => {
