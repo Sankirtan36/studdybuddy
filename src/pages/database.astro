@@ -37,7 +37,7 @@ try {
 
 <Layout
   title="Database Explorer & Cloud Sync | StuddyBuddy"
-  description="Inspect and read live database collections from MongoDB Atlas and Firebase Firestore."
+  description="Inspect and read live database collections from MongoDB Atlas and Cloud Firestore."
 >
   <Header slot="header" user={user} />
 
@@ -57,7 +57,7 @@ try {
           </h1>
         </div>
         <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Live inspection and querying for Firebase Firestore (Project: <code class="font-mono text-indigo-600 dark:text-indigo-400">studdybuddy-49db8</code>) and MongoDB Atlas.
+          Live inspection and querying across Cloud Firestore collections and MongoDB Atlas clusters.
         </p>
       </div>
 
@@ -65,12 +65,12 @@ try {
       <div class="flex flex-wrap items-center gap-2 text-xs">
         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          Firebase Auth: Active
+          Secure Auth: Active
         </span>
 
         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-semibold">
           <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-          Firestore: Connected
+          Cloud Datastore: Connected
         </span>
 
         <span class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold border ${

@@ -175,19 +175,31 @@ function formatBytes(bytes: number) {
 
       <div class="flex flex-wrap items-center gap-2">
         <a
+          href="/pdf-tools"
+          class="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 flex items-center gap-1.5 transition-all hover:scale-105"
+        >
+          <span>🛠️ PDF Tools Suite →</span>
+        </a>
+        <a
+          href="/admin/analytics"
+          class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+        >
+          <span>📊 Analytics</span>
+        </a>
+        <a
           href="/database"
-          class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all hover:scale-105"
+          class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
           </svg>
-          <span>Cloud Database Viewer →</span>
+          <span>Database</span>
         </a>
         <a
           href="/dashboard"
           class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold"
         >
-          ← Student Dashboard
+          ← Student View
         </a>
       </div>
     </div>
@@ -196,11 +208,11 @@ function formatBytes(bytes: number) {
     <div class="flex flex-wrap items-center gap-2.5 text-xs">
       <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold">
         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        Firebase Auth: Live
+        Cloud Authentication: Operational
       </span>
       <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-semibold">
         <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-        Firestore: Connected
+        Cloud Datastore: Connected
       </span>
       <span class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold border ${
         mongoConnected 
@@ -208,7 +220,7 @@ function formatBytes(bytes: number) {
           : 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
       }`}>
         <span class={`w-2 h-2 rounded-full ${mongoConnected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-        Database: {mongoConnected ? 'MongoDB Atlas' : 'Local File Store (Active)'}
+        Database: {mongoConnected ? 'MongoDB Atlas (Connected)' : 'Local File Store (Active Fallback)'}
       </span>
       <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold">
         Storage Engine: Local + Cloudflare R2 Ready
@@ -272,8 +284,137 @@ function formatBytes(bytes: number) {
       </div>
     </div>
 
+    <!-- SECTION: Executive PDF Management & Processing Suite -->
+    <section id="pdf-suite" class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+              Document Engineering & Storage Optimization
+            </span>
+          </div>
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <span>🛠️ Executive PDF Tools Suite</span>
+            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+              Zero Server Limits • Ultra-Fast
+            </span>
+          </h2>
+          <p class="text-xs text-slate-500">
+            Direct access to production PDF manipulation utilities. Optimize files, merge semester syllabus bundles, and extract question papers.
+          </p>
+        </div>
+
+        <a
+          href="/pdf-tools"
+          target="_self"
+          class="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 flex items-center gap-1.5 self-start sm:self-auto transition-transform hover:scale-105"
+        >
+          <span>Open Full PDF Workbench →</span>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Merge PDF Tool -->
+        <a
+          href="/pdf-tools#merge"
+          class="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between"
+        >
+          <div class="space-y-2.5">
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+              📑
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                Merge PDF Documents
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                Combine scattered lecture notes, syllabus blueprints, and previous year papers into unified semester study packets.
+              </p>
+            </div>
+          </div>
+          <div class="pt-4 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
+            <span>Launch Merge Tool</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </a>
+
+        <!-- Compress PDF Tool -->
+        <a
+          href="/pdf-tools#compress"
+          class="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between"
+        >
+          <div class="space-y-2.5">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+              🗜️
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                Compress PDF Sizes
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                Dramatically reduce heavy file sizes while preserving diagram clarity to conserve platform storage budget and speed up student downloads.
+              </p>
+            </div>
+          </div>
+          <div class="pt-4 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <span>Launch Compressor</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </a>
+
+        <!-- Split PDF Tool -->
+        <a
+          href="/pdf-tools#split"
+          class="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-amber-500 dark:hover:border-amber-500 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between"
+        >
+          <div class="space-y-2.5">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+              ✂️
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                Split Document Bundles
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                Extract individual exam questions, specific module chapters, or syllabus sections from large semester textbooks.
+              </p>
+            </div>
+          </div>
+          <div class="pt-4 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400">
+            <span>Launch Splitter</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </a>
+
+        <!-- Images to PDF Tool -->
+        <a
+          href="/pdf-tools#img2pdf"
+          class="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-purple-500 dark:hover:border-purple-500 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between"
+        >
+          <div class="space-y-2.5">
+            <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+              📸
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                Convert Images to PDF
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                Turn student phone snapshots, whiteboard photos, and scanned handwritten answer sheets into clean, indexed PDF books.
+              </p>
+            </div>
+          </div>
+          <div class="pt-4 flex items-center justify-between text-xs font-bold text-purple-600 dark:text-purple-400">
+            <span>Launch Converter</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
     <!-- SECTION: Universal Campus Broadcast & Notification Center -->
-    <section class="space-y-6">
+    <section id="broadcasts" class="space-y-6">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div class="flex items-center gap-2 mb-1">
@@ -461,7 +602,7 @@ function formatBytes(bytes: number) {
     </section>
 
     <!-- SECTION: University & College Creation Requests -->
-    <section class="space-y-4">
+    <section id="campuses" class="space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div class="flex items-center gap-2 mb-1">
@@ -595,7 +736,7 @@ function formatBytes(bytes: number) {
     </section>
 
     <!-- SECTION 1: Pending Resource Moderation Queue -->
-    <section class="space-y-4">
+    <section id="documents" class="space-y-4">
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -763,7 +904,7 @@ function formatBytes(bytes: number) {
     </section>
 
     <!-- SECTION 3: User Management -->
-    <section class="space-y-4">
+    <section id="users" class="space-y-4">
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -851,15 +992,15 @@ function formatBytes(bytes: number) {
       </div>
     </section>
 
-    <!-- SECTION 4: Cloud Database & Firestore Explorer Banner -->
+    <!-- SECTION 4: Cloud Database & Storage Explorer Banner -->
     <div class="p-6 rounded-3xl bg-gradient-to-r from-indigo-900 to-slate-900 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
       <div class="space-y-1 text-center sm:text-left">
         <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold">
-          Direct Collection Reader
+          Direct Database Inspector
         </div>
-        <h3 class="text-xl font-bold">Live Cloud Database & Firestore Explorer</h3>
+        <h3 class="text-xl font-bold">Cloud Database & Schema Explorer</h3>
         <p class="text-xs text-indigo-200 max-w-xl">
-          Inspect, query, and synchronize live documents from Firebase Firestore (<code class="text-amber-300 font-mono">studdybuddy-49db8</code>) and MongoDB Atlas.
+          Inspect, query, and synchronize live documents, user records, collections, and academic datasets across production database clusters.
         </p>
       </div>
       <a
@@ -871,7 +1012,7 @@ function formatBytes(bytes: number) {
     </div>
 
     <!-- SECTION 5: Audit Log Trail -->
-    <section class="space-y-4">
+    <section id="audit" class="space-y-4">
       <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
         System Audit Trail ({auditLogs.length})
       </h2>

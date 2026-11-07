@@ -42,7 +42,7 @@ const prefillName = Astro.url.searchParams.get('displayName') || '';
         <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span id="success-text">Account ban gaya hai! Dashboard khul raha hai...</span>
+        <span id="success-text">Account created successfully! Redirecting to your dashboard...</span>
       </div>
 
       <!-- Error Alert -->
@@ -195,7 +195,7 @@ const prefillName = Astro.url.searchParams.get('displayName') || '';
                 window.location.href = redirect;
               }, 800);
             } else {
-              if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+              if (errorText) errorText.innerText = data.error || 'Authentication failed. Please verify your credentials.';
               if (alertEl) alertEl.classList.remove('hidden');
             }
           } catch (err: any) {
@@ -258,9 +258,9 @@ const prefillName = Astro.url.searchParams.get('displayName') || '';
             btn.innerText = 'Create Account';
           }
         } else {
-          if (successText) successText.innerText = '✓ Badhai ho! Aapka account ban gaya hai. Dashboard khul raha hai...';
+          if (successText) successText.innerText = '✓ Welcome to StuddyBuddy! Account created successfully. Opening dashboard...';
           if (successEl) successEl.classList.remove('hidden');
-          if (btn) btn.innerText = '✓ Account Ban Gaya! Opening Dashboard...';
+          if (btn) btn.innerText = '✓ Success! Opening Dashboard...';
           window.location.href = redirect;
         }
       } catch (err: any) {
@@ -304,12 +304,12 @@ const prefillName = Astro.url.searchParams.get('displayName') || '';
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          if (errorText) errorText.innerText = data.error || 'Firebase authentication failed.';
+          if (errorText) errorText.innerText = data.error || 'Authentication failed. Please verify your credentials.';
           if (alertEl) alertEl.classList.remove('hidden');
           googleBtn.disabled = false;
           if (googleBtnText) googleBtnText.innerText = 'Sign up with Google';
         } else {
-          if (successText) successText.innerText = '✓ Google Sign-in successful! Dashboard khul raha hai...';
+          if (successText) successText.innerText = '✓ Google Sign-in successful! Opening dashboard...';
           if (successEl) successEl.classList.remove('hidden');
           if (googleBtnText) googleBtnText.innerText = '✓ Connected! Opening Dashboard...';
           window.location.href = redirect;
@@ -319,7 +319,7 @@ const prefillName = Astro.url.searchParams.get('displayName') || '';
         let msg = err?.message || 'Google sign-in was cancelled or failed.';
         if (err?.code === 'auth/popup-blocked') {
           if (errorText) {
-            errorText.innerHTML = '⚠️ Pop-up was blocked by your browser. <button type="button" id="retry-google-redirect" class="underline font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 ml-1">Click here to sign in with Google Redirect →</button> or allow pop-ups for localhost in your browser address bar.';
+            errorText.innerHTML = '⚠️ Pop-up was blocked by your browser. <button type="button" id="retry-google-redirect" class="underline font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 ml-1">Click here to sign in with Google Redirect →</button> or allow pop-ups for this site in your browser.';
             setTimeout(() => {
               document.getElementById('retry-google-redirect')?.addEventListener('click', () => {
                 signInWithGoogleRedirect();
@@ -332,7 +332,7 @@ const prefillName = Astro.url.searchParams.get('displayName') || '';
           return;
         }
         if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
-          msg = 'Google provider is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
+          msg = 'Google single sign-on is currently unavailable. Please register with your email address.';
         }
         if (errorText) errorText.innerText = msg;
         if (alertEl) alertEl.classList.remove('hidden');
