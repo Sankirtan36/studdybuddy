@@ -2,13 +2,22 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/layout/Header.astro';
 import Footer from '../components/layout/Footer.astro';
+<<<<<<< HEAD
+import { getFacultiesByUniversity } from '../server/repositories/catalogRepository';
+import { findUserById } from '../server/auth/userStore';
+=======
 import { getUniversities, getFacultiesByUniversity } from '../server/repositories/catalogRepository';
+>>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
 
 const user = Astro.locals.user;
 if (!user) {
   return Astro.redirect('/login?redirect=/upload');
 }
 
+<<<<<<< HEAD
+const fullUser = await findUserById(user.id);
+const faculties = await getFacultiesByUniversity('parul-university');
+=======
 const universities = await getUniversities();
 const prefillUni = Astro.url.searchParams.get('university') || 'parul-university';
 const prefillFaculty = Astro.url.searchParams.get('faculty') || '';
@@ -27,6 +36,7 @@ function formatSlugToTitle(slug: string) {
 
 const prefillSubjectTitle = prefillSubjectSlug ? formatSlugToTitle(prefillSubjectSlug) : '';
 const faculties = await getFacultiesByUniversity(prefillUni);
+>>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
 
 const quickSubjects = [
   'AI (Artificial Intelligence)',
@@ -173,6 +183,61 @@ const categories = [
             </div>
           </div>
 
+          <!-- Automatic Academic Destination Confirmation Card -->
+          <div
+            id="classification-card"
+            class="hidden p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-3.5 transition-all shadow-sm"
+          >
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="flex items-center gap-2">
+                <span class="text-base">✨</span>
+                <span class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Academic Destination Detection
+                </span>
+              </div>
+              <span id="class-confidence-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"></span>
+            </div>
+
+            <!-- Destination Breadcrumb Flow -->
+            <div class="p-3 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-indigo-100 dark:border-indigo-900/60 text-xs flex flex-wrap items-center gap-1.5 font-medium">
+              <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">PU</span>
+              <span class="text-slate-400">→</span>
+              <span id="class-faculty" class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Engineering</span>
+              <span class="text-slate-400">→</span>
+              <span id="class-program" class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">B.Tech CSE</span>
+              <span class="text-slate-400">→</span>
+              <span id="class-term" class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Semester 1</span>
+              <span class="text-slate-400">→</span>
+              <span id="class-subject" class="px-2.5 py-0.5 rounded-md bg-indigo-600 text-white font-bold">General Subject</span>
+              <span class="text-slate-400">→</span>
+              <span id="class-category" class="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">Notes</span>
+            </div>
+
+            <p id="class-explanation" class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed"></p>
+
+            <div id="class-uncertain-warning" class="hidden p-3 rounded-xl bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-start gap-2">
+              <span class="text-amber-500 text-sm">⚠️</span>
+              <span>Subject identification is uncertain. Please confirm or select your subject in step 2 below before publishing.</span>
+            </div>
+
+            <div class="flex items-center justify-between pt-1 text-xs">
+              <button
+                type="button"
+                id="confirm-classification-btn"
+                class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-colors text-[11px] flex items-center gap-1.5 shadow-sm"
+              >
+                <span>✓ Confirm Academic Destination</span>
+              </button>
+              <button
+                type="button"
+                id="customize-classification-btn"
+                class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Change Options ⚙️
+              </button>
+            </div>
+          </div>
+
           <!-- 2. Subject Name Input with Instant Chips -->
           <div>
             <label class="block font-bold text-slate-800 dark:text-slate-200 mb-1 text-sm">
@@ -213,6 +278,7 @@ const categories = [
                 3. Material Category
               </label>
               <select
+                id="category-select"
                 name="category"
                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
               >
@@ -273,8 +339,16 @@ const categories = [
             />
           </div>
 
+          <!-- Hidden inputs for classified exam year & session -->
+          <input type="hidden" id="exam-year-input" name="examYear" />
+          <input type="hidden" id="exam-session-input" name="examSession" />
+
           <!-- 4. Collapsible Advanced Settings (Optional - Clean defaults) -->
+<<<<<<< HEAD
+          <details id="advanced-details" class="group p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 transition-all">
+=======
           <details class="group p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 transition-all" open={Boolean(prefillUni || prefillProgram)}>
+>>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
             <summary class="cursor-pointer font-bold text-xs text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-between select-none">
               <span>⚙️ Academic Catalog Options (University, Branch & Semester)</span>
               <span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
@@ -286,6 +360,7 @@ const categories = [
                   University
                 </label>
                 <select
+                  id="university-select"
                   name="universityId"
                   class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                 >
@@ -302,6 +377,7 @@ const categories = [
                   Faculty
                 </label>
                 <select
+                  id="faculty-select"
                   name="facultyId"
                   class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                 >
@@ -316,13 +392,21 @@ const categories = [
                   Program / Branch
                 </label>
                 <select
+                  id="program-select"
                   name="programId"
                   class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                 >
+<<<<<<< HEAD
+                  <option value="prog-btech-cse" selected={fullUser?.programId === 'prog-btech-cse'}>B.Tech Computer Science & Engineering</option>
+                  <option value="prog-bca" selected={fullUser?.programId === 'prog-bca'}>Bachelor of Computer Applications (BCA)</option>
+                  <option value="prog-mca" selected={fullUser?.programId === 'prog-mca'}>Master of Computer Applications (MCA)</option>
+                  <option value="prog-general" selected={fullUser?.programId === 'prog-general'}>Other Academic Program</option>
+=======
                   <option value="prog-btech-cse" selected={prefillProgram === 'prog-btech-cse' || prefillProgram === 'btech-cse'}>B.Tech Computer Science & Engineering</option>
                   <option value="prog-bca" selected={prefillProgram === 'prog-bca' || prefillProgram === 'bca'}>Bachelor of Computer Applications (BCA)</option>
                   <option value="prog-mca" selected={prefillProgram === 'prog-mca' || prefillProgram === 'mca'}>Master of Computer Applications (MCA)</option>
                   <option value="prog-general" selected={prefillProgram === 'prog-general'}>Other Academic Program</option>
+>>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
                 </select>
               </div>
 
@@ -331,9 +415,20 @@ const categories = [
                   Semester / Term
                 </label>
                 <select
+                  id="term-select"
                   name="academicTermId"
                   class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                 >
+<<<<<<< HEAD
+                  <option value="term-1" selected={fullUser?.currentSemester === 'Semester 1'}>Semester 1</option>
+                  <option value="term-2" selected={fullUser?.currentSemester === 'Semester 2'}>Semester 2</option>
+                  <option value="term-3" selected={fullUser?.currentSemester === 'Semester 3'}>Semester 3</option>
+                  <option value="term-4" selected={fullUser?.currentSemester === 'Semester 4'}>Semester 4</option>
+                  <option value="term-5" selected={fullUser?.currentSemester === 'Semester 5'}>Semester 5</option>
+                  <option value="term-6" selected={fullUser?.currentSemester === 'Semester 6'}>Semester 6</option>
+                  <option value="term-7" selected={fullUser?.currentSemester === 'Semester 7'}>Semester 7</option>
+                  <option value="term-8" selected={fullUser?.currentSemester === 'Semester 8'}>Semester 8</option>
+=======
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((t) => (
                     <option
                       value={`term-${t}`}
@@ -342,6 +437,7 @@ const categories = [
                       Semester {t}
                     </option>
                   ))}
+>>>>>>> 5566a207b133aae82f2249aaad8a9d04f6864012
                 </select>
               </div>
 
@@ -390,6 +486,26 @@ const categories = [
   const alertSuccess = document.getElementById('success-alert') as HTMLDivElement;
   const btn = document.getElementById('submit-btn') as HTMLButtonElement;
 
+  // Academic Classification Elements
+  const classificationCard = document.getElementById('classification-card') as HTMLDivElement;
+  const classConfidenceBadge = document.getElementById('class-confidence-badge') as HTMLSpanElement;
+  const classFaculty = document.getElementById('class-faculty') as HTMLSpanElement;
+  const classProgram = document.getElementById('class-program') as HTMLSpanElement;
+  const classTerm = document.getElementById('class-term') as HTMLSpanElement;
+  const classSubject = document.getElementById('class-subject') as HTMLSpanElement;
+  const classCategory = document.getElementById('class-category') as HTMLSpanElement;
+  const classExplanation = document.getElementById('class-explanation') as HTMLParagraphElement;
+  const classUncertainWarning = document.getElementById('class-uncertain-warning') as HTMLDivElement;
+  const confirmClassificationBtn = document.getElementById('confirm-classification-btn') as HTMLButtonElement;
+  const customizeClassificationBtn = document.getElementById('customize-classification-btn') as HTMLButtonElement;
+  const categorySelect = document.getElementById('category-select') as HTMLSelectElement;
+  const programSelect = document.getElementById('program-select') as HTMLSelectElement;
+  const termSelect = document.getElementById('term-select') as HTMLSelectElement;
+  const facultySelect = document.getElementById('faculty-select') as HTMLSelectElement;
+  const advancedDetails = document.getElementById('advanced-details') as HTMLDetailsElement;
+  const examYearInput = document.getElementById('exam-year-input') as HTMLInputElement;
+  const examSessionInput = document.getElementById('exam-session-input') as HTMLInputElement;
+
   // Click dropzone to open file dialog
   dropzone?.addEventListener('click', (e) => {
     if (e.target !== changeFileBtn) {
@@ -426,7 +542,7 @@ const categories = [
 
   fileInput?.addEventListener('change', handleFileSelected);
 
-  function handleFileSelected() {
+  async function handleFileSelected() {
     const file = fileInput.files?.[0];
     if (!file) return;
 
@@ -452,23 +568,77 @@ const categories = [
       previewFilesize.innerText = `${mb} MB • ${file.type || 'Document'}`;
     }
 
-    // Auto-fill title if empty
-    if (titleInput && !titleInput.value) {
-      const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-      titleInput.value = cleanName;
+    // Show classification card in detecting mode
+    if (classificationCard) {
+      classificationCard.classList.remove('hidden');
+      if (classConfidenceBadge) {
+        classConfidenceBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 animate-pulse';
+        classConfidenceBadge.innerText = '⚡ Detecting Academic Folder...';
+      }
     }
 
-    // Smart detect subject from filename
-    if (subjectInput && !subjectInput.value) {
-      const lower = file.name.toLowerCase();
-      if (lower.includes('ai') || lower.includes('artificial')) {
-        subjectInput.value = 'AI (Artificial Intelligence)';
-      } else if (lower.includes('os') || lower.includes('operating')) {
-        subjectInput.value = 'Operating Systems';
-      } else if (lower.includes('dsa') || lower.includes('data structure')) {
-        subjectInput.value = 'Data Structures (DSA)';
-      } else if (lower.includes('math')) {
-        subjectInput.value = 'Mathematics';
+    try {
+      const res = await fetch('/api/resources/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name }),
+      });
+      const data = await res.json();
+
+      if (data.ok && data.classification) {
+        const c = data.classification;
+
+        // Populate card view
+        if (classFaculty) classFaculty.innerText = c.suggestedFacultyId.replace(/^fac-/, '').replace(/-/g, ' ');
+        if (classProgram) classProgram.innerText = c.suggestedProgramId.replace(/^prog-/, '').toUpperCase();
+        if (classTerm) classTerm.innerText = c.suggestedAcademicTermId.replace(/^term-/, 'Sem ');
+        if (classSubject) classSubject.innerText = c.suggestedSubjectName;
+        if (classCategory) classCategory.innerText = c.suggestedCategory;
+        if (classExplanation) classExplanation.innerText = c.explanation;
+
+        // Auto-fill form values
+        if (titleInput) titleInput.value = c.suggestedTitle;
+        if (categorySelect) categorySelect.value = c.suggestedCategory;
+        if (programSelect && c.suggestedProgramId) programSelect.value = c.suggestedProgramId;
+        if (termSelect && c.suggestedAcademicTermId) termSelect.value = c.suggestedAcademicTermId;
+        if (facultySelect && c.suggestedFacultyId) {
+          const matchOpt = Array.from(facultySelect.options).find(
+            (o) => o.value.includes(c.suggestedFacultyId) || c.suggestedFacultyId.includes(o.value)
+          );
+          if (matchOpt) facultySelect.value = matchOpt.value;
+        }
+        if (examYearInput && c.suggestedExamYear) examYearInput.value = c.suggestedExamYear.toString();
+        if (examSessionInput && c.suggestedExamSession) examSessionInput.value = c.suggestedExamSession;
+
+        if (c.confident) {
+          if (classConfidenceBadge) {
+            classConfidenceBadge.className =
+              'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800';
+            classConfidenceBadge.innerText = `✓ High Confidence Match (${Math.round(c.confidenceScore * 100)}%)`;
+          }
+          if (classUncertainWarning) classUncertainWarning.classList.add('hidden');
+          if (subjectInput) {
+            subjectInput.value = c.suggestedSubjectName;
+            subjectInput.classList.remove('ring-2', 'ring-amber-500', 'border-amber-500');
+          }
+        } else {
+          // Low confidence / uncertain subject
+          if (classConfidenceBadge) {
+            classConfidenceBadge.className =
+              'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800';
+            classConfidenceBadge.innerText = `⚠️ Subject Uncertain (${Math.round(c.confidenceScore * 100)}%)`;
+          }
+          if (classUncertainWarning) classUncertainWarning.classList.remove('hidden');
+          if (subjectInput) {
+            subjectInput.value = c.suggestedSubjectName !== 'General Subject' ? c.suggestedSubjectName : '';
+            subjectInput.classList.add('ring-2', 'ring-amber-500', 'border-amber-500');
+            subjectInput.focus();
+          }
+        }
+      }
+    } catch {
+      if (titleInput && !titleInput.value) {
+        titleInput.value = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
       }
     }
   }
@@ -479,9 +649,30 @@ const categories = [
       const sub = chip.getAttribute('data-subject');
       if (sub && subjectInput) {
         subjectInput.value = sub;
+        subjectInput.classList.remove('ring-2', 'ring-amber-500', 'border-amber-500');
+        if (classSubject) classSubject.innerText = sub;
+        if (classUncertainWarning) classUncertainWarning.classList.add('hidden');
         subjectInput.focus();
       }
     });
+  });
+
+  // Confirm button click
+  confirmClassificationBtn?.addEventListener('click', () => {
+    if (confirmClassificationBtn) {
+      confirmClassificationBtn.innerText = '✓ Destination Confirmed';
+      confirmClassificationBtn.classList.add('opacity-80');
+    }
+    btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  // Customize options click
+  customizeClassificationBtn?.addEventListener('click', () => {
+    if (advancedDetails) {
+      advancedDetails.open = true;
+      advancedDetails.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    subjectInput?.focus();
   });
 
   // Handle submit
@@ -489,6 +680,17 @@ const categories = [
     e.preventDefault();
     alertErr.classList.add('hidden');
     alertSuccess.classList.add('hidden');
+
+    // Strict client-side check to prevent silent misclassification
+    const subjectVal = subjectInput.value.trim();
+    if (!subjectVal || subjectVal.toLowerCase() === 'general subject') {
+      alertErr.innerText = 'Please select or enter a subject name to ensure your material is placed in the correct subject folder.';
+      alertErr.classList.remove('hidden');
+      subjectInput.classList.add('ring-2', 'ring-amber-500', 'border-amber-500');
+      subjectInput.focus();
+      return;
+    }
+
     btn.disabled = true;
     btn.innerText = 'Publishing Document...';
 
@@ -516,7 +718,7 @@ const categories = [
           window.location.href = '/dashboard';
         }, 1200);
       }
-    } catch (err: any) {
+    } catch {
       alertErr.innerText = 'Network error during upload. Please retry.';
       alertErr.classList.remove('hidden');
       btn.disabled = false;

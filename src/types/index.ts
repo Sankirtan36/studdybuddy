@@ -25,6 +25,11 @@ export interface User {
   universityEmail?: string;
   programId?: string | null;
   academicTermId?: string | null;
+  currentSemester?: string | null;
+  enrollmentYear?: number | null;
+  isVerifiedSenior?: boolean;
+  reputationPoints?: number;
+  approvedUploadsCount?: number;
   bio?: string;
   avatarUrl?: string;
   createdAt: Date;
@@ -346,5 +351,99 @@ export interface StorageReservation {
   storageKey: string;
   expiresAt: Date;
   status: 'pending' | 'completed' | 'expired' | 'released';
+  createdAt: Date;
+}
+
+// Student Resource Requests
+export interface ResourceRequest {
+  _id?: ObjectId | string;
+  requesterId: string;
+  requesterName: string;
+  universityId: string;
+  programId: string;
+  academicTermId?: string;
+  subjectId: string;
+  subjectName: string;
+  category: ResourceCategory;
+  examYear?: number;
+  description?: string;
+  urgency: 'low' | 'normal' | 'urgent';
+  status: 'open' | 'fulfilled' | 'closed';
+  fulfilledResourceId?: string;
+  fulfilledByUserId?: string;
+  fulfilledByUserName?: string;
+  fulfilledAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// In-App & Push Notifications
+export type NotificationType =
+  | 'upload_status'
+  | 'request_fulfilled'
+  | 'doubt_answered'
+  | 'community_reply'
+  | 'announcement'
+  | 'reputation_awarded'
+  | 'system';
+
+export interface Notification {
+  _id?: ObjectId | string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  actionUrl?: string;
+  isRead: boolean;
+  createdAt: Date;
+}
+
+// Academic Doubts & Q&A Guidance
+export interface AcademicDoubt {
+  _id?: ObjectId | string;
+  title: string;
+  content: string;
+  codeSnippet?: string;
+  codeLanguage?: string;
+  authorId: string;
+  authorName: string;
+  isVerifiedSenior?: boolean;
+  universityId: string;
+  programId: string;
+  subjectId: string;
+  subjectName?: string;
+  tags: string[];
+  upvotesCount: number;
+  upvotedByUserIds?: string[];
+  answersCount: number;
+  acceptedAnswerId?: string;
+  isClosed?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DoubtAnswer {
+  _id?: ObjectId | string;
+  doubtId: string;
+  content: string;
+  codeSnippet?: string;
+  codeLanguage?: string;
+  authorId: string;
+  authorName: string;
+  isSeniorGuidance?: boolean;
+  isAccepted: boolean;
+  upvotesCount: number;
+  upvotedByUserIds?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Reputation Events
+export interface ReputationEvent {
+  _id?: ObjectId | string;
+  userId: string;
+  points: number;
+  reason: 'request_fulfilled' | 'upload_approved' | 'doubt_accepted' | 'upvote_received' | 'bonus';
+  referenceId?: string;
   createdAt: Date;
 }

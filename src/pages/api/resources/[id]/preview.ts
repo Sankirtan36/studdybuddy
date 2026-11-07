@@ -37,6 +37,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
           'Content-Disposition': `inline; filename="${(resource.originalFilename || resource.title).replace(/["\r\n\\]/g, '')}"`,
           'Content-Length': fileBuffer.length.toString(),
           'Cache-Control': 'public, max-age=3600',
+          'X-Content-Type-Options': 'nosniff',
         },
       });
     }

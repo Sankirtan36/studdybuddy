@@ -3,8 +3,11 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/layout/Header.astro';
 import Footer from '../components/layout/Footer.astro';
 import { getDb } from '../server/db/mongo';
-import { searchResources, readLocalResources } from '../server/repositories/resourceRepository';
-import type { Resource, CatalogSuggestion, SavedResource } from '../types';
+import { readLocalResources } from '../server/repositories/resourceRepository';
+import { searchResourceRequests } from '../server/repositories/requestRepository';
+import { findUserById } from '../server/auth/userStore';
+import { calculateBadge } from '../server/reputation/reputationService';
+import type { Resource, CatalogSuggestion, SavedResource, ResourceRequest } from '../types';
 import { ObjectId } from 'mongodb';
 
 const user = Astro.locals.user;
@@ -12,10 +15,23 @@ if (!user) {
   return Astro.redirect('/login?redirect=/dashboard');
 }
 
+// Fetch full user profile for reputation & academic details
+const fullUser = await findUserById(user.id);
+const reputationPoints = fullUser?.reputationPoints || 0;
+const currentSemester = fullUser?.currentSemester || 'Semester 1';
+const userBadge = calculateBadge(reputationPoints);
+const isVerifiedSenior = fullUser?.isVerifiedSenior || false;
+
 // 1. Fetch user's contributed resources
 let myContributions: Resource[] = [];
 let mySavedResources: Resource[] = [];
 let mySuggestions: CatalogSuggestion[] = [];
+let myRequests: ResourceRequest[] = [];
+
+try {
+  const reqRes = await searchResourceRequests({ limit: 50 });
+  myRequests = reqRes.requests.filter((r) => r.requesterId === user.id);
+} catch {}
 
 // Always load user's locally stored contributions immediately (<0.1ms)
 try {
@@ -96,17 +112,34 @@ const displayLibrary = mySavedResources.length > 0 ? mySavedResources : myContri
           {user.displayName.charAt(0).toUpperCase()}
         </div>
         <div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{user.displayName}</h1>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
-              {user.role}
+              {userBadge}
             </span>
+            {isVerifiedSenior && (
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
+                Senior Guide 🎓
+              </span>
+            )}
           </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{user.email}</p>
+          <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <span>{user.email}</span>
+            <span>•</span>
+            <span class="font-semibold text-slate-700 dark:text-slate-300">{currentSemester}</span>
+            <span>•</span>
+            <span class="font-bold text-amber-600 dark:text-amber-400">★ {reputationPoints} Rep Points</span>
+          </div>
         </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
+        <a
+          href="/requests"
+          class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-transform hover:scale-105"
+        >
+          View Requests Board →
+        </a>
         {(user.role === 'admin' || user.role === 'owner') && (
           <a
             href="/admin"
@@ -396,7 +429,65 @@ const displayLibrary = mySavedResources.length > 0 ? mySavedResources : myContri
     </section>
 
     <!-- ========================================================== -->
-    <!-- SECTION 3: MY CATALOG SUGGESTIONS & ACADEMIC REQUESTS       -->
+    <!-- SECTION 3: MY RESOURCE REQUESTS (Peer Study Materials)       -->
+    <!-- ========================================================== -->
+    <section class="space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+              REQ
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              3. My Material Requests ({myRequests.length})
+            </h2>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Notes and past papers you asked peers to upload.
+          </p>
+        </div>
+
+        <a
+          href="/requests"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shrink-0"
+        >
+          <span>+ Post New Request</span>
+        </a>
+      </div>
+
+      {myRequests.length > 0 ? (
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {myRequests.map((req) => (
+            <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs space-y-2.5 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] uppercase font-bold text-slate-400">{req.category}</span>
+                <span class={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  req.status === 'fulfilled' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300'
+                }`}>
+                  {req.status === 'fulfilled' ? '✓ Fulfilled' : '• Open'}
+                </span>
+              </div>
+              <h3 class="font-bold text-slate-900 dark:text-white text-sm">{req.subjectName}</h3>
+              {req.examYear && <p class="text-slate-500">Year: {req.examYear}</p>}
+              {req.fulfilledResourceId && (
+                <div class="pt-2">
+                  <a href={`/resources/${req.fulfilledResourceId}`} class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
+                    View Uploaded Material →
+                  </a>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="p-6 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+          You haven't requested any study materials yet. If you can't find a paper or notes, post a request on the community board.
+        </div>
+      )}
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- SECTION 4: MY CATALOG SUGGESTIONS & ACADEMIC REQUESTS       -->
     <!-- ========================================================== -->
     <section class="space-y-5">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
@@ -408,7 +499,7 @@ const displayLibrary = mySavedResources.length > 0 ? mySavedResources : myContri
               </svg>
             </div>
             <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              3. My Catalog Suggestions & Requests ({mySuggestions.length})
+              4. My Catalog Suggestions & Requests ({mySuggestions.length})
             </h2>
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">

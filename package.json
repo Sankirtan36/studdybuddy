@@ -11,7 +11,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "check": "astro check",
-    "test": "vitest run",
+    "test": "vitest run --fileParallelism=false",
     "seed": "node --experimental-strip-types scripts/seed-catalog.ts"
   },
   "dependencies": {

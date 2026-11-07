@@ -1,6 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getDb } from '../db/mongo';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -100,6 +100,107 @@ export function validateUploadFile(filename: string, mimeType: string, sizeBytes
     extension: ALLOWED_EXTENSIONS[ext],
     mimeType,
   };
+}
+
+/**
+ * Compute SHA-256 checksum of file buffer for duplicate detection.
+ */
+export function computeFileChecksum(buffer: Buffer): string {
+  return createHash('sha256').update(buffer).digest('hex');
+}
+
+/**
+ * Validate magic bytes / file signatures to prevent extension spoofing.
+ */
+export function validateMagicBytes(buffer: Buffer, extension: SupportedFileExtension): { valid: boolean; error?: string } {
+  if (buffer.length < 4) {
+    return { valid: false, error: 'File is corrupt or empty (less than 4 bytes).' };
+  }
+
+  // 1. PDF: %PDF- (0x25 0x50 0x44 0x46)
+  if (extension === 'pdf') {
+    const isPdf = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
+    if (!isPdf) return { valid: false, error: 'File signature does not match a valid PDF document.' };
+    return { valid: true };
+  }
+
+  // 2. PNG: 0x89 0x50 0x4E 0x47
+  if (extension === 'png') {
+    const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+    if (!isPng) return { valid: false, error: 'File signature does not match a valid PNG image.' };
+    return { valid: true };
+  }
+
+  // 3. JPEG: 0xFF 0xD8 0xFF
+  if (extension === 'jpg' || extension === 'jpeg') {
+    const isJpg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    if (!isJpg) return { valid: false, error: 'File signature does not match a valid JPEG image.' };
+    return { valid: true };
+  }
+
+  // 4. WebP: RIFF (0x52 0x49 0x46 0x46) + WEBP at offset 8 (0x57 0x45 0x42 0x50)
+  if (extension === 'webp') {
+    if (buffer.length < 12) return { valid: false, error: 'WebP image too small.' };
+    const isRiff = buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46;
+    const isWebp = buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50;
+    if (!isRiff || !isWebp) return { valid: false, error: 'File signature does not match a valid WebP image.' };
+    return { valid: true };
+  }
+
+  // 5. DOCX / PPTX: Standard ZIP archive signature PK\x03\x04 (0x50 0x4B 0x03 0x04)
+  if (extension === 'docx' || extension === 'pptx') {
+    const isZip = buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04;
+    if (!isZip) return { valid: false, error: `File signature does not match a valid ${extension.toUpperCase()} document.` };
+    return { valid: true };
+  }
+
+  // 6. Legacy DOC / PPT: Compound Binary Format 0xD0 0xCF 0x11 0xE0
+  if (extension === 'doc' || extension === 'ppt') {
+    const isOle = buffer[0] === 0xd0 && buffer[1] === 0xcf && buffer[2] === 0x11 && buffer[3] === 0xe0;
+    if (!isOle) return { valid: false, error: `File signature does not match a valid ${extension.toUpperCase()} document.` };
+    return { valid: true };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Scan buffer for suspicious patterns (malware signatures, executable headers, script injection).
+ */
+export function scanBufferForThreats(buffer: Buffer): { safe: boolean; reason?: string } {
+  // Check for Windows executable header ('MZ' - 0x4D 0x5A)
+  if (buffer.length >= 2 && buffer[0] === 0x4d && buffer[1] === 0x5a) {
+    return { safe: false, reason: 'File contains executable binary header (MZ), which is forbidden.' };
+  }
+
+  // Check for Linux ELF binary header (0x7F 'E' 'L' 'F')
+  if (buffer.length >= 4 && buffer[0] === 0x7f && buffer[1] === 0x45 && buffer[2] === 0x4c && buffer[3] === 0x46) {
+    return { safe: false, reason: 'File contains ELF executable binary header, which is forbidden.' };
+  }
+
+  // Check for dangerous shell or HTML scripts at start of file
+  const first1024Bytes = buffer.subarray(0, Math.min(buffer.length, 1024)).toString('ascii').toLowerCase();
+  if (first1024Bytes.startsWith('#!') || first1024Bytes.includes('<script') || first1024Bytes.includes('<?php')) {
+    return { safe: false, reason: 'File contains embedded script code or shell shebang, which is forbidden.' };
+  }
+
+  return { safe: true };
+}
+
+/**
+ * Automatically clean up expired storage reservations older than 1 hour.
+ */
+export async function cleanupOrphanedReservations(): Promise<number> {
+  try {
+    const db = await getDb();
+    const result = await db.collection('storageReservations').updateMany(
+      { status: 'pending', expiresAt: { $lt: new Date() } },
+      { $set: { status: 'expired' } }
+    );
+    return result.modifiedCount || 0;
+  } catch {
+    return 0;
+  }
 }
 
 /**
