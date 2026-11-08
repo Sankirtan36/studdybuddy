@@ -1,4 +1,847 @@
 ---
-// PDF Tools Suite is hosted strictly within the Admin Control Center
-return Astro.redirect('/admin/pdf-tools');
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+import { getUserProcessedPdfs } from '../server/pdf/pdfStorage';
+
+const user = Astro.locals.user;
+let userFiles: any[] = [];
+try {
+  userFiles = user ? getUserProcessedPdfs(user.id) : [];
+} catch {
+  userFiles = [];
+}
+
+function formatBytes(bytes: number) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getHoursRemaining(expiresAt: number): number {
+  const diff = expiresAt - Date.now();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / (1000 * 60 * 60));
+}
 ---
+
+<Layout
+  title="Academic PDF Suite — Merge, Split, Compress & Convert | StuddyBuddy"
+  description="Ultra-fast, private academic PDF utilities for students: combine lecture notes, extract exam pages, compress scans, and convert handwritten photos into unified PDFs."
+>
+  <Header slot="header" user={user} />
+
+  <!-- Atmospheric Cosmic Canvas -->
+  <main class="relative min-h-[calc(100vh-4rem)] bg-[#070b14] text-slate-100 overflow-hidden py-8 sm:py-14 px-4 sm:px-6 lg:px-8 selection:bg-amber-400 selection:text-slate-950">
+    
+    <!-- Horizon Radial Sunlight Glow (Inspired by Bright Path Reference) -->
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_10%,rgba(251,191,36,0.16),rgba(56,189,248,0.08)_40%,transparent_75%)]"></div>
+    <div class="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 w-[650px] sm:w-[900px] h-[350px] bg-amber-400/5 blur-[120px] rounded-full"></div>
+
+    <!-- Fine Reticle Concentric Rings & Crosshair Guides -->
+    <div class="pointer-events-none absolute top-12 left-1/2 -translate-x-1/2 w-[520px] sm:w-[820px] h-[520px] sm:h-[820px] rounded-full border border-sky-400/10 dark:border-white/5"></div>
+    <div class="pointer-events-none absolute top-28 left-1/2 -translate-x-1/2 w-[340px] sm:w-[560px] h-[340px] sm:h-[560px] rounded-full border border-amber-300/10"></div>
+    <div class="pointer-events-none absolute top-44 left-1/2 -translate-x-1/2 w-[180px] sm:w-[320px] h-[180px] sm:h-[320px] rounded-full border border-white/5"></div>
+
+    <!-- Four-Corner Diamond Sparkles (✦) -->
+    <div class="pointer-events-none absolute top-6 left-6 text-sky-200/40 select-none animate-pulse">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+      </svg>
+    </div>
+    <div class="pointer-events-none absolute top-6 right-6 text-sky-200/40 select-none animate-pulse">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+      </svg>
+    </div>
+    <div class="pointer-events-none absolute bottom-6 left-6 text-sky-200/40 select-none animate-pulse">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+      </svg>
+    </div>
+    <div class="pointer-events-none absolute bottom-6 right-6 text-sky-200/40 select-none animate-pulse">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+      </svg>
+    </div>
+
+    <!-- Main Container -->
+    <div class="relative z-10 max-w-6xl mx-auto space-y-8 sm:space-y-12">
+
+      <!-- Technical HUD Metadata Header -->
+      <div class="flex items-center justify-between text-[10px] tracking-[0.25em] font-mono uppercase text-sky-300/60 pb-3 border-b border-white/10">
+        <div>
+          <span class="text-slate-500">PROJECT:</span> <span class="text-slate-200 font-bold">STUDDYBUDDY</span>
+        </div>
+        <div class="hidden sm:block">
+          <span class="text-slate-500">SERVICES:</span> <span class="text-amber-300 font-bold">ACADEMIC PDF SUITE</span>
+        </div>
+        <div>
+          <span class="text-slate-500">FIELD:</span> <span class="text-sky-300 font-bold">STUDENT WORKBENCH</span>
+        </div>
+      </div>
+
+      <!-- Hero Header & Center Identity Glow -->
+      <div class="text-center space-y-4 pt-4">
+        <!-- Floating Horizon Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-xl border border-white/15 text-slate-200 text-xs shadow-lg shadow-black/40">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span class="font-bold tracking-wide uppercase text-[11px] text-amber-300">Fast & Zero Watermarks</span>
+          <span class="text-slate-500">•</span>
+          <span class="text-[11px] text-slate-300">Max 3 MB Per File</span>
+        </div>
+
+        <!-- Majestic Title -->
+        <h1 class="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-tight">
+          Craft <span class="bg-gradient-to-r from-amber-200 via-amber-400 to-sky-300 bg-clip-text text-transparent">Brighter Study Packs</span>
+        </h1>
+        
+        <p class="text-xs sm:text-base text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
+          Merge semester slides, split exam questions, convert handwritten note photos to PDF, and compress bulky documents for easy sharing.
+        </p>
+
+        <!-- Dynamic Storage Info Pill -->
+        <div class="pt-1 flex items-center justify-center gap-3 text-xs text-slate-400">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10">
+            <svg class="w-3.5 h-3.5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {user ? (
+              <span>Authenticated Storage: <strong class="text-white">48 Hours Retention</strong></span>
+            ) : (
+              <span>Guest Sandbox: <strong class="text-amber-300">6 Hours Retention</strong> • <a href="/login" class="underline hover:text-white">Sign In for 48h</a></span>
+            )}
+          </span>
+        </div>
+      </div>
+
+      <!-- Waveform & Processing HUD (Inspired by Soundwave in Reference) -->
+      <div id="processing-hud" class="hidden p-5 rounded-2xl bg-white/[0.05] backdrop-blur-2xl border border-amber-400/30 shadow-xl max-w-xl mx-auto space-y-3 animate-fade-in">
+        <div class="flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+            <span id="hud-status-text" class="font-bold text-amber-300 uppercase tracking-wider text-[11px]">
+              Processing Document...
+            </span>
+          </div>
+          <span class="text-slate-400 text-[11px] font-mono" id="hud-time-tag">Synthesizing bytes</span>
+        </div>
+
+        <!-- Animated Waveform Bars -->
+        <div class="flex items-center justify-center gap-1.5 h-9 py-1 px-4 rounded-xl bg-black/40 border border-white/10">
+          <span class="w-1 bg-amber-400 rounded-full animate-pulse h-3"></span>
+          <span class="w-1 bg-amber-300 rounded-full animate-pulse h-6 delay-75"></span>
+          <span class="w-1 bg-sky-400 rounded-full animate-pulse h-8 delay-150"></span>
+          <span class="w-1 bg-sky-300 rounded-full animate-pulse h-4 delay-100"></span>
+          <span class="w-1 bg-amber-400 rounded-full animate-pulse h-7 delay-200"></span>
+          <span class="w-1 bg-sky-400 rounded-full animate-pulse h-5 delay-300"></span>
+          <span class="w-1 bg-amber-300 rounded-full animate-pulse h-8 delay-150"></span>
+          <span class="w-1 bg-sky-300 rounded-full animate-pulse h-4 delay-75"></span>
+          <span class="w-1 bg-amber-400 rounded-full animate-pulse h-6 delay-200"></span>
+          <span class="w-1 bg-sky-400 rounded-full animate-pulse h-3 delay-100"></span>
+        </div>
+      </div>
+
+      <!-- Tool Selector Tabs (Pill Navigation) -->
+      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          data-tool="merge"
+          class="tool-tab-btn active px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-lg bg-amber-400 text-slate-950 ring-2 ring-amber-300/40"
+        >
+          <span>📑</span>
+          <span>Merge PDFs</span>
+        </button>
+
+        <button
+          type="button"
+          data-tool="split"
+          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/10 backdrop-blur-xl"
+        >
+          <span>✂️</span>
+          <span>Split PDF</span>
+        </button>
+
+        <button
+          type="button"
+          data-tool="image-to-pdf"
+          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/10 backdrop-blur-xl"
+        >
+          <span>🖼️</span>
+          <span>Images to PDF</span>
+        </button>
+
+        <button
+          type="button"
+          data-tool="compress"
+          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/10 backdrop-blur-xl"
+        >
+          <span>🗜️</span>
+          <span>Compress PDF</span>
+        </button>
+      </div>
+
+      <!-- Workbench Interactive Tool Workspace -->
+      <div class="max-w-3xl mx-auto">
+        <div class="p-6 sm:p-10 rounded-3xl bg-slate-900/60 backdrop-blur-2xl border border-white/15 shadow-[0_16px_40px_rgba(0,0,0,0.6)] relative overflow-hidden">
+          
+          <!-- Inner Top Edge Specular Highlight -->
+          <div class="pointer-events-none absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"></div>
+
+          <!-- Alert Container -->
+          <div id="tool-alert" class="hidden mb-6 p-4 rounded-2xl text-xs font-semibold flex items-center justify-between border">
+            <div class="flex items-center gap-2.5">
+              <span id="tool-alert-icon"></span>
+              <span id="tool-alert-msg"></span>
+            </div>
+            <button type="button" onclick="document.getElementById('tool-alert').classList.add('hidden')" class="opacity-70 hover:opacity-100 font-bold">✕</button>
+          </div>
+
+          <!-- ============================================== -->
+          <!-- 1. MERGE TOOL PANEL                            -->
+          <!-- ============================================== -->
+          <div id="panel-merge" class="tool-panel space-y-6">
+            <div class="space-y-1">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span>📑 Merge Multiple PDF Documents</span>
+              </h2>
+              <p class="text-xs text-slate-400">
+                Select 2 or more PDF notes, chapter slides, or past papers. They will be seamlessly stitched into one unified study document.
+              </p>
+            </div>
+
+            <form id="merge-form" class="space-y-5">
+              <div
+                id="merge-dropzone"
+                class="relative border-2 border-dashed border-white/20 hover:border-amber-400/60 transition-colors rounded-2xl p-8 text-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]"
+              >
+                <input
+                  type="file"
+                  id="merge-files-input"
+                  name="files"
+                  multiple
+                  accept="application/pdf"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div class="space-y-2 pointer-events-none">
+                  <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-400/10 text-amber-300 flex items-center justify-center text-xl">
+                    📁
+                  </div>
+                  <p class="text-sm font-bold text-white">Click to browse or drop PDF files here</p>
+                  <p class="text-xs text-slate-400">Select 2 to 10 PDF documents (Max 3 MB each)</p>
+                </div>
+              </div>
+
+              <!-- Selected Files List -->
+              <div id="merge-file-list" class="hidden space-y-2">
+                <span class="text-xs font-bold text-slate-300 uppercase tracking-wider block">Selected Documents:</span>
+                <div id="merge-items-container" class="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar"></div>
+              </div>
+
+              <button
+                type="submit"
+                id="merge-submit-btn"
+                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-slate-950 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-400/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Stitch & Merge PDFs →</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- ============================================== -->
+          <!-- 2. SPLIT TOOL PANEL                            -->
+          <!-- ============================================== -->
+          <div id="panel-split" class="tool-panel hidden space-y-6">
+            <div class="space-y-1">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span>✂️ Extract & Split PDF Pages</span>
+              </h2>
+              <p class="text-xs text-slate-400">
+                Extract specific question paper sections, syllabus units, or custom page ranges without losing document quality.
+              </p>
+            </div>
+
+            <form id="split-form" class="space-y-5">
+              <div
+                id="split-dropzone"
+                class="relative border-2 border-dashed border-white/20 hover:border-sky-400/60 transition-colors rounded-2xl p-8 text-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]"
+              >
+                <input
+                  type="file"
+                  id="split-file-input"
+                  name="file"
+                  accept="application/pdf"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div class="space-y-2 pointer-events-none">
+                  <div class="w-12 h-12 mx-auto rounded-2xl bg-sky-400/10 text-sky-300 flex items-center justify-center text-xl">
+                    📄
+                  </div>
+                  <p class="text-sm font-bold text-white">Click or drag a PDF document to split</p>
+                  <p id="split-selected-filename" class="text-xs text-slate-400">Single document up to 3 MB</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Start Page
+                  </label>
+                  <input
+                    type="number"
+                    id="split-start-page"
+                    name="startPage"
+                    min="1"
+                    value="1"
+                    required
+                    class="w-full px-3.5 py-2 text-sm rounded-xl border border-white/15 bg-black/40 text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+                  <span class="text-[10px] text-slate-500 block">First page number to include</span>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    End Page
+                  </label>
+                  <input
+                    type="number"
+                    id="split-end-page"
+                    name="endPage"
+                    min="1"
+                    value="2"
+                    required
+                    class="w-full px-3.5 py-2 text-sm rounded-xl border border-white/15 bg-black/40 text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+                  <span class="text-[10px] text-slate-500 block">Last page number to include</span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                id="split-submit-btn"
+                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-slate-950 bg-gradient-to-r from-sky-300 via-sky-400 to-indigo-400 hover:from-sky-400 hover:to-indigo-500 shadow-lg shadow-sky-400/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Extract Page Range →</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- ============================================== -->
+          <!-- 3. IMAGES TO PDF TOOL PANEL                    -->
+          <!-- ============================================== -->
+          <div id="panel-image-to-pdf" class="tool-panel hidden space-y-6">
+            <div class="space-y-1">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span>🖼️ Convert Handwritten Images to PDF</span>
+              </h2>
+              <p class="text-xs text-slate-400">
+                Snap photos of whiteboard lectures or handwritten notes (JPG, PNG, WEBP). Convert them into a crisp, standardized multi-page PDF document.
+              </p>
+            </div>
+
+            <form id="images-form" class="space-y-5">
+              <div
+                id="images-dropzone"
+                class="relative border-2 border-dashed border-white/20 hover:border-emerald-400/60 transition-colors rounded-2xl p-8 text-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]"
+              >
+                <input
+                  type="file"
+                  id="images-input"
+                  name="files"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/jpg"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div class="space-y-2 pointer-events-none">
+                  <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-400/10 text-emerald-300 flex items-center justify-center text-xl">
+                    📸
+                  </div>
+                  <p class="text-sm font-bold text-white">Click or drop note photos here</p>
+                  <p class="text-xs text-slate-400">Accepts JPG, PNG, WEBP (Max 3 MB each)</p>
+                </div>
+              </div>
+
+              <!-- Thumbnails Preview Container -->
+              <div id="images-preview-grid" class="hidden grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-56 overflow-y-auto no-scrollbar p-1"></div>
+
+              <button
+                type="submit"
+                id="images-submit-btn"
+                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-slate-950 bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-400 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-400/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Convert Images to PDF Pack →</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- ============================================== -->
+          <!-- 4. COMPRESS TOOL PANEL                         -->
+          <!-- ============================================== -->
+          <div id="panel-compress" class="tool-panel hidden space-y-6">
+            <div class="space-y-1">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span>🗜️ Compress & Optimize PDF Size</span>
+              </h2>
+              <p class="text-xs text-slate-400">
+                Shrink oversized scanned lecture notes and assignments down to submission size without losing mathematical formulas or font clarity.
+              </p>
+            </div>
+
+            <form id="compress-form" class="space-y-5">
+              <div
+                id="compress-dropzone"
+                class="relative border-2 border-dashed border-white/20 hover:border-purple-400/60 transition-colors rounded-2xl p-8 text-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]"
+              >
+                <input
+                  type="file"
+                  id="compress-file-input"
+                  name="file"
+                  accept="application/pdf"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div class="space-y-2 pointer-events-none">
+                  <div class="w-12 h-12 mx-auto rounded-2xl bg-purple-400/10 text-purple-300 flex items-center justify-center text-xl">
+                    📦
+                  </div>
+                  <p class="text-sm font-bold text-white">Click or drag a PDF document to optimize</p>
+                  <p id="compress-selected-filename" class="text-xs text-slate-400">Single document up to 3 MB</p>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between text-xs">
+                <span class="text-slate-300">Compression Engine:</span>
+                <span class="font-bold text-amber-300">Smart Academic Balancing (Balanced DPI + Stream Deflation)</span>
+              </div>
+
+              <button
+                type="submit"
+                id="compress-submit-btn"
+                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-slate-950 bg-gradient-to-r from-purple-300 via-purple-400 to-indigo-400 hover:from-purple-400 hover:to-indigo-500 shadow-lg shadow-purple-400/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Compress & Optimize PDF →</span>
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Live Recent Processed Shelf (Instant Download) -->
+      <div id="recent-shelf" class="max-w-3xl mx-auto space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">
+              Your Processed Document Shelf
+            </h3>
+          </div>
+          <span class="text-[11px] text-slate-500">Auto-expires after retention period</span>
+        </div>
+
+        <div id="shelf-cards-container" class="space-y-2.5">
+          {userFiles.length > 0 ? (
+            userFiles.map((doc) => {
+              const hoursLeft = getHoursRemaining(doc.expiresAt);
+              return (
+                <div class="p-4 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-400/30 transition-all">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-amber-400/10 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
+                      📄
+                    </div>
+                    <div class="min-w-0">
+                      <span class="text-xs font-bold text-white block truncate">{doc.outputName}</span>
+                      <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                        <span>{formatBytes(doc.size)}</span>
+                        <span>•</span>
+                        <span class="text-amber-300 font-medium">⏳ {hoursLeft}h remaining</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <a
+                    href={`/api/pdf/download?id=${doc.id}`}
+                    download={doc.outputName}
+                    class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all shrink-0 text-center flex items-center justify-center gap-1.5"
+                  >
+                    <span>Download</span>
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </a>
+                </div>
+              );
+            })
+          ) : (
+            <div id="shelf-empty-state" class="p-8 text-center rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+              <p class="text-xs font-medium text-slate-400">No documents processed yet in this session.</p>
+              <p class="text-[11px] text-slate-500">Pick any tool above to merge, split, compress or convert your study files.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- Technical HUD Footer Metadata (Inspired by Reference) -->
+      <div class="flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 pt-8 border-t border-white/10 gap-4">
+        <!-- Floating URL Pill on bottom left -->
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.05] border border-white/10 text-slate-300 font-mono text-xs shadow-sm">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+          <span>studdybuddy.in</span>
+        </div>
+
+        <!-- Inspirational Tagline on bottom right -->
+        <div class="text-center sm:text-right font-bold uppercase tracking-[0.2em] text-[10px] text-slate-400">
+          BUILDING BRIGHTER MINDS TOGETHER
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <Footer slot="footer" />
+</Layout>
+
+<script>
+  // Tool Switching Logic
+  const tabButtons = document.querySelectorAll('.tool-tab-btn');
+  const panels = document.querySelectorAll('.tool-panel');
+  const alertBox = document.getElementById('tool-alert') as HTMLDivElement;
+  const alertIcon = document.getElementById('tool-alert-icon') as HTMLSpanElement;
+  const alertMsg = document.getElementById('tool-alert-msg') as HTMLSpanElement;
+  const processingHud = document.getElementById('processing-hud') as HTMLDivElement;
+  const hudStatusText = document.getElementById('hud-status-text') as HTMLSpanElement;
+  const shelfContainer = document.getElementById('shelf-cards-container') as HTMLDivElement;
+  const emptyShelf = document.getElementById('shelf-empty-state');
+
+  function showAlert(msg: string, type: 'error' | 'success') {
+    if (!alertBox || !alertIcon || !alertMsg) return;
+    alertBox.classList.remove('hidden', 'bg-rose-950/50', 'text-rose-200', 'border-rose-800', 'bg-emerald-950/50', 'text-emerald-200', 'border-emerald-800');
+    if (type === 'error') {
+      alertBox.classList.add('bg-rose-950/50', 'text-rose-200', 'border-rose-800');
+      alertIcon.innerText = '⚠️';
+    } else {
+      alertBox.classList.add('bg-emerald-950/50', 'text-emerald-200', 'border-emerald-800');
+      alertIcon.innerText = '✓';
+    }
+    alertMsg.innerText = msg;
+  }
+
+  function setProcessing(isProcessing: boolean, label = 'Processing Document...') {
+    if (!processingHud) return;
+    if (isProcessing) {
+      if (hudStatusText) hudStatusText.innerText = label;
+      processingHud.classList.remove('hidden');
+    } else {
+      processingHud.classList.add('hidden');
+    }
+  }
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tool = btn.getAttribute('data-tool');
+      tabButtons.forEach((b) => {
+        b.classList.remove('active', 'bg-amber-400', 'text-slate-950', 'ring-2', 'ring-amber-300/40');
+        b.classList.add('bg-white/[0.05]', 'text-slate-300', 'border', 'border-white/10');
+      });
+      btn.classList.remove('bg-white/[0.05]', 'text-slate-300', 'border', 'border-white/10');
+      btn.classList.add('active', 'bg-amber-400', 'text-slate-950', 'ring-2', 'ring-amber-300/40');
+
+      panels.forEach((p) => p.classList.add('hidden'));
+      const activePanel = document.getElementById(`panel-${tool}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+      if (alertBox) alertBox.classList.add('hidden');
+    });
+  });
+
+  // Helper: Trigger File Download
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Helper: Add Card to Shelf
+  function addProcessedToShelf(filename: string, docId: string, ttlText: string) {
+    if (emptyShelf) emptyShelf.remove();
+    const card = document.createElement('div');
+    card.className = 'p-4 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-400/30 transition-all animate-fade-in';
+    card.innerHTML = `
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-amber-400/10 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
+          📄
+        </div>
+        <div class="min-w-0">
+          <span class="text-xs font-bold text-white block truncate">${escapeHtml(filename)}</span>
+          <div class="flex items-center gap-2 text-[10px] text-slate-400">
+            <span>Freshly Processed</span>
+            <span>•</span>
+            <span class="text-amber-300 font-medium">⏳ ${escapeHtml(ttlText)}</span>
+          </div>
+        </div>
+      </div>
+      <a
+        href="/api/pdf/download?id=${encodeURIComponent(docId)}"
+        download="${escapeHtml(filename)}"
+        class="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold transition-all shrink-0 text-center flex items-center justify-center gap-1.5"
+      >
+        <span>Download</span>
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+      </a>
+    `;
+    shelfContainer?.prepend(card);
+  }
+
+  function escapeHtml(str: string) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // 1. MERGE LOGIC
+  const mergeInput = document.getElementById('merge-files-input') as HTMLInputElement;
+  const mergeList = document.getElementById('merge-file-list') as HTMLDivElement;
+  const mergeContainer = document.getElementById('merge-items-container') as HTMLDivElement;
+  const mergeForm = document.getElementById('merge-form') as HTMLFormElement;
+  const mergeBtn = document.getElementById('merge-submit-btn') as HTMLButtonElement;
+
+  mergeInput?.addEventListener('change', () => {
+    if (!mergeInput.files || mergeInput.files.length === 0) {
+      mergeList.classList.add('hidden');
+      return;
+    }
+    mergeContainer.innerHTML = '';
+    Array.from(mergeInput.files).forEach((f, idx) => {
+      const item = document.createElement('div');
+      item.className = 'flex items-center justify-between p-2 rounded-xl bg-white/[0.04] text-xs';
+      item.innerHTML = `
+        <span class="text-slate-200 truncate max-w-xs font-medium">#${idx + 1} ${escapeHtml(f.name)}</span>
+        <span class="text-slate-400 font-mono text-[10px]">${(f.size / 1024).toFixed(0)} KB</span>
+      `;
+      mergeContainer.appendChild(item);
+    });
+    mergeList.classList.remove('hidden');
+  });
+
+  mergeForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!mergeInput.files || mergeInput.files.length < 2) {
+      showAlert('Please select at least 2 PDF documents to merge.', 'error');
+      return;
+    }
+
+    setProcessing(true, 'Merging PDF Documents...');
+    mergeBtn.disabled = true;
+
+    try {
+      const fd = new FormData();
+      fd.append('tool', 'merge');
+      Array.from(mergeInput.files).forEach((f) => fd.append('files', f));
+
+      const res = await fetch('/api/pdf/process', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to merge documents.');
+      }
+
+      const filename = res.headers.get('X-Original-Filename') || 'Merged_StudyPack.pdf';
+      const docId = res.headers.get('X-Document-Id') || '';
+      const ttl = res.headers.get('X-Storage-TTL') || 'Active';
+      const blob = await res.blob();
+
+      downloadBlob(blob, filename);
+      showAlert(`✓ Successfully stitched ${mergeInput.files.length} PDFs into "${filename}"! Download started automatically.`, 'success');
+      addProcessedToShelf(filename, docId, ttl);
+      mergeForm.reset();
+      mergeList.classList.add('hidden');
+    } catch (err: any) {
+      showAlert(err.message || 'Error occurred while merging PDFs.', 'error');
+    } finally {
+      setProcessing(false);
+      mergeBtn.disabled = false;
+    }
+  });
+
+  // 2. SPLIT LOGIC
+  const splitInput = document.getElementById('split-file-input') as HTMLInputElement;
+  const splitName = document.getElementById('split-selected-filename') as HTMLElement;
+  const splitForm = document.getElementById('split-form') as HTMLFormElement;
+  const splitBtn = document.getElementById('split-submit-btn') as HTMLButtonElement;
+  const splitStart = document.getElementById('split-start-page') as HTMLInputElement;
+  const splitEnd = document.getElementById('split-end-page') as HTMLInputElement;
+
+  splitInput?.addEventListener('change', () => {
+    if (splitInput.files && splitInput.files[0]) {
+      splitName.innerText = `Selected: ${splitInput.files[0].name} (${(splitInput.files[0].size / 1024).toFixed(0)} KB)`;
+      splitName.classList.add('text-amber-300');
+    }
+  });
+
+  splitForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!splitInput.files || !splitInput.files[0]) {
+      showAlert('Please select a PDF document to split.', 'error');
+      return;
+    }
+
+    const s = parseInt(splitStart.value, 10);
+    const end = parseInt(splitEnd.value, 10);
+    if (isNaN(s) || isNaN(end) || s < 1 || end < s) {
+      showAlert('Please enter a valid page range (End page must be greater than or equal to Start page).', 'error');
+      return;
+    }
+
+    setProcessing(true, `Extracting Pages ${s} to ${end}...`);
+    splitBtn.disabled = true;
+
+    try {
+      const fd = new FormData();
+      fd.append('tool', 'split');
+      fd.append('file', splitInput.files[0]);
+      fd.append('startPage', String(s));
+      fd.append('endPage', String(end));
+
+      const res = await fetch('/api/pdf/process', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to split document.');
+      }
+
+      const filename = res.headers.get('X-Original-Filename') || 'Extracted_Pages.pdf';
+      const docId = res.headers.get('X-Document-Id') || '';
+      const ttl = res.headers.get('X-Storage-TTL') || 'Active';
+      const blob = await res.blob();
+
+      downloadBlob(blob, filename);
+      showAlert(`✓ Extracted pages ${s}-${end} into "${filename}"! Download started.`, 'success');
+      addProcessedToShelf(filename, docId, ttl);
+    } catch (err: any) {
+      showAlert(err.message || 'Error occurred while splitting PDF.', 'error');
+    } finally {
+      setProcessing(false);
+      splitBtn.disabled = false;
+    }
+  });
+
+  // 3. IMAGES TO PDF LOGIC
+  const imagesInput = document.getElementById('images-input') as HTMLInputElement;
+  const imagesGrid = document.getElementById('images-preview-grid') as HTMLDivElement;
+  const imagesForm = document.getElementById('images-form') as HTMLFormElement;
+  const imagesBtn = document.getElementById('images-submit-btn') as HTMLButtonElement;
+
+  imagesInput?.addEventListener('change', () => {
+    if (!imagesInput.files || imagesInput.files.length === 0) {
+      imagesGrid.classList.add('hidden');
+      return;
+    }
+    imagesGrid.innerHTML = '';
+    Array.from(imagesInput.files).forEach((f) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'relative aspect-square rounded-xl overflow-hidden border border-white/20 bg-black/40';
+        thumb.innerHTML = `
+          <img src="${e.target?.result}" alt="Preview" class="w-full h-full object-cover" />
+          <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] text-white font-mono">${(f.size / 1024).toFixed(0)}KB</span>
+        `;
+        imagesGrid.appendChild(thumb);
+      };
+      reader.readAsDataURL(f);
+    });
+    imagesGrid.classList.remove('hidden');
+  });
+
+  imagesForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!imagesInput.files || imagesInput.files.length === 0) {
+      showAlert('Please select at least one image photo to convert.', 'error');
+      return;
+    }
+
+    setProcessing(true, `Converting ${imagesInput.files.length} Images to PDF...`);
+    imagesBtn.disabled = true;
+
+    try {
+      const fd = new FormData();
+      fd.append('tool', 'image-to-pdf');
+      Array.from(imagesInput.files).forEach((f) => fd.append('files', f));
+
+      const res = await fetch('/api/pdf/process', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to convert images.');
+      }
+
+      const filename = res.headers.get('X-Original-Filename') || 'Converted_Notes.pdf';
+      const docId = res.headers.get('X-Document-Id') || '';
+      const ttl = res.headers.get('X-Storage-TTL') || 'Active';
+      const blob = await res.blob();
+
+      downloadBlob(blob, filename);
+      showAlert(`✓ Converted ${imagesInput.files.length} images into "${filename}"! Download started.`, 'success');
+      addProcessedToShelf(filename, docId, ttl);
+      imagesForm.reset();
+      imagesGrid.classList.add('hidden');
+    } catch (err: any) {
+      showAlert(err.message || 'Error occurred while converting images.', 'error');
+    } finally {
+      setProcessing(false);
+      imagesBtn.disabled = false;
+    }
+  });
+
+  // 4. COMPRESS LOGIC
+  const compressInput = document.getElementById('compress-file-input') as HTMLInputElement;
+  const compressName = document.getElementById('compress-selected-filename') as HTMLElement;
+  const compressForm = document.getElementById('compress-form') as HTMLFormElement;
+  const compressBtn = document.getElementById('compress-submit-btn') as HTMLButtonElement;
+
+  compressInput?.addEventListener('change', () => {
+    if (compressInput.files && compressInput.files[0]) {
+      compressName.innerText = `Selected: ${compressInput.files[0].name} (${(compressInput.files[0].size / 1024).toFixed(0)} KB)`;
+      compressName.classList.add('text-purple-300');
+    }
+  });
+
+  compressForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!compressInput.files || !compressInput.files[0]) {
+      showAlert('Please select a PDF document to compress.', 'error');
+      return;
+    }
+
+    setProcessing(true, 'Optimizing and Deflating PDF Streams...');
+    compressBtn.disabled = true;
+
+    try {
+      const fd = new FormData();
+      fd.append('tool', 'compress');
+      fd.append('file', compressInput.files[0]);
+
+      const res = await fetch('/api/pdf/process', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to compress document.');
+      }
+
+      const filename = res.headers.get('X-Original-Filename') || 'Compressed_Document.pdf';
+      const docId = res.headers.get('X-Document-Id') || '';
+      const ttl = res.headers.get('X-Storage-TTL') || 'Active';
+      const blob = await res.blob();
+
+      downloadBlob(blob, filename);
+      showAlert(`✓ Compressed "${filename}"! Download started automatically.`, 'success');
+      addProcessedToShelf(filename, docId, ttl);
+    } catch (err: any) {
+      showAlert(err.message || 'Error occurred while compressing PDF.', 'error');
+    } finally {
+      setProcessing(false);
+      compressBtn.disabled = false;
+    }
+  });
+</script>

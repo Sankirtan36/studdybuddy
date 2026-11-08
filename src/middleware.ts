@@ -65,12 +65,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  // Redirect legacy /database and /pdf-tools to dedicated Admin routes
+  // Redirect legacy /database to dedicated Admin route
   if (pathname === '/database') {
     return context.redirect('/admin/database');
-  }
-  if (pathname === '/pdf-tools') {
-    return context.redirect('/admin/pdf-tools');
   }
 
   // Protect Admin Area on the server (Requires login and admin/owner role)

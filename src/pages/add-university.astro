@@ -34,7 +34,7 @@ const initialName = Astro.url.searchParams.get('name') || '';
         <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           Campus Addition Request Received
         </h1>
-        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+        <p id="success-display-message" class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
           Thank you for expanding the StuddyBuddy academic repository. Your submission has been securely routed to the moderation queue.
         </p>
       </div>
@@ -375,6 +375,9 @@ const initialName = Astro.url.searchParams.get('name') || '';
         submitBtn.innerHTML = '<span>🚀 Submit Request for Admin Approval</span>';
       } else {
         // Success!
+        if (successMsg) {
+          successMsg.innerText = `Thank you for requesting "${payload.name}". Your submission has been securely routed to the administrator moderation queue.`;
+        }
         formBox.classList.add('hidden');
         successBox.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
