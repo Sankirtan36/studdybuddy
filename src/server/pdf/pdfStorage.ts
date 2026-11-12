@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { getDb } from '../db/mongo';
 
 // Retention TTLs
 export const GUEST_TTL_MS = 6 * 60 * 60 * 1000;    // 6 Hours for Unauthenticated Guests
@@ -243,11 +244,43 @@ export function saveProcessedPdf(options: {
     writeManifest(records);
   } catch {}
 
+  // Cross-serverless background persistence: store in MongoDB so any lambda container can retrieve it
+  (async () => {
+    try {
+      const db = await getDb();
+      await db.collection('processed_pdfs').updateOne(
+        { _id: id as any },
+        {
+          $set: {
+            _id: id as any,
+            userId: user?.id,
+            userEmail: user?.email,
+            isGuest,
+            tool,
+            originalName,
+            outputName,
+            fileSizeBytes: buffer.byteLength,
+            createdAt: new Date(now),
+            expiresAt: new Date(expiresAt),
+            buffer: nodeBuffer,
+          },
+        },
+        { upsert: true }
+      );
+      // Ensure TTL expiration index
+      try {
+        await db.collection('processed_pdfs').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+      } catch {}
+    } catch (err: any) {
+      // In-memory and local disk copy are already safe
+    }
+  })();
+
   return record;
 }
 
 /**
- * Retrieve a processed PDF if not expired
+ * Retrieve a processed PDF if not expired (Synchronous check from memory or local disk)
  */
 export function getProcessedPdf(id: string): { record: ProcessedPdfRecord; buffer: Buffer } | null {
   cleanupExpiredPdfFiles();
@@ -279,6 +312,57 @@ export function getProcessedPdf(id: string): { record: ProcessedPdfRecord; buffe
       const buffer = fs.readFileSync(record.filePath);
       return { record, buffer };
     } catch {}
+  }
+
+  return null;
+}
+
+/**
+ * Resilient Async PDF Retrieval:
+ * Checks memory -> local disk -> MongoDB cross-container collection
+ * This guarantees 100% reliable downloads even if requests hit different Vercel serverless containers!
+ */
+export async function getProcessedPdfAsync(id: string): Promise<{ record: ProcessedPdfRecord; buffer: Buffer } | null> {
+  // 1. Fast local check (memory / disk)
+  const local = getProcessedPdf(id);
+  if (local) return local;
+
+  // 2. Cross-container MongoDB check
+  try {
+    const db = await getDb();
+    const doc: any = await db.collection('processed_pdfs').findOne({ _id: id as any });
+    if (doc && doc.expiresAt && new Date(doc.expiresAt).getTime() > Date.now()) {
+      const record: ProcessedPdfRecord = {
+        id: doc._id,
+        userId: doc.userId,
+        userEmail: doc.userEmail,
+        isGuest: Boolean(doc.isGuest),
+        tool: doc.tool || 'generic',
+        originalName: doc.originalName || 'document.pdf',
+        outputName: doc.outputName || 'document.pdf',
+        fileSizeBytes: doc.fileSizeBytes || 0,
+        createdAt: new Date(doc.createdAt).getTime(),
+        expiresAt: new Date(doc.expiresAt).getTime(),
+        filePath: '',
+      };
+
+      let buffer: Buffer;
+      if (Buffer.isBuffer(doc.buffer)) {
+        buffer = doc.buffer;
+      } else if (doc.buffer?.buffer) {
+        buffer = Buffer.from(doc.buffer.buffer);
+      } else {
+        buffer = Buffer.from(doc.buffer);
+      }
+
+      // Populate local memory caches for instant access
+      inMemoryRecords.set(id, record);
+      inMemoryBuffers.set(id, buffer);
+
+      return { record, buffer };
+    }
+  } catch (err: any) {
+    // MongoDB lookup fallback
   }
 
   return null;

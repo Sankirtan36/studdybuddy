@@ -6,20 +6,53 @@ import path from 'node:path';
 import { awardReputation, REPUTATION_REWARDS } from '../reputation/reputationService';
 import { createNotification } from '../notifications/notificationService';
 
-const DATA_DIR = path.resolve(process.cwd(), '.data');
-const REQUESTS_FILE = path.join(DATA_DIR, 'requests.json');
+import os from 'node:os';
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function getDataDir(): string {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    (typeof process.cwd === 'function' && process.cwd().startsWith('/var/task'))
+  );
+
+  if (isServerless) {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
+  }
+
+  const p1 = path.resolve(process.cwd(), '.data');
+  if (fs.existsSync(p1)) return p1;
+  const p2 = path.resolve(process.cwd(), 'studdybuddy', '.data');
+  if (fs.existsSync(p2)) return p2;
+
+  try {
+    if (!fs.existsSync(p1)) fs.mkdirSync(p1, { recursive: true });
+    return p1;
+  } catch {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
   }
 }
 
-export function readLocalRequests(): ResourceRequest[] {
-  ensureDataDir();
-  if (!fs.existsSync(REQUESTS_FILE)) return [];
+function ensureDataDir(): string {
+  const dir = getDataDir();
   try {
-    const raw = fs.readFileSync(REQUESTS_FILE, 'utf8');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch {}
+  return dir;
+}
+
+export function readLocalRequests(): ResourceRequest[] {
+  const file = path.join(ensureDataDir(), 'requests.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
     return JSON.parse(raw);
   } catch {
     return [];
@@ -27,8 +60,12 @@ export function readLocalRequests(): ResourceRequest[] {
 }
 
 export function writeLocalRequests(requests: ResourceRequest[]) {
-  ensureDataDir();
-  fs.writeFileSync(REQUESTS_FILE, JSON.stringify(requests, null, 2), 'utf8');
+  try {
+    const file = path.join(ensureDataDir(), 'requests.json');
+    fs.writeFileSync(file, JSON.stringify(requests, null, 2), 'utf8');
+  } catch (err: any) {
+    console.warn('[RequestRepo] Could not write requests to disk:', err?.message);
+  }
 }
 
 export async function createResourceRequest(

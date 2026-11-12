@@ -6,44 +6,84 @@ import path from 'node:path';
 import { awardReputation, REPUTATION_REWARDS } from '../reputation/reputationService';
 import { createNotification } from '../notifications/notificationService';
 
-const DATA_DIR = path.resolve(process.cwd(), '.data');
-const DOUBTS_FILE = path.join(DATA_DIR, 'doubts.json');
-const ANSWERS_FILE = path.join(DATA_DIR, 'doubt_answers.json');
+import os from 'node:os';
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function getDataDir(): string {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    (typeof process.cwd === 'function' && process.cwd().startsWith('/var/task'))
+  );
+
+  if (isServerless) {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
+  }
+
+  const p1 = path.resolve(process.cwd(), '.data');
+  if (fs.existsSync(p1)) return p1;
+  const p2 = path.resolve(process.cwd(), 'studdybuddy', '.data');
+  if (fs.existsSync(p2)) return p2;
+
+  try {
+    if (!fs.existsSync(p1)) fs.mkdirSync(p1, { recursive: true });
+    return p1;
+  } catch {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
   }
 }
 
-function readLocalDoubts(): AcademicDoubt[] {
-  ensureDataDir();
-  if (!fs.existsSync(DOUBTS_FILE)) return [];
+function ensureDataDir(): string {
+  const dir = getDataDir();
   try {
-    return JSON.parse(fs.readFileSync(DOUBTS_FILE, 'utf8'));
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch {}
+  return dir;
+}
+
+function readLocalDoubts(): AcademicDoubt[] {
+  const file = path.join(ensureDataDir(), 'doubts.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
     return [];
   }
 }
 
 function writeLocalDoubts(items: AcademicDoubt[]) {
-  ensureDataDir();
-  fs.writeFileSync(DOUBTS_FILE, JSON.stringify(items, null, 2), 'utf8');
+  try {
+    const file = path.join(ensureDataDir(), 'doubts.json');
+    fs.writeFileSync(file, JSON.stringify(items, null, 2), 'utf8');
+  } catch (err: any) {
+    console.warn('[DoubtRepo] Could not write doubts to disk:', err?.message);
+  }
 }
 
 function readLocalAnswers(): DoubtAnswer[] {
-  ensureDataDir();
-  if (!fs.existsSync(ANSWERS_FILE)) return [];
+  const file = path.join(ensureDataDir(), 'doubt_answers.json');
+  if (!fs.existsSync(file)) return [];
   try {
-    return JSON.parse(fs.readFileSync(ANSWERS_FILE, 'utf8'));
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
     return [];
   }
 }
 
 function writeLocalAnswers(items: DoubtAnswer[]) {
-  ensureDataDir();
-  fs.writeFileSync(ANSWERS_FILE, JSON.stringify(items, null, 2), 'utf8');
+  try {
+    const file = path.join(ensureDataDir(), 'doubt_answers.json');
+    fs.writeFileSync(file, JSON.stringify(items, null, 2), 'utf8');
+  } catch (err: any) {
+    console.warn('[DoubtRepo] Could not write answers to disk:', err?.message);
+  }
 }
 
 export async function createAcademicDoubt(

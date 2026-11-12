@@ -563,14 +563,15 @@ function getHoursRemaining(expiresAt: number): number {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setTimeout(() => URL.revokeObjectURL(url), 60000); // keep URL active for shelf
   }
 
-  // Helper: Add Card to Shelf
-  function addProcessedToShelf(filename: string, docId: string, ttlText: string) {
+  // Helper: Add Card to Shelf with direct ObjectURL for guaranteed 0-latency instant downloads
+  function addProcessedToShelf(filename: string, docId: string, ttlText: string, objectUrl?: string) {
     if (emptyShelf) emptyShelf.remove();
+    const downloadHref = objectUrl || `/api/pdf/download?id=${encodeURIComponent(docId)}`;
     const card = document.createElement('div');
-    card.className = 'p-4 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-400/30 transition-all animate-fade-in';
+    card.className = 'p-4 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-400/30 transition-all animate-fade-in shadow-sm';
     card.innerHTML = `
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-9 h-9 rounded-xl bg-amber-400/10 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
@@ -579,18 +580,18 @@ function getHoursRemaining(expiresAt: number): number {
         <div class="min-w-0">
           <span class="text-xs font-bold text-white block truncate">${escapeHtml(filename)}</span>
           <div class="flex items-center gap-2 text-[10px] text-slate-400">
-            <span>Freshly Processed</span>
+            <span class="text-emerald-400 font-semibold">Ready to save</span>
             <span>•</span>
             <span class="text-amber-300 font-medium">⏳ ${escapeHtml(ttlText)}</span>
           </div>
         </div>
       </div>
       <a
-        href="/api/pdf/download?id=${encodeURIComponent(docId)}"
+        href="${downloadHref}"
         download="${escapeHtml(filename)}"
-        class="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold transition-all shrink-0 text-center flex items-center justify-center gap-1.5"
+        class="shelf-dl-btn px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold transition-all shrink-0 text-center flex items-center justify-center gap-1.5 shadow-md shadow-amber-400/20 active:scale-95 cursor-pointer"
       >
-        <span>Download</span>
+        <span>Download Now</span>
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
@@ -598,6 +599,42 @@ function getHoursRemaining(expiresAt: number): number {
     `;
     shelfContainer?.prepend(card);
   }
+
+  // Setup Drag and Drop listeners on all tool dropzones
+  function setupDropzone(dropzoneId: string, inputId: string, onChange?: () => void) {
+    const dropzone = document.getElementById(dropzoneId);
+    const input = document.getElementById(inputId) as HTMLInputElement;
+    if (!dropzone || !input) return;
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('border-amber-400', 'bg-white/[0.08]', 'scale-[1.01]');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('border-amber-400', 'bg-white/[0.08]', 'scale-[1.01]');
+      });
+    });
+
+    dropzone.addEventListener('drop', (e: any) => {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        input.files = e.dataTransfer.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        if (onChange) onChange();
+      }
+    });
+  }
+
+  setupDropzone('merge-dropzone', 'merge-files-input');
+  setupDropzone('split-dropzone', 'split-file-input');
+  setupDropzone('images-dropzone', 'images-input');
+  setupDropzone('compress-dropzone', 'compress-file-input');
 
   function escapeHtml(str: string) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -653,10 +690,11 @@ function getHoursRemaining(expiresAt: number): number {
       const docId = res.headers.get('X-Document-Id') || '';
       const ttl = res.headers.get('X-Storage-TTL') || 'Active';
       const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
 
       downloadBlob(blob, filename);
       showAlert(`✓ Successfully stitched ${mergeInput.files.length} PDFs into "${filename}"! Download started automatically.`, 'success');
-      addProcessedToShelf(filename, docId, ttl);
+      addProcessedToShelf(filename, docId, ttl, objectUrl);
       mergeForm.reset();
       mergeList.classList.add('hidden');
     } catch (err: any) {
@@ -716,10 +754,11 @@ function getHoursRemaining(expiresAt: number): number {
       const docId = res.headers.get('X-Document-Id') || '';
       const ttl = res.headers.get('X-Storage-TTL') || 'Active';
       const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
 
       downloadBlob(blob, filename);
       showAlert(`✓ Extracted pages ${s}-${end} into "${filename}"! Download started.`, 'success');
-      addProcessedToShelf(filename, docId, ttl);
+      addProcessedToShelf(filename, docId, ttl, objectUrl);
     } catch (err: any) {
       showAlert(err.message || 'Error occurred while splitting PDF.', 'error');
     } finally {
@@ -781,10 +820,11 @@ function getHoursRemaining(expiresAt: number): number {
       const docId = res.headers.get('X-Document-Id') || '';
       const ttl = res.headers.get('X-Storage-TTL') || 'Active';
       const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
 
       downloadBlob(blob, filename);
       showAlert(`✓ Converted ${imagesInput.files.length} images into "${filename}"! Download started.`, 'success');
-      addProcessedToShelf(filename, docId, ttl);
+      addProcessedToShelf(filename, docId, ttl, objectUrl);
       imagesForm.reset();
       imagesGrid.classList.add('hidden');
     } catch (err: any) {
@@ -833,10 +873,11 @@ function getHoursRemaining(expiresAt: number): number {
       const docId = res.headers.get('X-Document-Id') || '';
       const ttl = res.headers.get('X-Storage-TTL') || 'Active';
       const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
 
       downloadBlob(blob, filename);
       showAlert(`✓ Compressed "${filename}"! Download started automatically.`, 'success');
-      addProcessedToShelf(filename, docId, ttl);
+      addProcessedToShelf(filename, docId, ttl, objectUrl);
     } catch (err: any) {
       showAlert(err.message || 'Error occurred while compressing PDF.', 'error');
     } finally {

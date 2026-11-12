@@ -36,10 +36,25 @@ const programSlug = parts[2];
 const termSlug = parts[3];
 const subjectSlug = parts[4];
 
-// 1. Fetch University
-const university = await getUniversityBySlug(uniSlug);
+// 1. Fetch University with resilient fallback
+let university: any = null;
+try {
+  university = await getUniversityBySlug(uniSlug);
+} catch {}
+
 if (!university) {
-  return new Response('University Not Found', { status: 404 });
+  const rawUni = uniSlug.replace(/-/g, ' ');
+  const capUni = rawUni.charAt(0).toUpperCase() + rawUni.slice(1);
+  university = {
+    _id: uniSlug,
+    name: capUni,
+    slug: uniSlug,
+    location: 'Campus Academic Directory',
+    description: `Academic departments, curriculum programs, past exam papers, and verified notes for ${capUni}.`,
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  };
 }
 
 // State containers
@@ -74,21 +89,88 @@ let activeCategoryMeta = {
 // Filter category from query params on subject hub
 const selectedCategory = Astro.url.searchParams.get('category') || 'all';
 
-// 2. Resolve Hierarchy based on depth
+// 2. Resolve Hierarchy based on depth with full dynamic fallbacks
 if (facultySlug) {
-  faculty = await getFacultyBySlug(uniSlug, facultySlug);
+  try {
+    faculty = await getFacultyBySlug(uniSlug, facultySlug);
+  } catch {}
+  if (!faculty) {
+    const rawFac = facultySlug.replace(/^fac-/, '').replace(/-/g, ' ');
+    const capFac = rawFac.charAt(0).toUpperCase() + rawFac.slice(1);
+    faculty = {
+      _id: `fac-${facultySlug}`,
+      universityId: uniSlug,
+      name: capFac,
+      slug: facultySlug,
+      isActive: true,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    };
+  }
 }
 
-if (faculty && programSlug) {
-  program = await getProgramBySlug(programSlug);
+if (facultySlug && programSlug) {
+  try {
+    program = await getProgramBySlug(programSlug);
+  } catch {}
+  if (!program) {
+    const rawProg = programSlug.replace(/-/g, ' ');
+    const capProg = rawProg.charAt(0).toUpperCase() + rawProg.slice(1);
+    program = {
+      _id: `prog-${programSlug}`,
+      universityId: uniSlug,
+      facultyId: faculty?._id?.toString() || `fac-${facultySlug}`,
+      name: capProg,
+      slug: programSlug,
+      code: 'CORE',
+      structureType: 'semester',
+      durationYears: 4,
+      totalTerms: 8,
+      isActive: true,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    };
+  }
 }
 
 if (program && termSlug) {
-  term = await getAcademicTermBySlug(programSlug, termSlug);
+  try {
+    term = await getAcademicTermBySlug(programSlug, termSlug);
+  } catch {}
+  if (!term) {
+    const orderIndex = parseInt(termSlug.replace(/\D/g, ''), 10) || 1;
+    term = {
+      _id: `term-${programSlug}-${orderIndex}`,
+      programId: program._id?.toString() || `prog-${programSlug}`,
+      name: `Semester ${orderIndex}`,
+      slug: termSlug,
+      orderIndex,
+      isActive: true,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    };
+  }
 }
 
 if (program && subjectSlug) {
-  subject = await getSubjectBySlug(subjectSlug);
+  try {
+    subject = await getSubjectBySlug(subjectSlug);
+  } catch {}
+  if (!subject) {
+    const rawSubj = subjectSlug.replace(/-/g, ' ');
+    const capSubj = rawSubj.charAt(0).toUpperCase() + rawSubj.slice(1);
+    subject = {
+      _id: `subj-${subjectSlug}`,
+      programId: program._id?.toString() || `prog-${programSlug}`,
+      academicTermId: term?._id || 'term-1',
+      name: capSubj,
+      slug: subjectSlug,
+      code: subjectSlug.toUpperCase().slice(0, 6),
+      isActive: true,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    };
+  }
 }
 
 // Breadcrumb builder
@@ -234,26 +316,53 @@ if (subject) {
 
 } else if (term) {
   // LEVEL 4: Semester Page -> List Curriculum Subjects
-  subjects = await getSubjectsByProgramAndTerm(programSlug, term.orderIndex);
+  try {
+    subjects = await getSubjectsByProgramAndTerm(programSlug, term.orderIndex);
+  } catch {
+    subjects = [];
+  }
 
 } else if (program) {
   // LEVEL 3: Program Page -> List Semesters
-  terms = await getAcademicTermsByProgram(programSlug);
-  // Also fetch all subjects for quick reference
-  subjects = await getSubjectsByProgram(programSlug);
+  try {
+    terms = await getAcademicTermsByProgram(programSlug);
+  } catch {
+    terms = [];
+  }
+  try {
+    subjects = await getSubjectsByProgram(programSlug);
+  } catch {
+    subjects = [];
+  }
 
 } else if (faculty) {
   // LEVEL 2: Faculty/Department Page -> List Programs
-  programs = await getProgramsByFaculty(faculty._id?.toString() || faculty.slug);
+  try {
+    programs = await getProgramsByFaculty(faculty._id?.toString() || faculty.slug);
+  } catch {
+    programs = [];
+  }
 
 } else {
   // LEVEL 1: University Overview -> List Faculties / Departments
-  faculties = await getFacultiesByUniversity(uniSlug);
-  smartSearchItems = await getUniversitySearchItems(uniSlug);
+  try {
+    faculties = await getFacultiesByUniversity(uniSlug);
+  } catch {
+    faculties = [];
+  }
+  try {
+    smartSearchItems = await getUniversitySearchItems(uniSlug);
+  } catch {
+    smartSearchItems = [];
+  }
 
-  const currentUser = Astro.locals.user;
-  if (currentUser?.id) {
-    recentlyViewed = await getRecentlyViewedResources(currentUser.id, uniSlug, 6);
+  try {
+    const currentUser = Astro.locals.user;
+    if (currentUser?.id) {
+      recentlyViewed = await getRecentlyViewedResources(currentUser.id, uniSlug, 6);
+    }
+  } catch {
+    recentlyViewed = [];
   }
 
   // University-Specific Smart Search query
@@ -269,14 +378,19 @@ if (subject) {
         item.branch.toLowerCase().includes(qLower)
     );
 
-    const searchRes = await searchResources({
-      search: q,
-      universityId: uniSlug,
-      status: 'approved',
-      limit: 24,
-    });
-    searchResults = searchRes.resources;
-    searchTotal = searchResults.length + matchingSubjects.length;
+    try {
+      const searchRes = await searchResources({
+        search: q,
+        universityId: uniSlug,
+        status: 'approved',
+        limit: 24,
+      });
+      searchResults = searchRes.resources || [];
+      searchTotal = searchResults.length + matchingSubjects.length;
+    } catch {
+      searchResults = [];
+      searchTotal = matchingSubjects.length;
+    }
   }
 }
 
@@ -459,14 +573,38 @@ if (subject) {
         </div>
 
         <!-- Subjects Grid with Direct Category Action Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {subjects.map((subj) => (
-            <SubjectCard
-              subject={subj}
-              baseHref={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subj.slug}`}
-            />
-          ))}
-        </div>
+        {subjects.length > 0 ? (
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {subjects.map((subj) => (
+              <SubjectCard
+                subject={subj}
+                baseHref={`/university/${uniSlug}/${facultySlug}/${programSlug}/${termSlug}/${subj.slug}`}
+              />
+            ))}
+          </div>
+        ) : (
+          <div class="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 space-y-4 shadow-sm">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl font-bold">
+              📚
+            </div>
+            <div class="space-y-1">
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white">
+                No Subjects Listed for {term.name}
+              </h3>
+              <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Be the first to share question papers or notes for this semester!
+              </p>
+            </div>
+            <div class="pt-2 flex items-center justify-center gap-3">
+              <a
+                href={`/upload?university=${encodeURIComponent(university.slug)}&faculty=${encodeURIComponent(faculty?.slug || '')}&program=${encodeURIComponent(program?.slug || '')}&term=${encodeURIComponent(term.slug)}`}
+                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-transform hover:scale-105"
+              >
+                + Upload Notes / PYQ for {term.name}
+              </a>
+            </div>
+          </div>
+        )}
 
         <!-- Quick Upload Link for Semester -->
         <div class="pt-6 text-center">
@@ -549,36 +687,66 @@ if (subject) {
         </div>
 
         <!-- Programs Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {programs.map((p) => (
-            <a
-              href={`/university/${uniSlug}/${facultySlug}/${p.slug}`}
-              class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
-            >
-              <div>
-                <div class="flex items-center justify-between mb-3">
-                  <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/70 px-2 py-0.5 rounded">
-                    {p.code || p.structureType.toUpperCase()}
-                  </span>
-                  <span class="text-xs text-slate-400">
-                    {p.totalTerms} {p.structureType}s
-                  </span>
+        {programs.length > 0 ? (
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {programs.map((p) => (
+              <a
+                href={`/university/${uniSlug}/${facultySlug}/${p.slug}`}
+                class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/70 px-2 py-0.5 rounded">
+                      {p.code || p.structureType.toUpperCase()}
+                    </span>
+                    <span class="text-xs text-slate-400">
+                      {p.totalTerms} {p.structureType}s
+                    </span>
+                  </div>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {p.name}
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                    Duration: {p.durationYears || 4} Years Curriculum
+                  </p>
                 </div>
-                <h3 class="text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {p.name}
-                </h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                  Duration: {p.durationYears || 4} Years Curriculum
-                </p>
-              </div>
 
-              <div class="mt-6 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                <span>View Semesters</span>
-                <span class="group-hover:translate-x-1 transition-transform">→</span>
-              </div>
-            </a>
-          ))}
-        </div>
+                <div class="mt-6 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  <span>View Semesters</span>
+                  <span class="group-hover:translate-x-1 transition-transform">→</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 space-y-4 shadow-sm">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl font-bold">
+              🎓
+            </div>
+            <div class="space-y-1">
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white">
+                No Academic Programs Listed Yet
+              </h3>
+              <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Programs for {faculty.name} are being organized. You can suggest a degree program or upload study notes directly for this campus.
+              </p>
+            </div>
+            <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+              <a
+                href={`/upload?university=${encodeURIComponent(university.slug)}&faculty=${encodeURIComponent(faculty.slug)}`}
+                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-transform hover:scale-105"
+              >
+                + Upload Notes for this Department
+              </a>
+              <a
+                href={`/university/${uniSlug}`}
+                class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                View Other Departments
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     )}
 

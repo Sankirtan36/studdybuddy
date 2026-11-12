@@ -5,20 +5,53 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 
-const DATA_DIR = path.resolve(process.cwd(), '.data');
-const ANNOUNCEMENTS_FILE = path.join(DATA_DIR, 'announcements.json');
+import os from 'node:os';
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function getDataDir(): string {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    (typeof process.cwd === 'function' && process.cwd().startsWith('/var/task'))
+  );
+
+  if (isServerless) {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
+  }
+
+  const p1 = path.resolve(process.cwd(), '.data');
+  if (fs.existsSync(p1)) return p1;
+  const p2 = path.resolve(process.cwd(), 'studdybuddy', '.data');
+  if (fs.existsSync(p2)) return p2;
+
+  try {
+    if (!fs.existsSync(p1)) fs.mkdirSync(p1, { recursive: true });
+    return p1;
+  } catch {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
   }
 }
 
-export function readLocalAnnouncements(): Announcement[] {
-  ensureDataDir();
-  if (!fs.existsSync(ANNOUNCEMENTS_FILE)) return [];
+function ensureDataDir(): string {
+  const dir = getDataDir();
   try {
-    const raw = fs.readFileSync(ANNOUNCEMENTS_FILE, 'utf8');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch {}
+  return dir;
+}
+
+export function readLocalAnnouncements(): Announcement[] {
+  const file = path.join(ensureDataDir(), 'announcements.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
     const parsed = JSON.parse(raw);
     return parsed.map((item: any) => ({
       ...item,
@@ -32,8 +65,12 @@ export function readLocalAnnouncements(): Announcement[] {
 }
 
 export function writeLocalAnnouncements(announcements: Announcement[]) {
-  ensureDataDir();
-  fs.writeFileSync(ANNOUNCEMENTS_FILE, JSON.stringify(announcements, null, 2), 'utf8');
+  try {
+    const file = path.join(ensureDataDir(), 'announcements.json');
+    fs.writeFileSync(file, JSON.stringify(announcements, null, 2), 'utf8');
+  } catch (err: any) {
+    console.warn('[AnnouncementRepo] Could not write announcements to disk:', err?.message);
+  }
 }
 
 /**
@@ -42,7 +79,8 @@ export function writeLocalAnnouncements(announcements: Announcement[]) {
  */
 export async function getPublishedAnnouncements(limitCount = 20): Promise<Announcement[]> {
   // 1. Fast path: If local file exists, use it as primary ground truth (<0.1ms)
-  if (fs.existsSync(ANNOUNCEMENTS_FILE)) {
+  const announcementsFile = path.join(ensureDataDir(), 'announcements.json');
+  if (fs.existsSync(announcementsFile)) {
     const local = readLocalAnnouncements().filter((a) => a.status === 'published');
     return local
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -79,7 +117,8 @@ export async function getPublishedAnnouncements(limitCount = 20): Promise<Announ
  */
 export async function getAllAnnouncements(limitCount = 50): Promise<Announcement[]> {
   // 1. Fast path: If local file exists, use it (<0.1ms)
-  if (fs.existsSync(ANNOUNCEMENTS_FILE)) {
+  const announcementsFile = path.join(ensureDataDir(), 'announcements.json');
+  if (fs.existsSync(announcementsFile)) {
     const local = readLocalAnnouncements();
     return local
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

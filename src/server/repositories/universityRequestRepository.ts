@@ -38,10 +38,6 @@ function getDataDir(): string {
   }
 }
 
-const REQUESTS_FILE = path.join(getDataDir(), 'university-requests.json');
-const UNIVERSITIES_FILE = path.join(getDataDir(), 'universities.json');
-const FACULTIES_FILE = path.join(getDataDir(), 'faculties.json');
-
 // In-memory cache for fast lookup
 const memoryRequests = new Map<string, UniversityRequest>();
 const memoryUniversities = new Map<string, University>();
@@ -52,6 +48,39 @@ function ensureDir() {
   try {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   } catch {}
+}
+
+/**
+ * Safely reads a json data file from writable storage or bundled static seed fallback
+ */
+function readSeedOrDiskFile(filename: string): string | null {
+  ensureDir();
+  const primary = path.join(getDataDir(), filename);
+  if (fs.existsSync(primary)) {
+    try {
+      return fs.readFileSync(primary, 'utf8');
+    } catch {}
+  }
+
+  // Check bundled static data locations (included in server build)
+  const candidates = [
+    path.resolve(process.cwd(), '.data', filename),
+    path.resolve(process.cwd(), 'studdybuddy', '.data', filename),
+  ];
+
+  for (const cand of candidates) {
+    if (fs.existsSync(cand)) {
+      try {
+        const content = fs.readFileSync(cand, 'utf8');
+        try {
+          fs.writeFileSync(primary, content, 'utf8');
+        } catch {}
+        return content;
+      } catch {}
+    }
+  }
+
+  return null;
 }
 
 export function slugify(text: string): string {
@@ -76,12 +105,10 @@ export function normalizeNameForComparison(name: string): string {
 }
 
 export function readLocalRequests(): UniversityRequest[] {
-  ensureDir();
-  const file = path.join(getDataDir(), 'university-requests.json');
   let disk: UniversityRequest[] = [];
   try {
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, 'utf8');
+    const raw = readSeedOrDiskFile('university-requests.json');
+    if (raw) {
       disk = JSON.parse(raw);
     }
   } catch {}
@@ -114,12 +141,10 @@ function writeLocalRequests(items: UniversityRequest[]) {
 }
 
 export function readLocalCustomUniversities(): University[] {
-  ensureDir();
-  const file = path.join(getDataDir(), 'universities.json');
   let disk: University[] = [];
   try {
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, 'utf8');
+    const raw = readSeedOrDiskFile('universities.json');
+    if (raw) {
       disk = JSON.parse(raw);
     }
   } catch {}
@@ -151,12 +176,10 @@ export function writeLocalCustomUniversities(items: University[]) {
 }
 
 export function readLocalCustomFaculties(): Faculty[] {
-  ensureDir();
-  const file = path.join(getDataDir(), 'faculties.json');
   let disk: Faculty[] = [];
   try {
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, 'utf8');
+    const raw = readSeedOrDiskFile('faculties.json');
+    if (raw) {
       disk = JSON.parse(raw);
     }
   } catch {}

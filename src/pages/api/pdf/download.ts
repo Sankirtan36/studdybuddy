@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getProcessedPdf } from '../../../server/pdf/pdfStorage';
+import { getProcessedPdfAsync } from '../../../server/pdf/pdfStorage';
 
 export const GET: APIRoute = async ({ url }) => {
   const id = url.searchParams.get('id');
@@ -11,7 +11,7 @@ export const GET: APIRoute = async ({ url }) => {
     });
   }
 
-  const result = getProcessedPdf(id);
+  const result = await getProcessedPdfAsync(id);
 
   if (!result) {
     return new Response(

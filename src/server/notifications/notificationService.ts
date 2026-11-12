@@ -4,20 +4,53 @@ import { ObjectId } from 'mongodb';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const DATA_DIR = path.resolve(process.cwd(), '.data');
-const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
+import os from 'node:os';
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function getDataDir(): string {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    (typeof process.cwd === 'function' && process.cwd().startsWith('/var/task'))
+  );
+
+  if (isServerless) {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
+  }
+
+  const p1 = path.resolve(process.cwd(), '.data');
+  if (fs.existsSync(p1)) return p1;
+  const p2 = path.resolve(process.cwd(), 'studdybuddy', '.data');
+  if (fs.existsSync(p2)) return p2;
+
+  try {
+    if (!fs.existsSync(p1)) fs.mkdirSync(p1, { recursive: true });
+    return p1;
+  } catch {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
   }
 }
 
-function readLocalNotifications(): Notification[] {
-  ensureDataDir();
-  if (!fs.existsSync(NOTIFICATIONS_FILE)) return [];
+function ensureDataDir(): string {
+  const dir = getDataDir();
   try {
-    const raw = fs.readFileSync(NOTIFICATIONS_FILE, 'utf8');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch {}
+  return dir;
+}
+
+function readLocalNotifications(): Notification[] {
+  const file = path.join(ensureDataDir(), 'notifications.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
     return JSON.parse(raw);
   } catch {
     return [];
@@ -25,8 +58,12 @@ function readLocalNotifications(): Notification[] {
 }
 
 function writeLocalNotifications(items: Notification[]) {
-  ensureDataDir();
-  fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(items, null, 2), 'utf8');
+  try {
+    const file = path.join(ensureDataDir(), 'notifications.json');
+    fs.writeFileSync(file, JSON.stringify(items, null, 2), 'utf8');
+  } catch (err: any) {
+    console.warn('[NotificationService] Could not write notifications to disk:', err?.message);
+  }
 }
 
 /**

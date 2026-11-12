@@ -3,11 +3,20 @@ import dns from 'node:dns';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Configure reliable DNS servers to resolve MongoDB Atlas SRV records
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch {
-  // Fallback gracefully if not permitted in environment
+// Configure reliable DNS servers to resolve MongoDB Atlas SRV records in local environments only
+// (Never override DNS in serverless/AWS Lambda/Vercel where custom external DNS can hang/fail)
+const isServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  (typeof process.cwd === 'function' && process.cwd().startsWith('/var/task'))
+);
+
+if (!isServerless) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch {
+    // Fallback gracefully if not permitted in environment
+  }
 }
 
 // Ensure .env is read even if the dev server was started before .env was created
@@ -93,12 +102,13 @@ export async function getDb(): Promise<Db> {
   }
 
   try {
-    // Configure lean, fast timeouts (1.5s max selection, 2s max connect)
+    // Configure lean, resilient timeouts for serverless and container runtimes
     const newClient = new MongoClient(uri, {
-      maxPoolSize: 10,
-      minPoolSize: 1,
-      serverSelectionTimeoutMS: 1500,
-      connectTimeoutMS: 2000,
+      maxPoolSize: isServerless ? 5 : 10,
+      minPoolSize: 0,
+      serverSelectionTimeoutMS: 2000,
+      connectTimeoutMS: 2500,
+      socketTimeoutMS: 5000,
       tlsAllowInvalidCertificates: true,
     } as any);
 

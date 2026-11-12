@@ -6,21 +6,62 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { deleteObjectFromStorage } from '../storage/storage';
 
-const DATA_DIR = path.resolve(process.cwd(), '.data');
-const RESOURCES_FILE = path.join(DATA_DIR, 'resources.json');
-const RECENT_VIEWS_FILE = path.join(DATA_DIR, 'recent-views.json');
+import os from 'node:os';
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function getDataDir(): string {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    (typeof process.cwd === 'function' && process.cwd().startsWith('/var/task'))
+  );
+
+  if (isServerless) {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
+  }
+
+  const p1 = path.resolve(process.cwd(), '.data');
+  if (fs.existsSync(p1)) return p1;
+  const p2 = path.resolve(process.cwd(), 'studdybuddy', '.data');
+  if (fs.existsSync(p2)) return p2;
+
+  try {
+    if (!fs.existsSync(p1)) fs.mkdirSync(p1, { recursive: true });
+    return p1;
+  } catch {
+    const tmp = path.join(os.tmpdir(), 'studdybuddy-data');
+    try {
+      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
+    } catch {}
+    return tmp;
   }
 }
 
-export function readLocalResources(): Resource[] {
-  ensureDataDir();
-  if (!fs.existsSync(RESOURCES_FILE)) return [];
+function ensureDataDir(): string {
+  const dir = getDataDir();
   try {
-    const raw = fs.readFileSync(RESOURCES_FILE, 'utf8');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch {}
+  return dir;
+}
+
+export function readLocalResources(): Resource[] {
+  const file = path.join(ensureDataDir(), 'resources.json');
+  if (!fs.existsSync(file)) {
+    // Check bundled seed
+    const bundled = path.resolve(process.cwd(), '.data', 'resources.json');
+    if (fs.existsSync(bundled)) {
+      try { return JSON.parse(fs.readFileSync(bundled, 'utf8')); } catch {}
+    }
+    return [];
+  }
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
     return JSON.parse(raw);
   } catch {
     return [];
@@ -28,15 +69,19 @@ export function readLocalResources(): Resource[] {
 }
 
 export function writeLocalResources(resources: Resource[]) {
-  ensureDataDir();
-  fs.writeFileSync(RESOURCES_FILE, JSON.stringify(resources, null, 2), 'utf8');
+  try {
+    const file = path.join(ensureDataDir(), 'resources.json');
+    fs.writeFileSync(file, JSON.stringify(resources, null, 2), 'utf8');
+  } catch (err: any) {
+    console.warn('[ResourceRepo] Could not write resources to disk:', err?.message);
+  }
 }
 
 export function readLocalRecentViews(): RecentlyViewedResource[] {
-  ensureDataDir();
-  if (!fs.existsSync(RECENT_VIEWS_FILE)) return [];
+  const file = path.join(ensureDataDir(), 'recent-views.json');
+  if (!fs.existsSync(file)) return [];
   try {
-    const raw = fs.readFileSync(RECENT_VIEWS_FILE, 'utf8');
+    const raw = fs.readFileSync(file, 'utf8');
     const parsed = JSON.parse(raw);
     return parsed.map((item: any) => ({
       ...item,
@@ -48,8 +93,12 @@ export function readLocalRecentViews(): RecentlyViewedResource[] {
 }
 
 export function writeLocalRecentViews(views: RecentlyViewedResource[]) {
-  ensureDataDir();
-  fs.writeFileSync(RECENT_VIEWS_FILE, JSON.stringify(views, null, 2), 'utf8');
+  try {
+    const file = path.join(ensureDataDir(), 'recent-views.json');
+    fs.writeFileSync(file, JSON.stringify(views, null, 2), 'utf8');
+  } catch (err: any) {
+    console.warn('[ResourceRepo] Could not write recent views to disk:', err?.message);
+  }
 }
 
 export interface ResourceFilterOptions {
