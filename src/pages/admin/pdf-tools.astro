@@ -32,24 +32,24 @@ function getHoursRemaining(expiresAt: number): number {
   <div class="space-y-8">
     
     <!-- Top Action Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#E9E5DC] dark:border-[#343A48] gap-3">
       <div>
         <div class="flex items-center gap-2 mb-1">
-          <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-          <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#4F46E5] dark:bg-[#A5A0FF] animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-[#4F46E5] dark:text-[#A5A0FF]">
             Administrative PDF Workbench
           </span>
         </div>
-        <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+        <h1 class="text-2xl font-black text-[#373B46] dark:text-[#E5E7EB] tracking-tight flex items-center gap-2.5">
           <span>🛠️ Executive PDF Manipulation Suite</span>
         </h1>
-        <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+        <p class="text-xs text-[#656873] dark:text-[#A1A1AA] mt-1 max-w-2xl">
           High-performance PDF utilities hosted directly inside the Admin Control Center. Merge scattered lecture notes into unified semester packs, extract exam question units, compress large submissions, and convert handwritten note photos to PDF.
         </p>
       </div>
 
       <div class="flex items-center gap-2 text-xs">
-        <span class="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-bold">
+        <span class="px-3 py-1.5 rounded-xl bg-[#F0EEE7] dark:bg-[#2D3342] border border-[#E9E5DC] dark:border-[#343A48] text-[#4F46E5] dark:text-[#A5A0FF] font-bold">
           48-Hour Admin Retention
         </span>
       </div>
@@ -58,17 +58,17 @@ function getHoursRemaining(expiresAt: number): number {
     <!-- Active Processed Files List for Admin -->
     <div id="user-files-section" class="space-y-3">
       <div class="flex items-center justify-between">
-        <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h2 class="text-sm font-bold text-[#373B46] dark:text-[#E5E7EB] flex items-center gap-2">
           <span>📁 Your Recently Processed Files ({userFiles.length})</span>
         </h2>
-        <span class="text-[11px] text-slate-400">Persisted for 48 hours</span>
+        <span class="text-[11px] text-[#656873] dark:text-[#A1A1AA]">Persisted for 48 hours</span>
       </div>
 
-      <div id="user-files-container" class="rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+      <div id="user-files-container" class="rounded-2xl border border-[#E9E5DC] dark:border-[#343A48] overflow-hidden bg-[#FCFBF8] dark:bg-[#242936] shadow-sm">
         {userFiles.length > 0 ? (
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <thead class="bg-[#F7F5EF] dark:bg-[#1C202B] text-[#656873] dark:text-[#A1A1AA] font-semibold uppercase tracking-wider border-b border-[#E9E5DC] dark:border-[#343A48]">
                 <tr>
                   <th class="p-3.5">Document Name</th>
                   <th class="p-3.5">Operation</th>
@@ -77,21 +77,21 @@ function getHoursRemaining(expiresAt: number): number {
                   <th class="p-3.5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody id="user-files-tbody" class="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody id="user-files-tbody" class="divide-y divide-[#E9E5DC]/60 dark:divide-[#343A48]/60">
                 {userFiles.map((file) => (
-                  <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr class="hover:bg-[#F0EEE7]/50 dark:hover:bg-[#2D3342]/40 transition-colors">
                     <td class="p-3.5">
-                      <span class="font-bold text-slate-900 dark:text-white block">{file.outputName}</span>
-                      <span class="text-[10px] text-slate-400">Original: {file.originalName}</span>
+                      <span class="font-bold text-[#373B46] dark:text-[#E5E7EB] block">{file.outputName}</span>
+                      <span class="text-[10px] text-[#656873] dark:text-[#A1A1AA]">Original: {file.originalName}</span>
                     </td>
-                    <td class="p-3.5 font-medium uppercase text-[10px] text-slate-600 dark:text-slate-400">
-                      <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold">{file.tool}</span>
+                    <td class="p-3.5 font-medium uppercase text-[10px] text-[#656873] dark:text-[#A1A1AA]">
+                      <span class="px-2 py-0.5 rounded bg-[#F0EEE7] dark:bg-[#2D3342] text-[#4F46E5] dark:text-[#A5A0FF] font-bold">{file.tool}</span>
                     </td>
-                    <td class="p-3.5 text-slate-500">
+                    <td class="p-3.5 text-[#656873] dark:text-[#A1A1AA]">
                       {formatBytes(file.fileSizeBytes)}
                     </td>
                     <td class="p-3.5">
-                      <span class="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                      <span class="inline-flex items-center gap-1 font-semibold text-[#4F46E5] dark:text-[#A5A0FF]">
                         ⏱️ ~{getHoursRemaining(file.expiresAt)}h left
                       </span>
                     </td>
@@ -99,7 +99,7 @@ function getHoursRemaining(expiresAt: number): number {
                       <a
                         href={`/api/pdf/download?id=${file.id}`}
                         download={file.outputName}
-                        class="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white font-bold text-xs transition-colors"
+                        class="px-3 py-1.5 rounded-lg bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] hover:bg-[#4F46E5] hover:text-white dark:hover:bg-[#A5A0FF] dark:hover:text-[#171923] font-bold text-xs transition-colors"
                       >
                         Download
                       </a>
@@ -110,7 +110,7 @@ function getHoursRemaining(expiresAt: number): number {
             </table>
           </div>
         ) : (
-          <div id="no-files-placeholder" class="p-6 text-center text-xs text-slate-500">
+          <div id="no-files-placeholder" class="p-6 text-center text-xs text-[#656873] dark:text-[#A1A1AA]">
             No processed documents yet. Use any tool below and results will be saved here!
           </div>
         )}
@@ -124,17 +124,17 @@ function getHoursRemaining(expiresAt: number): number {
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       
       <!-- TOOL 1: Merge Multiple PDFs -->
-      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
+      <div class="p-6 rounded-3xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] shadow-sm space-y-4 relative flex flex-col justify-between">
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+            <div class="w-10 h-10 rounded-xl bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] flex items-center justify-center font-bold text-sm">
               M
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Max 3 MB / file</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F0EEE7] dark:bg-[#2D3342] text-[#656873] dark:text-[#A1A1AA]">Max 3 MB / file</span>
           </div>
           <div>
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Merge Multiple PDFs</h2>
-            <p class="text-xs text-slate-500 mt-1">Combine multiple semester question papers or lecture slides into a single PDF.</p>
+            <h2 class="text-lg font-bold text-[#373B46] dark:text-[#E5E7EB]">Merge Multiple PDFs</h2>
+            <p class="text-xs text-[#656873] dark:text-[#A1A1AA] mt-1">Combine multiple semester question papers or lecture slides into a single PDF.</p>
           </div>
         </div>
 
@@ -152,16 +152,16 @@ function getHoursRemaining(expiresAt: number): number {
           <div class="space-y-2">
             <div
               id="merge-dropzone"
-              class="border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-indigo-50/40 dark:bg-indigo-950/20"
+              class="border-2 border-dashed border-[#E9E5DC] dark:border-[#343A48] hover:border-[#4F46E5] dark:hover:border-[#A5A0FF] rounded-2xl p-4 text-center cursor-pointer transition-colors bg-[#F7F5EF]/60 dark:bg-[#171923]/60"
             >
               <div class="space-y-1">
-                <svg class="w-7 h-7 mx-auto text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-7 h-7 mx-auto text-[#4F46E5] dark:text-[#A5A0FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <p class="font-bold text-xs text-indigo-700 dark:text-indigo-300">
+                <p class="font-bold text-xs text-[#4F46E5] dark:text-[#A5A0FF]">
                   Click to Add PDF Files
                 </p>
-                <p class="text-[10px] text-slate-500 dark:text-slate-400">
+                <p class="text-[10px] text-[#656873] dark:text-[#A1A1AA]">
                   Select multiple PDF files together or add them sequentially (minimum 2 PDFs)
                 </p>
               </div>
@@ -178,13 +178,13 @@ function getHoursRemaining(expiresAt: number): number {
             <div id="merge-file-list" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
 
             <div class="flex items-center justify-between text-[11px] pt-1">
-              <span id="merge-count-hint" class="font-medium text-slate-500">
+              <span id="merge-count-hint" class="font-medium text-[#656873] dark:text-[#A1A1AA]">
                 0 PDFs selected
               </span>
               <button
                 id="merge-add-more-btn"
                 type="button"
-                class="text-indigo-600 dark:text-indigo-400 hover:underline font-bold hidden"
+                class="text-[#4F46E5] dark:text-[#A5A0FF] hover:underline font-bold hidden"
               >
                 + Add Another PDF
               </button>
@@ -195,7 +195,7 @@ function getHoursRemaining(expiresAt: number): number {
             id="merge-submit-btn"
             type="submit"
             disabled
-            class="submit-btn w-full py-2.5 bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+            class="submit-btn w-full py-2.5 bg-[#4F46E5] hover:bg-[#4338ca] dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white dark:text-[#171923] font-semibold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
           >
             <span>Merge & Download PDF</span>
           </button>
@@ -203,17 +203,17 @@ function getHoursRemaining(expiresAt: number): number {
       </div>
 
       <!-- TOOL 2: Split PDF by Pages -->
-      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
+      <div class="p-6 rounded-3xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] shadow-sm space-y-4 relative flex flex-col justify-between">
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm">
+            <div class="w-10 h-10 rounded-xl bg-[#2563EB]/10 dark:bg-[#60A5FA]/15 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center font-bold text-sm">
               S
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Max 3 MB</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F0EEE7] dark:bg-[#2D3342] text-[#656873] dark:text-[#A1A1AA]">Max 3 MB</span>
           </div>
           <div>
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Split PDF by Pages</h2>
-            <p class="text-xs text-slate-500 mt-1">Extract specific unit pages or exam questions from large textbooks.</p>
+            <h2 class="text-lg font-bold text-[#373B46] dark:text-[#E5E7EB]">Split PDF by Pages</h2>
+            <p class="text-xs text-[#656873] dark:text-[#A1A1AA] mt-1">Extract specific unit pages or exam questions from large textbooks.</p>
           </div>
         </div>
 
@@ -228,21 +228,21 @@ function getHoursRemaining(expiresAt: number): number {
           <input type="hidden" name="tool" value="split" />
           
           <div>
-            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select PDF file:</label>
+            <label class="block font-semibold text-[#373B46] dark:text-[#E5E7EB] mb-1">Select PDF file:</label>
             <input
               id="split-file-input"
               type="file"
               name="file"
               required
               accept="application/pdf"
-              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 dark:file:bg-sky-950 file:text-sky-700 dark:file:text-sky-300 cursor-pointer"
+              class="w-full text-xs text-[#656873] dark:text-[#A1A1AA] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#F0EEE7] dark:file:bg-[#2D3342] file:text-[#4F46E5] dark:file:text-[#A5A0FF] cursor-pointer"
             />
-            <p id="split-file-name" class="text-[10px] text-slate-400 mt-1 hidden"></p>
+            <p id="split-file-name" class="text-[10px] text-[#656873] dark:text-[#A1A1AA] mt-1 hidden"></p>
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block font-medium text-slate-600 dark:text-slate-400 text-[10px] mb-1">Start Page</label>
+              <label class="block font-medium text-[#656873] dark:text-[#A1A1AA] text-[10px] mb-1">Start Page</label>
               <input
                 id="split-start-page"
                 type="number"
@@ -250,11 +250,11 @@ function getHoursRemaining(expiresAt: number): number {
                 value="1"
                 min="1"
                 required
-                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                class="w-full px-2.5 py-1.5 rounded-lg border border-[#E9E5DC] dark:border-[#343A48] bg-[#F7F5EF] dark:bg-[#171923] text-[#373B46] dark:text-[#E5E7EB]"
               />
             </div>
             <div>
-              <label class="block font-medium text-slate-600 dark:text-slate-400 text-[10px] mb-1">End Page</label>
+              <label class="block font-medium text-[#656873] dark:text-[#A1A1AA] text-[10px] mb-1">End Page</label>
               <input
                 id="split-end-page"
                 type="number"
@@ -262,7 +262,7 @@ function getHoursRemaining(expiresAt: number): number {
                 value="5"
                 min="1"
                 required
-                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                class="w-full px-2.5 py-1.5 rounded-lg border border-[#E9E5DC] dark:border-[#343A48] bg-[#F7F5EF] dark:bg-[#171923] text-[#373B46] dark:text-[#E5E7EB]"
               />
             </div>
           </div>
@@ -270,7 +270,7 @@ function getHoursRemaining(expiresAt: number): number {
           <button
             id="split-submit-btn"
             type="submit"
-            class="submit-btn w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
+            class="submit-btn w-full py-2.5 bg-[#4F46E5] hover:bg-[#4338ca] dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] text-white dark:text-[#171923] font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>Extract & Download</span>
           </button>
@@ -278,17 +278,17 @@ function getHoursRemaining(expiresAt: number): number {
       </div>
 
       <!-- TOOL 3: Images to PDF -->
-      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
+      <div class="p-6 rounded-3xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] shadow-sm space-y-4 relative flex flex-col justify-between">
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+            <div class="w-10 h-10 rounded-xl bg-[#2563EB]/10 dark:bg-[#60A5FA]/15 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center font-bold text-sm">
               IMG
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Max 3 MB / image</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F0EEE7] dark:bg-[#2D3342] text-[#656873] dark:text-[#A1A1AA]">Max 3 MB / image</span>
           </div>
           <div>
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Convert Images to PDF</h2>
-            <p class="text-xs text-slate-500 mt-1">Convert photos of handwritten notes or diagrams into a single clean PDF.</p>
+            <h2 class="text-lg font-bold text-[#373B46] dark:text-[#E5E7EB]">Convert Images to PDF</h2>
+            <p class="text-xs text-[#656873] dark:text-[#A1A1AA] mt-1">Convert photos of handwritten notes or diagrams into a single clean PDF.</p>
           </div>
         </div>
 
@@ -306,16 +306,16 @@ function getHoursRemaining(expiresAt: number): number {
           <div class="space-y-2">
             <div
               id="images-dropzone"
-              class="border-2 border-dashed border-emerald-200 dark:border-emerald-800/80 hover:border-emerald-500 dark:hover:border-emerald-400 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-emerald-50/40 dark:bg-emerald-950/20"
+              class="border-2 border-dashed border-[#E9E5DC] dark:border-[#343A48] hover:border-[#4F46E5] dark:hover:border-[#A5A0FF] rounded-2xl p-4 text-center cursor-pointer transition-colors bg-[#F7F5EF]/60 dark:bg-[#171923]/60"
             >
               <div class="space-y-1">
-                <svg class="w-7 h-7 mx-auto text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-7 h-7 mx-auto text-[#4F46E5] dark:text-[#A5A0FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <p class="font-bold text-xs text-emerald-700 dark:text-emerald-300">
+                <p class="font-bold text-xs text-[#4F46E5] dark:text-[#A5A0FF]">
                   Click to Add Image Scans
                 </p>
-                <p class="text-[10px] text-slate-500 dark:text-slate-400">
+                <p class="text-[10px] text-[#656873] dark:text-[#A1A1AA]">
                   Select JPEG/PNG/WebP photos in order of pages (up to 20 images)
                 </p>
               </div>
@@ -332,13 +332,13 @@ function getHoursRemaining(expiresAt: number): number {
             <div id="images-file-list" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
 
             <div class="flex items-center justify-between text-[11px] pt-1">
-              <span id="images-count-hint" class="font-medium text-slate-500">
+              <span id="images-count-hint" class="font-medium text-[#656873] dark:text-[#A1A1AA]">
                 0 images selected
               </span>
               <button
                 id="images-add-more-btn"
                 type="button"
-                class="text-emerald-600 dark:text-emerald-400 hover:underline font-bold hidden"
+                class="text-[#4F46E5] dark:text-[#A5A0FF] hover:underline font-bold hidden"
               >
                 + Add More Images
               </button>
@@ -349,7 +349,7 @@ function getHoursRemaining(expiresAt: number): number {
             id="images-submit-btn"
             type="submit"
             disabled
-            class="submit-btn w-full py-2.5 bg-emerald-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+            class="submit-btn w-full py-2.5 bg-[#4F46E5] hover:bg-[#4338ca] dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white dark:text-[#171923] font-semibold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
           >
             <span>Convert & Download PDF</span>
           </button>
@@ -357,17 +357,17 @@ function getHoursRemaining(expiresAt: number): number {
       </div>
 
       <!-- TOOL 4: Compress PDF -->
-      <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 relative flex flex-col justify-between">
+      <div class="p-6 rounded-3xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] shadow-sm space-y-4 relative flex flex-col justify-between">
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm">
+            <div class="w-10 h-10 rounded-xl bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] flex items-center justify-center font-bold text-sm">
               C
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">Max 3 MB</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F0EEE7] dark:bg-[#2D3342] text-[#656873] dark:text-[#A1A1AA]">Max 3 MB</span>
           </div>
           <div>
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Compress PDF File Size</h2>
-            <p class="text-xs text-slate-500 mt-1">Shrink heavy PDF files while retaining readability to conserve storage quota.</p>
+            <h2 class="text-lg font-bold text-[#373B46] dark:text-[#E5E7EB]">Compress PDF File Size</h2>
+            <p class="text-xs text-[#656873] dark:text-[#A1A1AA] mt-1">Shrink heavy PDF files while retaining readability to conserve storage quota.</p>
           </div>
         </div>
 
@@ -382,23 +382,23 @@ function getHoursRemaining(expiresAt: number): number {
           <input type="hidden" name="tool" value="compress" />
           
           <div>
-            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Select PDF file:</label>
+            <label class="block font-semibold text-[#373B46] dark:text-[#E5E7EB] mb-1">Select PDF file:</label>
             <input
               id="compress-file-input"
               type="file"
               name="file"
               required
               accept="application/pdf"
-              class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 dark:file:bg-amber-950 file:text-amber-700 dark:file:text-amber-300 cursor-pointer"
+              class="w-full text-xs text-[#656873] dark:text-[#A1A1AA] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#F0EEE7] dark:file:bg-[#2D3342] file:text-[#4F46E5] dark:file:text-[#A5A0FF] cursor-pointer"
             />
-            <p id="compress-file-name" class="text-[10px] text-slate-400 mt-1 hidden"></p>
+            <p id="compress-file-name" class="text-[10px] text-[#656873] dark:text-[#A1A1AA] mt-1 hidden"></p>
           </div>
 
           <div>
-            <label class="block font-medium text-slate-600 dark:text-slate-400 text-[10px] mb-1">Compression Level</label>
+            <label class="block font-medium text-[#656873] dark:text-[#A1A1AA] text-[10px] mb-1">Compression Level</label>
             <select
               name="level"
-              class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+              class="w-full px-2.5 py-1.5 rounded-lg border border-[#E9E5DC] dark:border-[#343A48] bg-[#F7F5EF] dark:bg-[#171923] text-[#373B46] dark:text-[#E5E7EB] text-xs"
             >
               <option value="recommended">Recommended Compression (Standard balance)</option>
               <option value="extreme">Extreme Compression (Maximum size reduction)</option>
@@ -409,7 +409,7 @@ function getHoursRemaining(expiresAt: number): number {
           <button
             id="compress-submit-btn"
             type="submit"
-            class="submit-btn w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
+            class="submit-btn w-full py-2.5 bg-[#4F46E5] hover:bg-[#4338ca] dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] text-white dark:text-[#171923] font-semibold rounded-xl shadow-sm transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>Compress & Download</span>
           </button>

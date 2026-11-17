@@ -138,22 +138,22 @@ const navLinks = [
     </style>
   </head>
 
-  <body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200">
-    <div id="admin-shell" class="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
+  <body class="min-h-screen flex flex-col bg-[#F7F5EF] dark:bg-[#171923] text-[#373B46] dark:text-[#E5E7EB] antialiased selection:bg-[#4F46E5] dark:selection:bg-[#A5A0FF] selection:text-white transition-colors duration-200">
+    <div id="admin-shell" class="min-h-screen bg-[#F7F5EF] dark:bg-[#171923] flex">
 
       <!-- ======================================================== -->
       <!-- COLLAPSIBLE ADMIN SIDEBAR                                -->
       <!-- ======================================================== -->
       <aside
         id="admin-sidebar"
-        class="fixed top-0 bottom-0 left-0 z-40 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between transition-all duration-300 ease-in-out shadow-sm w-64 group"
+        class="fixed top-0 bottom-0 left-0 z-40 bg-[#FCFBF8] dark:bg-[#1C202B] border-r border-[#E9E5DC] dark:border-[#343A48] flex flex-col justify-between transition-all duration-300 ease-in-out shadow-sm w-64 group"
       >
         <!-- Centered Rectangular Pill-Shaped Toggle Arrow Button (Anchored on middle right edge) -->
         <button
           id="sidebar-toggle-btn"
           type="button"
           aria-label="Toggle sidebar expansion"
-          class="absolute -right-3.5 top-1/2 -translate-y-1/2 w-5 h-14 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 hover:scale-105 transition-all cursor-pointer z-50 focus:outline-none"
+          class="absolute -right-3.5 top-1/2 -translate-y-1/2 w-5 h-14 rounded-xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] shadow-md flex items-center justify-center text-[#656873] hover:text-[#4F46E5] dark:text-[#A1A1AA] dark:hover:text-[#A5A0FF] hover:scale-105 transition-all cursor-pointer z-50 focus:outline-none"
           title="Toggle Sidebar (Expand/Collapse)"
         >
           <svg id="sidebar-toggle-icon" class="w-3.5 h-3.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,23 +166,23 @@ const navLinks = [
           
           <!-- Brand Header -->
           <a href="/admin" target="_self" class="flex items-center gap-3 px-2 py-1 group/brand focus:outline-none">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0 group-hover/brand:scale-105 transition-transform">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#4F46E5] via-[#2563EB] to-[#A78BFA] dark:from-[#A5A0FF] dark:via-[#60A5FA] dark:to-[#A78BFA] flex items-center justify-center text-white dark:text-[#171923] shadow-md shadow-indigo-500/20 shrink-0 group-hover/brand:scale-105 transition-transform">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
             <div class="sidebar-text flex flex-col min-w-0 transition-opacity duration-200">
-              <span class="text-sm font-black tracking-tight bg-gradient-to-r from-indigo-600 to-sky-600 dark:from-indigo-400 dark:to-sky-400 bg-clip-text text-transparent truncate">
+              <span class="text-sm font-black tracking-tight bg-gradient-to-r from-[#4F46E5] to-[#2563EB] dark:from-[#A5A0FF] dark:to-[#60A5FA] bg-clip-text text-transparent truncate">
                 StuddyBuddy
               </span>
-              <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-[#2563EB] dark:text-[#60A5FA]">
                 Admin Control
               </span>
             </div>
           </a>
 
           <!-- Section Label -->
-          <div class="sidebar-text px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-opacity duration-200">
+          <div class="sidebar-text px-2 text-[10px] font-bold uppercase tracking-wider text-[#656873] dark:text-[#A1A1AA] transition-opacity duration-200">
             Executive Suite
           </div>
 
@@ -196,8 +196,8 @@ const navLinks = [
                   target="_self"
                   class={`group/item relative flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
                     isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 font-bold border-l-4 border-indigo-600 dark:border-indigo-400 pl-2 shadow-sm'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-[#F0EEE7] dark:bg-[#2D3342] text-[#4F46E5] dark:text-[#A5A0FF] font-bold border-l-4 border-[#4F46E5] dark:border-[#A5A0FF] pl-2 shadow-sm'
+                      : 'text-[#373B46] dark:text-[#E5E7EB] hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342]'
                   }`}
                 >
                   <div class="flex items-center gap-3 min-w-0">
@@ -225,15 +225,15 @@ const navLinks = [
         </div>
 
         <!-- Sidebar Bottom: Admin Identity & Exit -->
-        <div class="p-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
+        <div class="p-3 border-t border-[#E9E5DC] dark:border-[#343A48] space-y-2">
           <!-- Logged In Identity -->
-          <div class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-            <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase">
+          <div class="flex items-center gap-2.5 p-2 rounded-xl bg-[#F7F5EF] dark:bg-[#242936]">
+            <div class="w-8 h-8 rounded-lg bg-[#4F46E5] dark:bg-[#A5A0FF] text-white dark:text-[#171923] font-bold text-xs flex items-center justify-center shrink-0 uppercase">
               {user.email.charAt(0)}
             </div>
             <div class="sidebar-text flex-1 min-w-0 transition-opacity duration-200">
-              <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">{user.email}</span>
-              <span class="text-[9px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 block">{user.role}</span>
+              <span class="text-xs font-bold text-[#373B46] dark:text-[#E5E7EB] block truncate">{user.email}</span>
+              <span class="text-[9px] font-bold uppercase tracking-wider text-[#4F46E5] dark:text-[#A5A0FF] block">{user.role}</span>
             </div>
           </div>
 
@@ -259,7 +259,7 @@ const navLinks = [
       <div id="admin-main-wrapper" class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out lg:pl-64">
         
         <!-- Top Sticky Action Bar -->
-        <header class="sticky top-0 z-30 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <header class="sticky top-0 z-30 w-full border-b border-[#E9E5DC] dark:border-[#343A48] bg-[#FCFBF8]/95 dark:bg-[#1C202B]/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -268,7 +268,7 @@ const navLinks = [
               </span>
             </div>
             <span class="text-slate-300 dark:text-slate-700">|</span>
-            <h1 class="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+            <h1 class="text-sm sm:text-base font-extrabold text-[#373B46] dark:text-[#E5E7EB] tracking-tight truncate">
               {title}
             </h1>
           </div>
@@ -279,8 +279,8 @@ const navLinks = [
               target="_self"
               class={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-transform hover:scale-105 flex items-center gap-1.5 ${
                 activeNav === 'pdf-tools'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white'
+                  ? 'bg-[#4F46E5] text-white dark:bg-[#A5A0FF] dark:text-[#171923]'
+                  : 'bg-[#4F46E5] hover:bg-[#4338ca] text-white dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] dark:text-[#171923]'
               }`}
             >
               <span>🛠️ PDF Workbench</span>
@@ -290,8 +290,8 @@ const navLinks = [
               target="_self"
               class={`hidden sm:inline-flex px-3 py-1.5 rounded-xl border text-xs font-semibold items-center gap-1.5 transition-colors ${
                 activeNav === 'database'
-                  ? 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800'
-                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  ? 'bg-[#F0EEE7] dark:bg-[#2D3342] text-[#4F46E5] dark:text-[#A5A0FF] border-[#E9E5DC] dark:border-[#343A48]'
+                  : 'border-[#E9E5DC] dark:border-[#343A48] hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342] text-[#373B46] dark:text-[#E5E7EB]'
               }`}
             >
               <span>Database</span>
@@ -301,8 +301,8 @@ const navLinks = [
               target="_self"
               class={`hidden sm:inline-flex px-3 py-1.5 rounded-xl border text-xs font-semibold items-center gap-1.5 transition-colors ${
                 activeNav === 'settings'
-                  ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'
-                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  ? 'bg-[#F0EEE7] dark:bg-[#2D3342] text-[#4F46E5] dark:text-[#A5A0FF] border-[#E9E5DC] dark:border-[#343A48]'
+                  : 'border-[#E9E5DC] dark:border-[#343A48] hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342] text-[#373B46] dark:text-[#E5E7EB]'
               }`}
             >
               <span>⚙️ Settings</span>

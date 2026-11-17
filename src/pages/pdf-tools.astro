@@ -34,34 +34,34 @@ function getHoursRemaining(expiresAt: number): number {
   <Header slot="header" user={user} />
 
   <!-- Atmospheric Cosmic Canvas -->
-  <main class="relative min-h-[calc(100vh-4rem)] bg-[#070b14] text-slate-100 overflow-hidden py-8 sm:py-14 px-4 sm:px-6 lg:px-8 selection:bg-amber-400 selection:text-slate-950">
+  <main class="relative min-h-[calc(100vh-4rem)] bg-[#F7F5EF] dark:bg-[#171923] text-[#373B46] dark:text-[#E5E7EB] overflow-hidden py-8 sm:py-14 px-4 sm:px-6 lg:px-8 selection:bg-[#4F46E5] selection:text-white dark:selection:bg-[#A5A0FF] dark:selection:text-[#171923]">
     
-    <!-- Horizon Radial Sunlight Glow (Inspired by Bright Path Reference) -->
-    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_10%,rgba(251,191,36,0.16),rgba(56,189,248,0.08)_40%,transparent_75%)]"></div>
-    <div class="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 w-[650px] sm:w-[900px] h-[350px] bg-amber-400/5 blur-[120px] rounded-full"></div>
+    <!-- Horizon Radial Glow (Harmonized with Light & Dark Palette) -->
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_10%,rgba(79,70,229,0.08),rgba(37,99,235,0.04)_40%,transparent_75%)] dark:bg-[radial-gradient(ellipse_75%_45%_at_50%_10%,rgba(165,160,255,0.12),rgba(96,165,250,0.06)_40%,transparent_75%)]"></div>
+    <div class="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 w-[650px] sm:w-[900px] h-[350px] bg-[#4F46E5]/5 dark:bg-[#A5A0FF]/10 blur-[120px] rounded-full"></div>
 
     <!-- Fine Reticle Concentric Rings & Crosshair Guides -->
-    <div class="pointer-events-none absolute top-12 left-1/2 -translate-x-1/2 w-[520px] sm:w-[820px] h-[520px] sm:h-[820px] rounded-full border border-sky-400/10 dark:border-white/5"></div>
-    <div class="pointer-events-none absolute top-28 left-1/2 -translate-x-1/2 w-[340px] sm:w-[560px] h-[340px] sm:h-[560px] rounded-full border border-amber-300/10"></div>
-    <div class="pointer-events-none absolute top-44 left-1/2 -translate-x-1/2 w-[180px] sm:w-[320px] h-[180px] sm:h-[320px] rounded-full border border-white/5"></div>
+    <div class="pointer-events-none absolute top-12 left-1/2 -translate-x-1/2 w-[520px] sm:w-[820px] h-[520px] sm:h-[820px] rounded-full border border-[#E9E5DC] dark:border-[#343A48]/60"></div>
+    <div class="pointer-events-none absolute top-28 left-1/2 -translate-x-1/2 w-[340px] sm:w-[560px] h-[340px] sm:h-[560px] rounded-full border border-[#E9E5DC]/80 dark:border-[#343A48]/40"></div>
+    <div class="pointer-events-none absolute top-44 left-1/2 -translate-x-1/2 w-[180px] sm:w-[320px] h-[180px] sm:h-[320px] rounded-full border border-[#E9E5DC]/60 dark:border-[#343A48]/20"></div>
 
     <!-- Four-Corner Diamond Sparkles (✦) -->
-    <div class="pointer-events-none absolute top-6 left-6 text-sky-200/40 select-none animate-pulse">
+    <div class="pointer-events-none absolute top-6 left-6 text-[#4F46E5]/40 dark:text-[#A5A0FF]/40 select-none animate-pulse">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
       </svg>
     </div>
-    <div class="pointer-events-none absolute top-6 right-6 text-sky-200/40 select-none animate-pulse">
+    <div class="pointer-events-none absolute top-6 right-6 text-[#4F46E5]/40 dark:text-[#A5A0FF]/40 select-none animate-pulse">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
       </svg>
     </div>
-    <div class="pointer-events-none absolute bottom-6 left-6 text-sky-200/40 select-none animate-pulse">
+    <div class="pointer-events-none absolute bottom-6 left-6 text-[#4F46E5]/40 dark:text-[#A5A0FF]/40 select-none animate-pulse">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
       </svg>
     </div>
-    <div class="pointer-events-none absolute bottom-6 right-6 text-sky-200/40 select-none animate-pulse">
+    <div class="pointer-events-none absolute bottom-6 right-6 text-[#4F46E5]/40 dark:text-[#A5A0FF]/40 select-none animate-pulse">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
       </svg>
@@ -71,76 +71,76 @@ function getHoursRemaining(expiresAt: number): number {
     <div class="relative z-10 max-w-6xl mx-auto space-y-8 sm:space-y-12">
 
       <!-- Technical HUD Metadata Header -->
-      <div class="flex items-center justify-between text-[10px] tracking-[0.25em] font-mono uppercase text-sky-300/60 pb-3 border-b border-white/10">
+      <div class="flex items-center justify-between text-[10px] tracking-[0.25em] font-mono uppercase text-[#656873] dark:text-[#A1A1AA] pb-3 border-b border-[#E9E5DC] dark:border-[#343A48]">
         <div>
-          <span class="text-slate-500">PROJECT:</span> <span class="text-slate-200 font-bold">STUDDYBUDDY</span>
+          <span class="text-[#656873]/70 dark:text-[#A1A1AA]/60">PROJECT:</span> <span class="text-[#373B46] dark:text-[#E5E7EB] font-bold">STUDDYBUDDY</span>
         </div>
         <div class="hidden sm:block">
-          <span class="text-slate-500">SERVICES:</span> <span class="text-amber-300 font-bold">ACADEMIC PDF SUITE</span>
+          <span class="text-[#656873]/70 dark:text-[#A1A1AA]/60">SERVICES:</span> <span class="text-[#4F46E5] dark:text-[#A5A0FF] font-bold">ACADEMIC PDF SUITE</span>
         </div>
         <div>
-          <span class="text-slate-500">FIELD:</span> <span class="text-sky-300 font-bold">STUDENT WORKBENCH</span>
+          <span class="text-[#656873]/70 dark:text-[#A1A1AA]/60">FIELD:</span> <span class="text-[#2563EB] dark:text-[#60A5FA] font-bold">STUDENT WORKBENCH</span>
         </div>
       </div>
 
       <!-- Hero Header & Center Identity Glow -->
       <div class="text-center space-y-4 pt-4">
         <!-- Floating Horizon Badge -->
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-xl border border-white/15 text-slate-200 text-xs shadow-lg shadow-black/40">
-          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-          <span class="font-bold tracking-wide uppercase text-[11px] text-amber-300">Fast & Zero Watermarks</span>
-          <span class="text-slate-500">•</span>
-          <span class="text-[11px] text-slate-300">Max 3 MB Per File</span>
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] text-[#373B46] dark:text-[#E5E7EB] text-xs shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-[#4F46E5] dark:bg-[#A5A0FF] animate-pulse"></span>
+          <span class="font-bold tracking-wide uppercase text-[11px] text-[#4F46E5] dark:text-[#A5A0FF]">Fast & Zero Watermarks</span>
+          <span class="text-[#656873] dark:text-[#A1A1AA]">•</span>
+          <span class="text-[11px] text-[#656873] dark:text-[#A1A1AA]">Max 3 MB Per File</span>
         </div>
 
         <!-- Majestic Title -->
-        <h1 class="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-tight">
-          Craft <span class="bg-gradient-to-r from-amber-200 via-amber-400 to-sky-300 bg-clip-text text-transparent">Brighter Study Packs</span>
+        <h1 class="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-[#373B46] dark:text-[#E5E7EB] leading-tight">
+          Craft <span class="bg-gradient-to-r from-[#4F46E5] via-[#2563EB] to-[#A78BFA] dark:from-[#A5A0FF] dark:via-[#60A5FA] dark:to-[#A78BFA] bg-clip-text text-transparent">Brighter Study Packs</span>
         </h1>
         
-        <p class="text-xs sm:text-base text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
+        <p class="text-xs sm:text-base text-[#656873] dark:text-[#A1A1AA] max-w-2xl mx-auto font-normal leading-relaxed">
           Merge semester slides, split exam questions, convert handwritten note photos to PDF, and compress bulky documents for easy sharing.
         </p>
 
         <!-- Dynamic Storage Info Pill -->
-        <div class="pt-1 flex items-center justify-center gap-3 text-xs text-slate-400">
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10">
-            <svg class="w-3.5 h-3.5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="pt-1 flex items-center justify-center gap-3 text-xs text-[#656873] dark:text-[#A1A1AA]">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] shadow-sm">
+            <svg class="w-3.5 h-3.5 text-[#2563EB] dark:text-[#60A5FA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             {user ? (
-              <span>Authenticated Storage: <strong class="text-white">48 Hours Retention</strong></span>
+              <span>Authenticated Storage: <strong class="text-[#373B46] dark:text-[#E5E7EB]">48 Hours Retention</strong></span>
             ) : (
-              <span>Guest Sandbox: <strong class="text-amber-300">6 Hours Retention</strong> • <a href="/login" class="underline hover:text-white">Sign In for 48h</a></span>
+              <span>Guest Sandbox: <strong class="text-[#4F46E5] dark:text-[#A5A0FF]">6 Hours Retention</strong> • <a href="/login" class="underline hover:text-[#4F46E5] dark:hover:text-[#A5A0FF]">Sign In for 48h</a></span>
             )}
           </span>
         </div>
       </div>
 
       <!-- Waveform & Processing HUD (Inspired by Soundwave in Reference) -->
-      <div id="processing-hud" class="hidden p-5 rounded-2xl bg-white/[0.05] backdrop-blur-2xl border border-amber-400/30 shadow-xl max-w-xl mx-auto space-y-3 animate-fade-in">
+      <div id="processing-hud" class="hidden p-5 rounded-2xl bg-[#FCFBF8]/95 dark:bg-[#242936]/95 backdrop-blur-2xl border border-[#4F46E5]/30 dark:border-[#A5A0FF]/30 shadow-xl max-w-xl mx-auto space-y-3 animate-fade-in">
         <div class="flex items-center justify-between text-xs">
           <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-            <span id="hud-status-text" class="font-bold text-amber-300 uppercase tracking-wider text-[11px]">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#4F46E5] dark:bg-[#A5A0FF] animate-ping"></span>
+            <span id="hud-status-text" class="font-bold text-[#4F46E5] dark:text-[#A5A0FF] uppercase tracking-wider text-[11px]">
               Processing Document...
             </span>
           </div>
-          <span class="text-slate-400 text-[11px] font-mono" id="hud-time-tag">Synthesizing bytes</span>
+          <span class="text-[#656873] dark:text-[#A1A1AA] text-[11px] font-mono" id="hud-time-tag">Synthesizing bytes</span>
         </div>
 
         <!-- Animated Waveform Bars -->
-        <div class="flex items-center justify-center gap-1.5 h-9 py-1 px-4 rounded-xl bg-black/40 border border-white/10">
-          <span class="w-1 bg-amber-400 rounded-full animate-pulse h-3"></span>
-          <span class="w-1 bg-amber-300 rounded-full animate-pulse h-6 delay-75"></span>
-          <span class="w-1 bg-sky-400 rounded-full animate-pulse h-8 delay-150"></span>
-          <span class="w-1 bg-sky-300 rounded-full animate-pulse h-4 delay-100"></span>
-          <span class="w-1 bg-amber-400 rounded-full animate-pulse h-7 delay-200"></span>
-          <span class="w-1 bg-sky-400 rounded-full animate-pulse h-5 delay-300"></span>
-          <span class="w-1 bg-amber-300 rounded-full animate-pulse h-8 delay-150"></span>
-          <span class="w-1 bg-sky-300 rounded-full animate-pulse h-4 delay-75"></span>
-          <span class="w-1 bg-amber-400 rounded-full animate-pulse h-6 delay-200"></span>
-          <span class="w-1 bg-sky-400 rounded-full animate-pulse h-3 delay-100"></span>
+        <div class="flex items-center justify-center gap-1.5 h-9 py-1 px-4 rounded-xl bg-[#F7F5EF] dark:bg-[#171923] border border-[#E9E5DC] dark:border-[#343A48]">
+          <span class="w-1 bg-[#4F46E5] dark:bg-[#A5A0FF] rounded-full animate-pulse h-3"></span>
+          <span class="w-1 bg-[#2563EB] dark:bg-[#60A5FA] rounded-full animate-pulse h-6 delay-75"></span>
+          <span class="w-1 bg-[#A78BFA] dark:bg-[#A5A0FF] rounded-full animate-pulse h-8 delay-150"></span>
+          <span class="w-1 bg-[#2563EB] dark:bg-[#60A5FA] rounded-full animate-pulse h-4 delay-100"></span>
+          <span class="w-1 bg-[#4F46E5] dark:bg-[#A5A0FF] rounded-full animate-pulse h-7 delay-200"></span>
+          <span class="w-1 bg-[#A78BFA] dark:bg-[#A5A0FF] rounded-full animate-pulse h-5 delay-300"></span>
+          <span class="w-1 bg-[#2563EB] dark:bg-[#60A5FA] rounded-full animate-pulse h-8 delay-150"></span>
+          <span class="w-1 bg-[#4F46E5] dark:bg-[#A5A0FF] rounded-full animate-pulse h-4 delay-75"></span>
+          <span class="w-1 bg-[#A78BFA] dark:bg-[#A5A0FF] rounded-full animate-pulse h-6 delay-200"></span>
+          <span class="w-1 bg-[#2563EB] dark:bg-[#60A5FA] rounded-full animate-pulse h-3 delay-100"></span>
         </div>
       </div>
 
@@ -149,7 +149,7 @@ function getHoursRemaining(expiresAt: number): number {
         <button
           type="button"
           data-tool="merge"
-          class="tool-tab-btn active px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-lg bg-amber-400 text-slate-950 ring-2 ring-amber-300/40"
+          class="tool-tab-btn active px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-md bg-[#4F46E5] text-white dark:bg-[#A5A0FF] dark:text-[#171923] ring-2 ring-[#4F46E5]/30 dark:ring-[#A5A0FF]/40"
         >
           <span>📑</span>
           <span>Merge PDFs</span>
@@ -158,7 +158,7 @@ function getHoursRemaining(expiresAt: number): number {
         <button
           type="button"
           data-tool="split"
-          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/10 backdrop-blur-xl"
+          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-[#FCFBF8] dark:bg-[#242936] hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342] text-[#656873] dark:text-[#A1A1AA] hover:text-[#373B46] dark:hover:text-[#E5E7EB] border border-[#E9E5DC] dark:border-[#343A48]"
         >
           <span>✂️</span>
           <span>Split PDF</span>
@@ -167,7 +167,7 @@ function getHoursRemaining(expiresAt: number): number {
         <button
           type="button"
           data-tool="image-to-pdf"
-          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/10 backdrop-blur-xl"
+          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-[#FCFBF8] dark:bg-[#242936] hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342] text-[#656873] dark:text-[#A1A1AA] hover:text-[#373B46] dark:hover:text-[#E5E7EB] border border-[#E9E5DC] dark:border-[#343A48]"
         >
           <span>🖼️</span>
           <span>Images to PDF</span>
@@ -176,7 +176,7 @@ function getHoursRemaining(expiresAt: number): number {
         <button
           type="button"
           data-tool="compress"
-          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/10 backdrop-blur-xl"
+          class="tool-tab-btn px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer bg-[#FCFBF8] dark:bg-[#242936] hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342] text-[#656873] dark:text-[#A1A1AA] hover:text-[#373B46] dark:hover:text-[#E5E7EB] border border-[#E9E5DC] dark:border-[#343A48]"
         >
           <span>🗜️</span>
           <span>Compress PDF</span>
@@ -185,10 +185,10 @@ function getHoursRemaining(expiresAt: number): number {
 
       <!-- Workbench Interactive Tool Workspace -->
       <div class="max-w-3xl mx-auto">
-        <div class="p-6 sm:p-10 rounded-3xl bg-slate-900/60 backdrop-blur-2xl border border-white/15 shadow-[0_16px_40px_rgba(0,0,0,0.6)] relative overflow-hidden">
+        <div class="p-6 sm:p-10 rounded-3xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] shadow-sm relative overflow-hidden">
           
           <!-- Inner Top Edge Specular Highlight -->
-          <div class="pointer-events-none absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"></div>
+          <div class="pointer-events-none absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#4F46E5]/20 dark:via-[#A5A0FF]/30 to-transparent"></div>
 
           <!-- Alert Container -->
           <div id="tool-alert" class="hidden mb-6 p-4 rounded-2xl text-xs font-semibold flex items-center justify-between border">
@@ -204,10 +204,10 @@ function getHoursRemaining(expiresAt: number): number {
           <!-- ============================================== -->
           <div id="panel-merge" class="tool-panel space-y-6">
             <div class="space-y-1">
-              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <h2 class="text-xl font-bold text-[#373B46] dark:text-[#E5E7EB] flex items-center gap-2">
                 <span>📑 Merge Multiple PDF Documents</span>
               </h2>
-              <p class="text-xs text-slate-400">
+              <p class="text-xs text-[#656873] dark:text-[#A1A1AA]">
                 Select 2 or more PDF notes, chapter slides, or past papers. They will be seamlessly stitched into one unified study document.
               </p>
             </div>
@@ -215,7 +215,7 @@ function getHoursRemaining(expiresAt: number): number {
             <form id="merge-form" class="space-y-5">
               <div
                 id="merge-dropzone"
-                class="relative border-2 border-dashed border-white/20 hover:border-amber-400/60 transition-colors rounded-2xl p-8 text-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]"
+                class="relative border-2 border-dashed border-[#E9E5DC] dark:border-[#343A48] hover:border-[#4F46E5] dark:hover:border-[#A5A0FF] transition-colors rounded-2xl p-8 text-center cursor-pointer bg-[#F7F5EF]/60 dark:bg-[#171923]/60 hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342]"
               >
                 <input
                   type="file"
@@ -226,24 +226,24 @@ function getHoursRemaining(expiresAt: number): number {
                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <div class="space-y-2 pointer-events-none">
-                  <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-400/10 text-amber-300 flex items-center justify-center text-xl">
+                  <div class="w-12 h-12 mx-auto rounded-2xl bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] flex items-center justify-center text-xl">
                     📁
                   </div>
-                  <p class="text-sm font-bold text-white">Click to browse or drop PDF files here</p>
-                  <p class="text-xs text-slate-400">Select 2 to 10 PDF documents (Max 3 MB each)</p>
+                  <p class="text-sm font-bold text-[#373B46] dark:text-[#E5E7EB]">Click to browse or drop PDF files here</p>
+                  <p class="text-xs text-[#656873] dark:text-[#A1A1AA]">Select 2 to 10 PDF documents (Max 3 MB each)</p>
                 </div>
               </div>
 
               <!-- Selected Files List -->
               <div id="merge-file-list" class="hidden space-y-2">
-                <span class="text-xs font-bold text-slate-300 uppercase tracking-wider block">Selected Documents:</span>
+                <span class="text-xs font-bold text-[#373B46] dark:text-[#E5E7EB] uppercase tracking-wider block">Selected Documents:</span>
                 <div id="merge-items-container" class="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar"></div>
               </div>
 
               <button
                 type="submit"
                 id="merge-submit-btn"
-                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-slate-950 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-400/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-white dark:text-[#171923] bg-[#4F46E5] hover:bg-[#4338ca] dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Stitch & Merge PDFs →</span>
               </button>
@@ -255,10 +255,10 @@ function getHoursRemaining(expiresAt: number): number {
           <!-- ============================================== -->
           <div id="panel-split" class="tool-panel hidden space-y-6">
             <div class="space-y-1">
-              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <h2 class="text-xl font-bold text-[#373B46] dark:text-[#E5E7EB] flex items-center gap-2">
                 <span>✂️ Extract & Split PDF Pages</span>
               </h2>
-              <p class="text-xs text-slate-400">
+              <p class="text-xs text-[#656873] dark:text-[#A1A1AA]">
                 Extract specific question paper sections, syllabus units, or custom page ranges without losing document quality.
               </p>
             </div>
@@ -266,7 +266,7 @@ function getHoursRemaining(expiresAt: number): number {
             <form id="split-form" class="space-y-5">
               <div
                 id="split-dropzone"
-                class="relative border-2 border-dashed border-white/20 hover:border-sky-400/60 transition-colors rounded-2xl p-8 text-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]"
+                class="relative border-2 border-dashed border-[#E9E5DC] dark:border-[#343A48] hover:border-[#4F46E5] dark:hover:border-[#A5A0FF] transition-colors rounded-2xl p-8 text-center cursor-pointer bg-[#F7F5EF]/60 dark:bg-[#171923]/60 hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342]"
               >
                 <input
                   type="file"
@@ -276,17 +276,17 @@ function getHoursRemaining(expiresAt: number): number {
                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <div class="space-y-2 pointer-events-none">
-                  <div class="w-12 h-12 mx-auto rounded-2xl bg-sky-400/10 text-sky-300 flex items-center justify-center text-xl">
+                  <div class="w-12 h-12 mx-auto rounded-2xl bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] flex items-center justify-center text-xl">
                     📄
                   </div>
-                  <p class="text-sm font-bold text-white">Click or drag a PDF document to split</p>
-                  <p id="split-selected-filename" class="text-xs text-slate-400">Single document up to 3 MB</p>
+                  <p class="text-sm font-bold text-[#373B46] dark:text-[#E5E7EB]">Click or drag a PDF document to split</p>
+                  <p id="split-selected-filename" class="text-xs text-[#656873] dark:text-[#A1A1AA]">Single document up to 3 MB</p>
                 </div>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1.5">
-                  <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                <div class="p-4 rounded-2xl bg-[#F7F5EF]/60 dark:bg-[#171923]/60 border border-[#E9E5DC] dark:border-[#343A48] space-y-1.5">
+                  <label class="block text-xs font-bold text-[#373B46] dark:text-[#E5E7EB] uppercase tracking-wider">
                     Start Page
                   </label>
                   <input
@@ -296,13 +296,13 @@ function getHoursRemaining(expiresAt: number): number {
                     min="1"
                     value="1"
                     required
-                    class="w-full px-3.5 py-2 text-sm rounded-xl border border-white/15 bg-black/40 text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    class="w-full px-3.5 py-2 text-sm rounded-xl border border-[#E9E5DC] dark:border-[#343A48] bg-[#FCFBF8] dark:bg-[#242936] text-[#373B46] dark:text-[#E5E7EB] focus:outline-none focus:ring-2 focus:ring-[#4F46E5] dark:focus:ring-[#A5A0FF]"
                   />
-                  <span class="text-[10px] text-slate-500 block">First page number to include</span>
+                  <span class="text-[10px] text-[#656873] dark:text-[#A1A1AA] block">First page number to include</span>
                 </div>
 
-                <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1.5">
-                  <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                <div class="p-4 rounded-2xl bg-[#F7F5EF]/60 dark:bg-[#171923]/60 border border-[#E9E5DC] dark:border-[#343A48] space-y-1.5">
+                  <label class="block text-xs font-bold text-[#373B46] dark:text-[#E5E7EB] uppercase tracking-wider">
                     End Page
                   </label>
                   <input
@@ -312,16 +312,16 @@ function getHoursRemaining(expiresAt: number): number {
                     min="1"
                     value="2"
                     required
-                    class="w-full px-3.5 py-2 text-sm rounded-xl border border-white/15 bg-black/40 text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    class="w-full px-3.5 py-2 text-sm rounded-xl border border-[#E9E5DC] dark:border-[#343A48] bg-[#FCFBF8] dark:bg-[#242936] text-[#373B46] dark:text-[#E5E7EB] focus:outline-none focus:ring-2 focus:ring-[#4F46E5] dark:focus:ring-[#A5A0FF]"
                   />
-                  <span class="text-[10px] text-slate-500 block">Last page number to include</span>
+                  <span class="text-[10px] text-[#656873] dark:text-[#A1A1AA] block">Last page number to include</span>
                 </div>
               </div>
 
               <button
                 type="submit"
                 id="split-submit-btn"
-                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-slate-950 bg-gradient-to-r from-sky-300 via-sky-400 to-indigo-400 hover:from-sky-400 hover:to-indigo-500 shadow-lg shadow-sky-400/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-white dark:text-[#171923] bg-[#4F46E5] hover:bg-[#4338ca] dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Extract Page Range →</span>
               </button>
@@ -333,10 +333,10 @@ function getHoursRemaining(expiresAt: number): number {
           <!-- ============================================== -->
           <div id="panel-image-to-pdf" class="tool-panel hidden space-y-6">
             <div class="space-y-1">
-              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <h2 class="text-xl font-bold text-[#373B46] dark:text-[#E5E7EB] flex items-center gap-2">
                 <span>🖼️ Convert Handwritten Images to PDF</span>
               </h2>
-              <p class="text-xs text-slate-400">
+              <p class="text-xs text-[#656873] dark:text-[#A1A1AA]">
                 Snap photos of whiteboard lectures or handwritten notes (JPG, PNG, WEBP). Convert them into a crisp, standardized multi-page PDF document.
               </p>
             </div>
@@ -344,7 +344,7 @@ function getHoursRemaining(expiresAt: number): number {
             <form id="images-form" class="space-y-5">
               <div
                 id="images-dropzone"
-                class="relative border-2 border-dashed border-white/20 hover:border-emerald-400/60 transition-colors rounded-2xl p-8 text-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]"
+                class="relative border-2 border-dashed border-[#E9E5DC] dark:border-[#343A48] hover:border-[#4F46E5] dark:hover:border-[#A5A0FF] transition-colors rounded-2xl p-8 text-center cursor-pointer bg-[#F7F5EF]/60 dark:bg-[#171923]/60 hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342]"
               >
                 <input
                   type="file"
@@ -355,11 +355,11 @@ function getHoursRemaining(expiresAt: number): number {
                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <div class="space-y-2 pointer-events-none">
-                  <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-400/10 text-emerald-300 flex items-center justify-center text-xl">
+                  <div class="w-12 h-12 mx-auto rounded-2xl bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] flex items-center justify-center text-xl">
                     📸
                   </div>
-                  <p class="text-sm font-bold text-white">Click or drop note photos here</p>
-                  <p class="text-xs text-slate-400">Accepts JPG, PNG, WEBP (Max 3 MB each)</p>
+                  <p class="text-sm font-bold text-[#373B46] dark:text-[#E5E7EB]">Click or drop note photos here</p>
+                  <p class="text-xs text-[#656873] dark:text-[#A1A1AA]">Accepts JPG, PNG, WEBP (Max 3 MB each)</p>
                 </div>
               </div>
 
@@ -369,7 +369,7 @@ function getHoursRemaining(expiresAt: number): number {
               <button
                 type="submit"
                 id="images-submit-btn"
-                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-slate-950 bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-400 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-400/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-white dark:text-[#171923] bg-[#4F46E5] hover:bg-[#4338ca] dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Convert Images to PDF Pack →</span>
               </button>
@@ -381,10 +381,10 @@ function getHoursRemaining(expiresAt: number): number {
           <!-- ============================================== -->
           <div id="panel-compress" class="tool-panel hidden space-y-6">
             <div class="space-y-1">
-              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <h2 class="text-xl font-bold text-[#373B46] dark:text-[#E5E7EB] flex items-center gap-2">
                 <span>🗜️ Compress & Optimize PDF Size</span>
               </h2>
-              <p class="text-xs text-slate-400">
+              <p class="text-xs text-[#656873] dark:text-[#A1A1AA]">
                 Shrink oversized scanned lecture notes and assignments down to submission size without losing mathematical formulas or font clarity.
               </p>
             </div>
@@ -392,7 +392,7 @@ function getHoursRemaining(expiresAt: number): number {
             <form id="compress-form" class="space-y-5">
               <div
                 id="compress-dropzone"
-                class="relative border-2 border-dashed border-white/20 hover:border-purple-400/60 transition-colors rounded-2xl p-8 text-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]"
+                class="relative border-2 border-dashed border-[#E9E5DC] dark:border-[#343A48] hover:border-[#4F46E5] dark:hover:border-[#A5A0FF] transition-colors rounded-2xl p-8 text-center cursor-pointer bg-[#F7F5EF]/60 dark:bg-[#171923]/60 hover:bg-[#F0EEE7] dark:hover:bg-[#2D3342]"
               >
                 <input
                   type="file"
@@ -402,23 +402,23 @@ function getHoursRemaining(expiresAt: number): number {
                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <div class="space-y-2 pointer-events-none">
-                  <div class="w-12 h-12 mx-auto rounded-2xl bg-purple-400/10 text-purple-300 flex items-center justify-center text-xl">
+                  <div class="w-12 h-12 mx-auto rounded-2xl bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] flex items-center justify-center text-xl">
                     📦
                   </div>
-                  <p class="text-sm font-bold text-white">Click or drag a PDF document to optimize</p>
-                  <p id="compress-selected-filename" class="text-xs text-slate-400">Single document up to 3 MB</p>
+                  <p class="text-sm font-bold text-[#373B46] dark:text-[#E5E7EB]">Click or drag a PDF document to optimize</p>
+                  <p id="compress-selected-filename" class="text-xs text-[#656873] dark:text-[#A1A1AA]">Single document up to 3 MB</p>
                 </div>
               </div>
 
-              <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between text-xs">
-                <span class="text-slate-300">Compression Engine:</span>
-                <span class="font-bold text-amber-300">Smart Academic Balancing (Balanced DPI + Stream Deflation)</span>
+              <div class="p-4 rounded-2xl bg-[#F7F5EF]/60 dark:bg-[#171923]/60 border border-[#E9E5DC] dark:border-[#343A48] flex items-center justify-between text-xs">
+                <span class="text-[#656873] dark:text-[#A1A1AA]">Compression Engine:</span>
+                <span class="font-bold text-[#4F46E5] dark:text-[#A5A0FF]">Smart Academic Balancing (Balanced DPI + Stream Deflation)</span>
               </div>
 
               <button
                 type="submit"
                 id="compress-submit-btn"
-                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-slate-950 bg-gradient-to-r from-purple-300 via-purple-400 to-indigo-400 hover:from-purple-400 hover:to-indigo-500 shadow-lg shadow-purple-400/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+                class="w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-white dark:text-[#171923] bg-[#4F46E5] hover:bg-[#4338ca] dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Compress & Optimize PDF →</span>
               </button>
@@ -432,12 +432,12 @@ function getHoursRemaining(expiresAt: number): number {
       <div id="recent-shelf" class="max-w-3xl mx-auto space-y-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-[#2563EB] dark:bg-[#60A5FA]"></span>
+            <h3 class="text-sm font-bold uppercase tracking-wider text-[#373B46] dark:text-[#E5E7EB]">
               Your Processed Document Shelf
             </h3>
           </div>
-          <span class="text-[11px] text-slate-500">Auto-expires after retention period</span>
+          <span class="text-[11px] text-[#656873] dark:text-[#A1A1AA]">Auto-expires after retention period</span>
         </div>
 
         <div id="shelf-cards-container" class="space-y-2.5">
@@ -445,17 +445,17 @@ function getHoursRemaining(expiresAt: number): number {
             userFiles.map((doc) => {
               const hoursLeft = getHoursRemaining(doc.expiresAt);
               return (
-                <div class="p-4 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-400/30 transition-all">
+                <div class="p-4 rounded-2xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#4F46E5]/40 dark:hover:border-[#A5A0FF]/40 transition-all shadow-sm">
                   <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-amber-400/10 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
+                    <div class="w-9 h-9 rounded-xl bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] flex items-center justify-center font-bold text-xs shrink-0">
                       📄
                     </div>
                     <div class="min-w-0">
-                      <span class="text-xs font-bold text-white block truncate">{doc.outputName}</span>
-                      <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                      <span class="text-xs font-bold text-[#373B46] dark:text-[#E5E7EB] block truncate">{doc.outputName}</span>
+                      <div class="flex items-center gap-2 text-[10px] text-[#656873] dark:text-[#A1A1AA]">
                         <span>{formatBytes(doc.size)}</span>
                         <span>•</span>
-                        <span class="text-amber-300 font-medium">⏳ {hoursLeft}h remaining</span>
+                        <span class="text-[#4F46E5] dark:text-[#A5A0FF] font-medium">⏳ {hoursLeft}h remaining</span>
                       </div>
                     </div>
                   </div>
@@ -463,7 +463,7 @@ function getHoursRemaining(expiresAt: number): number {
                   <a
                     href={`/api/pdf/download?id=${doc.id}`}
                     download={doc.outputName}
-                    class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all shrink-0 text-center flex items-center justify-center gap-1.5"
+                    class="px-4 py-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338ca] text-white dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] dark:text-[#171923] text-xs font-bold transition-all shrink-0 text-center flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     <span>Download</span>
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -474,24 +474,24 @@ function getHoursRemaining(expiresAt: number): number {
               );
             })
           ) : (
-            <div id="shelf-empty-state" class="p-8 text-center rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-              <p class="text-xs font-medium text-slate-400">No documents processed yet in this session.</p>
-              <p class="text-[11px] text-slate-500">Pick any tool above to merge, split, compress or convert your study files.</p>
+            <div id="shelf-empty-state" class="p-8 text-center rounded-2xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] space-y-1">
+              <p class="text-xs font-medium text-[#656873] dark:text-[#A1A1AA]">No documents processed yet in this session.</p>
+              <p class="text-[11px] text-[#656873]/80 dark:text-[#A1A1AA]/80">Pick any tool above to merge, split, compress or convert your study files.</p>
             </div>
           )}
         </div>
       </div>
 
       <!-- Technical HUD Footer Metadata (Inspired by Reference) -->
-      <div class="flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 pt-8 border-t border-white/10 gap-4">
+      <div class="flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#656873] dark:text-[#A1A1AA] pt-8 border-t border-[#E9E5DC] dark:border-[#343A48] gap-4">
         <!-- Floating URL Pill on bottom left -->
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.05] border border-white/10 text-slate-300 font-mono text-xs shadow-sm">
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] text-[#373B46] dark:text-[#E5E7EB] font-mono text-xs shadow-sm">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#4F46E5] dark:bg-[#A5A0FF]"></span>
           <span>studdybuddy.in</span>
         </div>
 
         <!-- Inspirational Tagline on bottom right -->
-        <div class="text-center sm:text-right font-bold uppercase tracking-[0.2em] text-[10px] text-slate-400">
+        <div class="text-center sm:text-right font-bold uppercase tracking-[0.2em] text-[10px] text-[#656873] dark:text-[#A1A1AA]">
           BUILDING BRIGHTER MINDS TOGETHER
         </div>
       </div>
@@ -516,12 +516,12 @@ function getHoursRemaining(expiresAt: number): number {
 
   function showAlert(msg: string, type: 'error' | 'success') {
     if (!alertBox || !alertIcon || !alertMsg) return;
-    alertBox.classList.remove('hidden', 'bg-rose-950/50', 'text-rose-200', 'border-rose-800', 'bg-emerald-950/50', 'text-emerald-200', 'border-emerald-800');
+    alertBox.classList.remove('hidden', 'bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/30', 'bg-[#4F46E5]/10', 'dark:bg-[#A5A0FF]/15', 'text-[#4F46E5]', 'dark:text-[#A5A0FF]', 'border-[#4F46E5]/30', 'dark:border-[#A5A0FF]/30');
     if (type === 'error') {
-      alertBox.classList.add('bg-rose-950/50', 'text-rose-200', 'border-rose-800');
+      alertBox.classList.add('bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/30');
       alertIcon.innerText = '⚠️';
     } else {
-      alertBox.classList.add('bg-emerald-950/50', 'text-emerald-200', 'border-emerald-800');
+      alertBox.classList.add('bg-[#4F46E5]/10', 'dark:bg-[#A5A0FF]/15', 'text-[#4F46E5]', 'dark:text-[#A5A0FF]', 'border-[#4F46E5]/30', 'dark:border-[#A5A0FF]/30');
       alertIcon.innerText = '✓';
     }
     alertMsg.innerText = msg;
@@ -541,11 +541,11 @@ function getHoursRemaining(expiresAt: number): number {
     btn.addEventListener('click', () => {
       const tool = btn.getAttribute('data-tool');
       tabButtons.forEach((b) => {
-        b.classList.remove('active', 'bg-amber-400', 'text-slate-950', 'ring-2', 'ring-amber-300/40');
-        b.classList.add('bg-white/[0.05]', 'text-slate-300', 'border', 'border-white/10');
+        b.classList.remove('active', 'bg-[#4F46E5]', 'text-white', 'dark:bg-[#A5A0FF]', 'dark:text-[#171923]', 'ring-2', 'ring-[#4F46E5]/30', 'dark:ring-[#A5A0FF]/40', 'shadow-md');
+        b.classList.add('bg-[#FCFBF8]', 'dark:bg-[#242936]', 'text-[#656873]', 'dark:text-[#A1A1AA]', 'border', 'border-[#E9E5DC]', 'dark:border-[#343A48]');
       });
-      btn.classList.remove('bg-white/[0.05]', 'text-slate-300', 'border', 'border-white/10');
-      btn.classList.add('active', 'bg-amber-400', 'text-slate-950', 'ring-2', 'ring-amber-300/40');
+      btn.classList.remove('bg-[#FCFBF8]', 'dark:bg-[#242936]', 'text-[#656873]', 'dark:text-[#A1A1AA]', 'border', 'border-[#E9E5DC]', 'dark:border-[#343A48]');
+      btn.classList.add('active', 'bg-[#4F46E5]', 'text-white', 'dark:bg-[#A5A0FF]', 'dark:text-[#171923]', 'ring-2', 'ring-[#4F46E5]/30', 'dark:ring-[#A5A0FF]/40', 'shadow-md');
 
       panels.forEach((p) => p.classList.add('hidden'));
       const activePanel = document.getElementById(`panel-${tool}`);
@@ -571,25 +571,25 @@ function getHoursRemaining(expiresAt: number): number {
     if (emptyShelf) emptyShelf.remove();
     const downloadHref = objectUrl || `/api/pdf/download?id=${encodeURIComponent(docId)}`;
     const card = document.createElement('div');
-    card.className = 'p-4 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-400/30 transition-all animate-fade-in shadow-sm';
+    card.className = 'p-4 rounded-2xl bg-[#FCFBF8] dark:bg-[#242936] border border-[#E9E5DC] dark:border-[#343A48] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#4F46E5]/40 dark:hover:border-[#A5A0FF]/40 transition-all animate-fade-in shadow-sm';
     card.innerHTML = `
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-9 h-9 rounded-xl bg-amber-400/10 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-[#4F46E5]/10 dark:bg-[#A5A0FF]/15 text-[#4F46E5] dark:text-[#A5A0FF] flex items-center justify-center font-bold text-xs shrink-0">
           📄
         </div>
         <div class="min-w-0">
-          <span class="text-xs font-bold text-white block truncate">${escapeHtml(filename)}</span>
-          <div class="flex items-center gap-2 text-[10px] text-slate-400">
-            <span class="text-emerald-400 font-semibold">Ready to save</span>
+          <span class="text-xs font-bold text-[#373B46] dark:text-[#E5E7EB] block truncate">${escapeHtml(filename)}</span>
+          <div class="flex items-center gap-2 text-[10px] text-[#656873] dark:text-[#A1A1AA]">
+            <span class="text-[#2563EB] dark:text-[#60A5FA] font-semibold">Ready to save</span>
             <span>•</span>
-            <span class="text-amber-300 font-medium">⏳ ${escapeHtml(ttlText)}</span>
+            <span class="text-[#4F46E5] dark:text-[#A5A0FF] font-medium">⏳ ${escapeHtml(ttlText)}</span>
           </div>
         </div>
       </div>
       <a
         href="${downloadHref}"
         download="${escapeHtml(filename)}"
-        class="shelf-dl-btn px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold transition-all shrink-0 text-center flex items-center justify-center gap-1.5 shadow-md shadow-amber-400/20 active:scale-95 cursor-pointer"
+        class="shelf-dl-btn px-4 py-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338ca] text-white dark:bg-[#A5A0FF] dark:hover:bg-[#908aff] dark:text-[#171923] text-xs font-bold transition-all shrink-0 text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
       >
         <span>Download Now</span>
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -610,7 +610,7 @@ function getHoursRemaining(expiresAt: number): number {
       dropzone.addEventListener(eventName, (e) => {
         e.preventDefault();
         e.stopPropagation();
-        dropzone.classList.add('border-amber-400', 'bg-white/[0.08]', 'scale-[1.01]');
+        dropzone.classList.add('border-[#4F46E5]', 'dark:border-[#A5A0FF]', 'bg-[#F0EEE7]', 'dark:bg-[#2D3342]', 'scale-[1.01]');
       });
     });
 
@@ -618,7 +618,7 @@ function getHoursRemaining(expiresAt: number): number {
       dropzone.addEventListener(eventName, (e) => {
         e.preventDefault();
         e.stopPropagation();
-        dropzone.classList.remove('border-amber-400', 'bg-white/[0.08]', 'scale-[1.01]');
+        dropzone.classList.remove('border-[#4F46E5]', 'dark:border-[#A5A0FF]', 'bg-[#F0EEE7]', 'dark:bg-[#2D3342]', 'scale-[1.01]');
       });
     });
 
@@ -655,10 +655,10 @@ function getHoursRemaining(expiresAt: number): number {
     mergeContainer.innerHTML = '';
     Array.from(mergeInput.files).forEach((f, idx) => {
       const item = document.createElement('div');
-      item.className = 'flex items-center justify-between p-2 rounded-xl bg-white/[0.04] text-xs';
+      item.className = 'flex items-center justify-between p-2 rounded-xl bg-[#F7F5EF] dark:bg-[#171923] border border-[#E9E5DC] dark:border-[#343A48] text-xs';
       item.innerHTML = `
-        <span class="text-slate-200 truncate max-w-xs font-medium">#${idx + 1} ${escapeHtml(f.name)}</span>
-        <span class="text-slate-400 font-mono text-[10px]">${(f.size / 1024).toFixed(0)} KB</span>
+        <span class="text-[#373B46] dark:text-[#E5E7EB] truncate max-w-xs font-medium">#${idx + 1} ${escapeHtml(f.name)}</span>
+        <span class="text-[#656873] dark:text-[#A1A1AA] font-mono text-[10px]">${(f.size / 1024).toFixed(0)} KB</span>
       `;
       mergeContainer.appendChild(item);
     });
@@ -716,7 +716,7 @@ function getHoursRemaining(expiresAt: number): number {
   splitInput?.addEventListener('change', () => {
     if (splitInput.files && splitInput.files[0]) {
       splitName.innerText = `Selected: ${splitInput.files[0].name} (${(splitInput.files[0].size / 1024).toFixed(0)} KB)`;
-      splitName.classList.add('text-amber-300');
+      splitName.classList.add('text-[#4F46E5]', 'dark:text-[#A5A0FF]', 'font-bold');
     }
   });
 
@@ -783,7 +783,7 @@ function getHoursRemaining(expiresAt: number): number {
       const reader = new FileReader();
       reader.onload = (e) => {
         const thumb = document.createElement('div');
-        thumb.className = 'relative aspect-square rounded-xl overflow-hidden border border-white/20 bg-black/40';
+        thumb.className = 'relative aspect-square rounded-xl overflow-hidden border border-[#E9E5DC] dark:border-[#343A48] bg-[#F7F5EF] dark:bg-[#171923]';
         thumb.innerHTML = `
           <img src="${e.target?.result}" alt="Preview" class="w-full h-full object-cover" />
           <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] text-white font-mono">${(f.size / 1024).toFixed(0)}KB</span>
@@ -844,7 +844,7 @@ function getHoursRemaining(expiresAt: number): number {
   compressInput?.addEventListener('change', () => {
     if (compressInput.files && compressInput.files[0]) {
       compressName.innerText = `Selected: ${compressInput.files[0].name} (${(compressInput.files[0].size / 1024).toFixed(0)} KB)`;
-      compressName.classList.add('text-purple-300');
+      compressName.classList.add('text-[#4F46E5]', 'dark:text-[#A5A0FF]', 'font-bold');
     }
   });
 
